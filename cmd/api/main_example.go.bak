@@ -1,0 +1,372 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	
+	"github.com/example/offgridflow/internal/auth"
+	"github.com/example/offgridflow/internal/audit"
+	"github.com/example/offgridflow/internal/billing"
+	"github.com/example/offgridflow/internal/connectors"
+	"github.com/example/offgridflow/internal/email"
+	"github.com/example/offgridflow/internal/observability"
+	"github.com/example/offgridflow/internal/ratelimit"
+	"github.com/example/offgridflow/internal/workers"
+)
+
+func main() {
+	ctx := context.Background()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	// Load configuration
+	cfg := loadConfig()
+
+	// Initialize database
+	db, err := sql.Open("pgx", cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer db.Close()
+
+	// Initialize OpenTelemetry
+	tracerProvider, err := observability.NewTracerProvider(ctx, observability.TracerConfig{
+		ServiceName:    "offgridflow-api",
+		ServiceVersion: cfg.Version,
+		Environment:    cfg.Environment,
+		OTLPEndpoint:   cfg.OTLPEndpoint,
+		SampleRate:     0.1, // 10% sampling in production
+	})
+	if err != nil {
+		log.Fatal("Failed to create tracer provider:", err)
+	}
+	defer tracerProvider.Shutdown(context.Background())
+
+	metricsProvider, err := observability.NewMetricsProvider(ctx, observability.TracerConfig{
+		ServiceName:    "offgridflow-api",
+		ServiceVersion: cfg.Version,
+		Environment:    cfg.Environment,
+		OTLPEndpoint:   cfg.OTLPEndpoint,
+	})
+	if err != nil {
+		log.Fatal("Failed to create metrics provider:", err)
+	}
+	defer metricsProvider.Shutdown(context.Background())
+
+	metrics, err := observability.NewMetrics("offgridflow")
+	if err != nil {
+		log.Fatal("Failed to create metrics:", err)
+	}
+
+	// Initialize core services
+	authStore := auth.NewPostgresStore(db)
+	authService := auth.NewService(authStore, cfg.JWTSecret)
+
+	auditStore := audit.NewPostgresStore(db)
+	auditService := audit.NewService(auditStore, logger)
+
+	// Initialize rate limiter
+	rateLimiter := ratelimit.NewRateLimiter()
+
+	// Initialize billing
+	stripeClient, err := billing.NewStripeClient(
+		cfg.StripeSecretKey,
+		cfg.StripeWebhookSecret,
+		cfg.StripePriceFree,
+		cfg.StripePriceBasic,
+		cfg.StripePricePro,
+		cfg.StripePriceEnterprise,
+	)
+	if err != nil {
+		log.Fatal("Failed to create Stripe client:", err)
+	}
+
+	billingService := billing.NewService(db, stripeClient)
+
+	// Initialize email client
+	emailClient, err := email.NewClient(email.Config{
+		SMTPHost:     cfg.SMTPHost,
+		SMTPPort:     cfg.SMTPPort,
+		SMTPUsername: cfg.SMTPUsername,
+		SMTPPassword: cfg.SMTPPassword,
+		FromAddress:  cfg.SMTPFromAddress,
+		FromName:     cfg.SMTPFromName,
+		UseTLS:       true,
+	}, logger)
+	if err != nil {
+		log.Fatal("Failed to create email client:", err)
+	}
+
+	// Initialize worker system
+	queue, err := workers.NewPostgresQueue(db)
+	if err != nil {
+		log.Fatal("Failed to create job queue:", err)
+	}
+
+	worker := workers.NewWorker(queue, logger)
+
+	// Register job handlers
+	worker.RegisterHandler(workers.JobTypeConnectorSync, func(ctx context.Context, job *workers.Job) error {
+		return handleConnectorSync(ctx, job, db, logger, metrics)
+	})
+
+	worker.RegisterHandler(workers.JobTypeEmissionsCalculation, func(ctx context.Context, job *workers.Job) error {
+		return handleEmissionsCalculation(ctx, job, db, logger, metrics)
+	})
+
+	worker.RegisterHandler(workers.JobTypeReportGeneration, func(ctx context.Context, job *workers.Job) error {
+		return handleReportGeneration(ctx, job, db, emailClient, logger, metrics)
+	})
+
+	worker.RegisterHandler(workers.JobTypeBillingSync, func(ctx context.Context, job *workers.Job) error {
+		return handleBillingSync(ctx, job, stripeClient, logger, metrics)
+	})
+
+	worker.RegisterHandler(workers.JobTypeAuditCleanup, func(ctx context.Context, job *workers.Job) error {
+		return handleAuditCleanup(ctx, job, auditStore, logger)
+	})
+
+	// Start worker pool
+	if err := worker.Start(ctx, workers.WorkerConfig{
+		Workers:      cfg.WorkerCount,
+		PollInterval: 1 * time.Second,
+	}); err != nil {
+		log.Fatal("Failed to start workers:", err)
+	}
+	defer worker.Stop(context.Background())
+
+	// Initialize HTTP router
+	router := http.NewServeMux()
+
+	// Add observability middleware
+	httpMiddleware := observability.NewHTTPMiddleware("offgridflow-http", metrics)
+
+	// Health check endpoint
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	// Stripe webhook endpoint
+	webhookHandler := billing.NewWebhookHandler(stripeClient, billingService, logger)
+	router.HandleFunc("/webhooks/stripe", webhookHandler.HandleWebhook)
+
+	// API endpoints (add your existing routes here)
+	// router.HandleFunc("/api/...", ...)
+
+	// Create HTTP server with middleware
+	server := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      httpMiddleware.Handler(router),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start server in goroutine
+	go func() {
+		logger.Info("Starting HTTP server", "port", cfg.Port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("Server error:", err)
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("Shutting down server...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatal("Server forced to shutdown:", err)
+	}
+
+	logger.Info("Server exited")
+}
+
+// Configuration structure
+type Config struct {
+	Environment          string
+	Version              string
+	Port                 string
+	DatabaseURL          string
+	JWTSecret            string
+	OTLPEndpoint         string
+	StripeSecretKey      string
+	StripeWebhookSecret  string
+	StripePriceFree      string
+	StripePriceBasic     string
+	StripePricePro       string
+	StripePriceEnterprise string
+	SMTPHost             string
+	SMTPPort             int
+	SMTPUsername         string
+	SMTPPassword         string
+	SMTPFromAddress      string
+	SMTPFromName         string
+	WorkerCount          int
+}
+
+func loadConfig() Config {
+	return Config{
+		Environment:           getEnv("ENVIRONMENT", "production"),
+		Version:               getEnv("VERSION", "1.0.0"),
+		Port:                  getEnv("PORT", "8080"),
+		DatabaseURL:           getEnv("DATABASE_URL", ""),
+		JWTSecret:             getEnv("JWT_SECRET", ""),
+		OTLPEndpoint:          getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318"),
+		StripeSecretKey:       getEnv("STRIPE_SECRET_KEY", ""),
+		StripeWebhookSecret:   getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		StripePriceFree:       getEnv("STRIPE_PRICE_FREE", ""),
+		StripePriceBasic:      getEnv("STRIPE_PRICE_BASIC", ""),
+		StripePricePro:        getEnv("STRIPE_PRICE_PRO", ""),
+		StripePriceEnterprise: getEnv("STRIPE_PRICE_ENTERPRISE", ""),
+		SMTPHost:              getEnv("SMTP_HOST", ""),
+		SMTPPort:              getEnvInt("SMTP_PORT", 587),
+		SMTPUsername:          getEnv("SMTP_USERNAME", ""),
+		SMTPPassword:          getEnv("SMTP_PASSWORD", ""),
+		SMTPFromAddress:       getEnv("SMTP_FROM_ADDRESS", "noreply@offgridflow.com"),
+		SMTPFromName:          getEnv("SMTP_FROM_NAME", "OffGridFlow"),
+		WorkerCount:           getEnvInt("WORKER_COUNT", 5),
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		var intVal int
+		if _, err := fmt.Sscanf(value, "%d", &intVal); err == nil {
+			return intVal
+		}
+	}
+	return defaultValue
+}
+
+// Job handler implementations
+
+func handleConnectorSync(ctx context.Context, job *workers.Job, db *sql.DB, logger *slog.Logger, metrics *observability.Metrics) error {
+	ctx, span := observability.StartSpan(ctx, "worker", "connector.sync")
+	defer span.End()
+
+	start := time.Now()
+	defer func() {
+		metrics.RecordJobExecution(ctx, string(job.Type), string(job.Status), time.Since(start))
+	}()
+
+	// Extract connector config from job payload
+	connectorType, _ := job.Payload["connector_type"].(string)
+	tenantID := job.TenantID
+
+	logger.Info("Starting connector sync",
+		"job_id", job.ID,
+		"tenant_id", tenantID,
+		"connector_type", connectorType)
+
+	var recordsFetched int64
+	var err error
+
+	switch connectorType {
+	case "aws":
+		recordsFetched, err = syncAWSConnector(ctx, tenantID, db)
+	case "azure":
+		recordsFetched, err = syncAzureConnector(ctx, tenantID, db)
+	case "gcp":
+		recordsFetched, err = syncGCPConnector(ctx, tenantID, db)
+	default:
+		return fmt.Errorf("unknown connector type: %s", connectorType)
+	}
+
+	if err != nil {
+		observability.RecordError(ctx, err)
+		metrics.RecordConnectorSync(ctx, connectorType, 0, time.Since(start), false)
+		return err
+	}
+
+	metrics.RecordConnectorSync(ctx, connectorType, recordsFetched, time.Since(start), true)
+
+	job.Result = map[string]interface{}{
+		"records_fetched": recordsFetched,
+		"duration_ms":     time.Since(start).Milliseconds(),
+	}
+
+	logger.Info("Connector sync completed",
+		"job_id", job.ID,
+		"records_fetched", recordsFetched)
+
+	return nil
+}
+
+func handleEmissionsCalculation(ctx context.Context, job *workers.Job, db *sql.DB, logger *slog.Logger, metrics *observability.Metrics) error {
+	ctx, span := observability.StartSpan(ctx, "worker", "emissions.calculate")
+	defer span.End()
+
+	start := time.Now()
+	defer func() {
+		metrics.RecordJobExecution(ctx, string(job.Type), string(job.Status), time.Since(start))
+	}()
+
+	// Implementation here
+	logger.Info("Emissions calculation completed", "job_id", job.ID)
+
+	return nil
+}
+
+func handleReportGeneration(ctx context.Context, job *workers.Job, db *sql.DB, emailClient *email.Client, logger *slog.Logger, metrics *observability.Metrics) error {
+	ctx, span := observability.StartSpan(ctx, "worker", "report.generate")
+	defer span.End()
+
+	start := time.Now()
+	defer func() {
+		metrics.RecordJobExecution(ctx, string(job.Type), string(job.Status), time.Since(start))
+	}()
+
+	// Implementation here
+	logger.Info("Report generation completed", "job_id", job.ID)
+
+	return nil
+}
+
+func handleBillingSync(ctx context.Context, job *workers.Job, stripeClient *billing.StripeClient, logger *slog.Logger, metrics *observability.Metrics) error {
+	// Implementation here
+	return nil
+}
+
+func handleAuditCleanup(ctx context.Context, job *workers.Job, auditStore *audit.PostgresStore, logger *slog.Logger) error {
+	// Implementation here
+	return nil
+}
+
+// Placeholder connector sync functions
+func syncAWSConnector(ctx context.Context, tenantID string, db *sql.DB) (int64, error) {
+	// Get tenant AWS credentials from database
+	// Create AWS connector
+	// Fetch data
+	// Store in database
+	return 0, nil
+}
+
+func syncAzureConnector(ctx context.Context, tenantID string, db *sql.DB) (int64, error) {
+	return 0, nil
+}
+
+func syncGCPConnector(ctx context.Context, tenantID string, db *sql.DB) (int64, error) {
+	return 0, nil
+}

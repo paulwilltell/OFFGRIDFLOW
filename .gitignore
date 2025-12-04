@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment files - NEVER commit secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.*.local
+*.env
+
+# Build outputs
+bin/
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test outputs
+coverage/
+*.out
+*.test
+*.prof
+
+# Logs
+*.log
+logs/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Kubernetes secrets (never commit)
+**/secrets.yaml
+!**/secrets.yaml.example
+
+# Go specific
+go.work
+
+# Next.js
+.next/
+out/
+
+# Docker
+.docker/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+

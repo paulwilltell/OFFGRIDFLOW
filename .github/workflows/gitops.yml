@@ -1,0 +1,45 @@
+name: GitOps Render & Promote
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to render"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.environment)) || fromJson('["dev","staging","prod"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Render Helm manifests
+        run: |
+          VALUES_FILE=infra/helm/offgridflow/values-${{ matrix.env }}.yaml
+          OUT=deployments/${{ matrix.env }}/release.yaml
+          mkdir -p deployments/${{ matrix.env }}
+          helm template offgridflow infra/helm/offgridflow -f ${VALUES_FILE} > ${OUT}
+          echo "Rendered ${OUT}"
+      - name: Commit rendered manifests
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add deployments/${{ matrix.env }}/release.yaml
+          if git diff --cached --quiet; then
+            echo "No rendered changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(gitops): render ${{ matrix.env }} manifests [skip ci]"
+          git push

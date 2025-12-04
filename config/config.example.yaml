@@ -1,0 +1,81 @@
+# OffGridFlow example configuration (do not commit secrets)
+# Render per-environment files from your secret manager and inject as env vars.
+
+server:
+  port: 8080
+  env: development
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+  trusted_proxies: []
+
+database:
+  dsn: postgres://offgridflow:changeme@localhost:5432/offgridflow?sslmode=disable
+  max_open_conns: 25
+  max_idle_conns: 10
+  conn_max_lifetime: 45m
+
+auth:
+  api_key: ""
+  jwt_secret: "change-me-to-32-characters-minimum"
+
+openai:
+  api_key: ""
+  model: gpt-4o-mini
+  base_url: ""
+
+stripe:
+  secret_key: ""
+  webhook_secret: ""
+  price_free: ""
+  price_basic: ""
+  price_pro: ""
+  price_enterprise: ""
+
+features:
+  enable_audit_log: false
+  enable_metrics: true
+  enable_graphql: true
+  enable_offline_ai: true
+
+ingestion:
+  lookback_days: 30
+
+  aws:
+    enabled: false
+    access_key_id: ""
+    secret_access_key: ""
+    region: ""
+    role_arn: ""
+    account_id: ""
+    org_id: ""
+
+  azure:
+    enabled: false
+    tenant_id: ""
+    client_id: ""
+    client_secret: ""
+    subscription_id: ""
+    org_id: ""
+
+  gcp:
+    enabled: false
+    project_id: ""
+    billing_account_id: ""
+    bigquery_dataset: ""
+    bigquery_table: ""
+    service_account_key: ""
+    org_id: ""
+
+  sap:
+    enabled: false
+    org_id: ""
+    base_url: ""
+    client_id: ""
+    client_secret: ""
+    company: ""
+    plant: ""
+
+  utility:
+    enabled: false
+    org_id: ""

@@ -1,0 +1,58 @@
+{
+  "bills": [
+    {
+      "meter_id": "METER-001",
+      "account_id": "ACC-001",
+      "location": "US-WEST",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "quantity": 12500.5,
+      "unit": "kWh",
+      "category": "electricity",
+      "provider": "Pacific Gas & Electric",
+      "invoice": "INV-2025-001",
+      "address": "123 Main St, San Francisco, CA 94102",
+      "metadata": {
+        "rate_class": "commercial",
+        "demand_charge": "152.00",
+        "peak_demand": "45.2",
+        "service_type": "General Service",
+        "billing_days": "31"
+      }
+    },
+    {
+      "meter_id": "METER-002",
+      "account_id": "ACC-002",
+      "location": "EU-CENTRAL",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "quantity": 8750.25,
+      "unit": "kWh",
+      "category": "electricity",
+      "provider": "EDF",
+      "invoice": "INV-2025-002",
+      "address": "45 Rue de Paris, 75001 Paris, France",
+      "metadata": {
+        "tariff": "blue_professional",
+        "subscribed_power": "36kVA"
+      }
+    },
+    {
+      "meter_id": "METER-GAS-001",
+      "account_id": "ACC-004",
+      "location": "US-WEST",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "quantity": 450.0,
+      "unit": "therm",
+      "category": "natural_gas",
+      "provider": "Pacific Gas & Electric",
+      "invoice": "INV-2025-005",
+      "address": "123 Main St, San Francisco, CA 94102",
+      "metadata": {
+        "baseline_allowance": "41.1",
+        "over_baseline": "408.9"
+      }
+    }
+  ]
+}

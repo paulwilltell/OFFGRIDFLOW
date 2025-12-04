@@ -1,0 +1,22 @@
+apiVersion: v2
+name: offgridflow
+description: Production Helm chart for OffGridFlow API, Web, Worker, and observability components
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/your-org/offgridflow
+keywords:
+  - offgridflow
+  - emissions
+  - sustainability
+sources:
+  - https://github.com/your-org/offgridflow
+dependencies:
+  - name: postgresql
+    version: 15.5.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 18.9.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

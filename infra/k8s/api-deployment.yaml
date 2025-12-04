@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: offgridflow-api
+  namespace: offgridflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: offgridflow-api
+  template:
+    metadata:
+      labels:
+        app: offgridflow-api
+    spec:
+      initContainers:
+        - name: migrate
+          image: ghcr.io/example/offgridflow-api:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Running database migrations..."
+              /app/offgridflow-api migrate up || echo "Migrations already applied or failed, continuing..."
+          env:
+            - name: OFFGRIDFLOW_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: database-url
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      containers:
+        - name: api
+          image: ghcr.io/example/offgridflow-api:latest
+          command: ["/app/offgridflow-api"]
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: OFFGRIDFLOW_SERVER_PORT
+              value: "8080"
+            - name: OFFGRIDFLOW_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: offgridflow-config
+                  key: OFFGRIDFLOW_ENV
+            - name: OFFGRIDFLOW_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: database-url
+            - name: OFFGRIDFLOW_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: redis-url
+            - name: OFFGRIDFLOW_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: jwt-secret
+            - name: OFFGRIDFLOW_STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: stripe-secret
+            - name: OFFGRIDFLOW_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: openai-api-key
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: offgridflow-config
+                  key: OTEL_EXPORTER_OTLP_ENDPOINT
+            - name: OFFGRIDFLOW_TRACING_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: offgridflow-config
+                  key: OFFGRIDFLOW_TRACING_ENABLED
+          envFrom:
+            - configMapRef:
+                name: offgridflow-config
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30

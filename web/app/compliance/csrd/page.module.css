@@ -1,0 +1,216 @@
+.container {
+  padding: 2rem;
+}
+
+.loadingText {
+  color: #888;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0;
+}
+
+.subtitle {
+  color: #888;
+  margin: 0.25rem 0 0 0;
+  font-size: 0.9rem;
+}
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.label {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.select {
+  background: #1d2940;
+  color: #fff;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.errorBox {
+  color: #ff6b6b;
+  padding: 1rem;
+  background: #1a1a2e;
+  border-radius: 8px;
+}
+
+.backLink {
+  color: #8aa9ff;
+  margin-top: 1rem;
+  display: inline-block;
+}
+
+.summaryCard {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(145deg, #0f172a, #1a2744);
+  border: 1px solid #1d2940;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.summaryTitle {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.summarySubtitle {
+  font-size: 0.85rem;
+  color: #ccc;
+  margin-top: 0.25rem;
+}
+
+.summaryMeta {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.validationGrid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.emissionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.requirementsGrid {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.actionsRow {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.primaryButton {
+  padding: 0.6rem 1.2rem;
+  background: #4ade80;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.secondaryButton {
+  padding: 0.6rem 1.2rem;
+  background: #1d2940;
+  color: #8aa9ff;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Validation Issue */
+.validationIssue {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.issueSeverity {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* Emission Card */
+.emissionCard {
+  padding: 1rem;
+  border: 1px solid #1d2940;
+  border-radius: 8px;
+}
+
+.emissionLabel {
+  color: #8aa9ff;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.emissionValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.emissionUnit {
+  font-size: 0.9rem;
+  font-weight: 400;
+  margin-left: 0.25rem;
+}
+
+/* Requirement Item */
+.requirementItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #0f172a;
+  border-radius: 8px;
+}
+
+.requirementStatus {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.statusComplete {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+}
+
+.statusIncomplete {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.requirementCode {
+  color: #8aa9ff;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.requirementTitle {
+  color: #e5e7eb;
+}
+
+.requirementTitleInactive {
+  color: #9ca3af;
+}

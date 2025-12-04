@@ -1,0 +1,17 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.60.1
+    hooks:
+      - id: golangci-lint
+        args: ["--timeout=5m"]
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.2.256
+    hooks:
+      - id: checkov
+        files: ^infra/

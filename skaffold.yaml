@@ -1,0 +1,47 @@
+apiVersion: skaffold/v4beta9
+kind: Config
+metadata:
+  name: offgridflow
+build:
+  artifacts:
+    - image: offgridflow-api
+      context: .
+      docker:
+        dockerfile: Dockerfile
+    - image: offgridflow-worker
+      context: .
+      docker:
+        dockerfile: Dockerfile
+        target: worker
+    - image: offgridflow-web
+      context: web
+      docker:
+        dockerfile: web/Dockerfile
+  local:
+    push: false
+deploy:
+  helm:
+    releases:
+      - name: offgridflow
+        chartPath: infra/helm/offgridflow
+        valuesFiles:
+          - infra/helm/offgridflow/values-dev.yaml
+        setValues:
+          components.api.image.repository: offgridflow-api
+          components.web.image.repository: offgridflow-web
+          components.worker.image.repository: offgridflow-worker
+        setValueTemplates:
+          components.api.image.tag: "{{.GIT_COMMIT}}"
+          components.web.image.tag: "{{.GIT_COMMIT}}"
+          components.worker.image.tag: "{{.GIT_COMMIT}}"
+portForward:
+  - resourceType: service
+    resourceName: offgridflow-offgridflow-api
+    namespace: offgridflow-dev
+    port: 8080
+    localPort: 8080
+  - resourceType: service
+    resourceName: offgridflow-offgridflow-web
+    namespace: offgridflow-dev
+    port: 3000
+    localPort: 3000

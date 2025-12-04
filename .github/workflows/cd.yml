@@ -1,0 +1,126 @@
+name: CD
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  CHART_PATH: infra/helm/offgridflow
+
+jobs:
+  lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Lint chart
+        run: helm lint $CHART_PATH
+
+  deploy-dev:
+    name: Deploy Dev (canary)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: azure/setup-kubectl@v4
+      - name: Helm upgrade (dev)
+        run: |
+          helm upgrade --install offgridflow $CHART_PATH \
+            -n offgridflow-dev --create-namespace \
+            -f infra/helm/offgridflow/values-dev.yaml \
+            --set components.api.image.tag=${{ github.sha }} \
+            --set components.web.image.tag=${{ github.sha }} \
+            --set components.worker.image.tag=${{ github.sha }}
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_DEV }}
+      - name: Canary rollout
+        uses: azure/k8s-deploy@v4
+        with:
+          namespace: offgridflow-dev
+          manifests: |
+            infra/k8s/api-deployment.yaml
+          strategy: canary
+          trafficSplitMethod: pod
+          percentage: 25
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_DEV }}
+
+  deploy-staging:
+    name: Deploy Staging (blue-green)
+    runs-on: ubuntu-latest
+    needs: [deploy-dev]
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: azure/setup-kubectl@v4
+      - name: Helm upgrade (staging)
+        run: |
+          helm upgrade --install offgridflow $CHART_PATH \
+            -n offgridflow-staging --create-namespace \
+            -f infra/helm/offgridflow/values-staging.yaml \
+            --set components.api.image.tag=${{ github.sha }} \
+            --set components.web.image.tag=${{ github.sha }} \
+            --set components.worker.image.tag=${{ github.sha }}
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_STAGING }}
+      - name: Blue-green deployment
+        uses: azure/k8s-deploy@v4
+        with:
+          namespace: offgridflow-staging
+          manifests: |
+            infra/k8s/web-deployment.yaml
+          strategy: blueGreen
+          trafficSplitMethod: service
+          blueGreen: |
+            activeService: offgridflow-web
+            previewService: offgridflow-web-preview
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_STAGING }}
+
+  deploy-prod:
+    name: Deploy Prod
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    environment:
+      name: production
+      url: https://app.offgridflow.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: azure/setup-kubectl@v4
+      - name: Helm upgrade (prod)
+        run: |
+          helm upgrade --install offgridflow $CHART_PATH \
+            -n offgridflow --create-namespace \
+            -f infra/helm/offgridflow/values-prod.yaml \
+            --set components.api.image.tag=${{ github.sha }} \
+            --set components.web.image.tag=${{ github.sha }} \
+            --set components.worker.image.tag=${{ github.sha }}
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_PROD }}
+      - name: Run Helm tests (migrations + smoke)
+        run: helm test offgridflow -n offgridflow --logs
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_PROD }}
+
+  post-deploy-validation:
+    name: Post-deploy Validation
+    runs-on: ubuntu-latest
+    needs: [deploy-prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+      - name: Rollout status
+        run: |
+          kubectl -n offgridflow rollout status deploy/offgridflow-api --timeout=120s
+          kubectl -n offgridflow rollout status deploy/offgridflow-web --timeout=120s
+          kubectl -n offgridflow rollout status deploy/offgridflow-worker --timeout=120s
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG_PROD }}
+      - name: Smoke check
+        run: curl -fsS https://api.offgridflow.example.com/health

@@ -1,0 +1,306 @@
+"""
+OffGridFlow GraphQL API Schema
+Enterprise carbon emissions management and sustainability platform.
+"""
+
+"""
+Root GraphQL query type.
+"""
+type Query {
+  """
+  Simple health-check style field used to confirm that the GraphQL API
+  is reachable and resolvers are wired correctly.
+  """
+  placeholder: String!
+
+  """
+  Query emissions data with filtering and pagination.
+  Returns a connection of emission records.
+  """
+  emissions(filter: EmissionsFilterInput, first: Int, after: String): EmissionsConnection!
+
+  """
+  Get aggregated emissions summary for a specific year.
+  Returns totals across all scopes.
+  """
+  emissionsSummary(year: Int!): EmissionsSummary!
+
+  """
+  Check compliance status for a regulatory framework.
+  Supported frameworks: CSRD, SEC, CBAM, California
+  """
+  complianceStatus(framework: String!): ComplianceStatus!
+
+  """
+  Get activity records for emissions calculation.
+  """
+  activities(source: String, first: Int, after: String): ActivityConnection!
+
+  """
+  Get organization settings.
+  """
+  organizationSettings: OrgSettings!
+}
+
+"""
+Root GraphQL mutation type.
+"""
+type Mutation {
+  """
+  Create a new activity record for emissions calculation.
+  """
+  createActivity(input: CreateActivityInput!): Activity!
+
+  """
+  Update organization-level settings.
+  """
+  updateOrganizationSettings(input: UpdateOrgSettingsInput!): OrgSettings!
+
+  """
+  Delete an activity record.
+  """
+  deleteActivity(id: ID!): Boolean!
+
+  """
+  Recalculate emissions for a specific period.
+  """
+  recalculateEmissions(periodStart: DateTime!, periodEnd: DateTime!): EmissionsSummary!
+}
+
+"""
+Root GraphQL subscription type.
+"""
+type Subscription {
+  """
+  Subscribe to real-time emissions calculation updates.
+  """
+  emissionsUpdated: EmissionsUpdate!
+}
+
+# =============================================================================
+# Input Types
+# =============================================================================
+
+"""
+Filter parameters for emissions queries.
+"""
+input EmissionsFilterInput {
+  "Filter by scope (1, 2, or 3)"
+  scope: String
+  "Start of date range"
+  startDate: DateTime
+  "End of date range"
+  endDate: DateTime
+  "Filter by region"
+  region: String
+}
+
+"""
+Input for creating an activity record.
+"""
+input CreateActivityInput {
+  "Activity source (e.g., 'utility_bill', 'vehicle', 'purchased_goods')"
+  source: String!
+  "Activity category"
+  category: String!
+  "Quantity of activity"
+  quantity: Float!
+  "Unit of measurement"
+  unit: String!
+  "Location/region"
+  location: String!
+  "Start of activity period"
+  periodStart: DateTime!
+  "End of activity period"
+  periodEnd: DateTime!
+}
+
+"""
+Input for updating organization settings.
+"""
+input UpdateOrgSettingsInput {
+  "Default region for emissions calculations"
+  defaultRegion: String
+  "Calculation methodology (location-based or market-based)"
+  methodology: String
+  "Primary reporting framework"
+  reportingFramework: String
+}
+
+# =============================================================================
+# Types
+# =============================================================================
+
+"""
+A single emission record.
+"""
+type Emission {
+  id: ID!
+  "Emission scope (1, 2, or 3)"
+  scope: String!
+  "Emission category (e.g., 'stationary_combustion', 'electricity')"
+  category: String!
+  "Source activity ID"
+  source: String!
+  "Emissions in kg CO2e"
+  amountKgCO2e: Float!
+  "Emissions in tonnes CO2e"
+  amountTonnesCO2e: Float!
+  "Geographic region"
+  region: String!
+  "Start of measurement period"
+  periodStart: DateTime!
+  "End of measurement period"
+  periodEnd: DateTime!
+  "When emissions were calculated"
+  calculatedAt: DateTime!
+  "Applied emission factor (kg CO2e per unit)"
+  emissionFactor: Float!
+  "Reference to emission factor source"
+  emissionFactorRef: String
+  "Data quality score"
+  dataQuality: String!
+}
+
+"""
+Paginated emissions connection following Relay specification.
+"""
+type EmissionsConnection {
+  edges: [EmissionsEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Edge in emissions connection.
+"""
+type EmissionsEdge {
+  node: Emission!
+  cursor: String!
+}
+
+"""
+Pagination info following Relay specification.
+"""
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+"""
+Aggregated emissions summary.
+"""
+type EmissionsSummary {
+  "Total Scope 1 emissions in tonnes CO2e"
+  scope1TonnesCO2e: Float!
+  "Total Scope 2 emissions in tonnes CO2e"
+  scope2TonnesCO2e: Float!
+  "Total Scope 3 emissions in tonnes CO2e"
+  scope3TonnesCO2e: Float!
+  "Grand total in tonnes CO2e"
+  totalTonnesCO2e: Float!
+  "Reporting year"
+  year: Int!
+  "Optional breakdown by region"
+  regionBreakdown: JSON
+  "Calculation timestamp"
+  timestamp: DateTime!
+}
+
+"""
+Compliance status for a regulatory framework.
+"""
+type ComplianceStatus {
+  "Framework name (CSRD, SEC, CBAM, California)"
+  framework: String!
+  "Status: compliant, partial, non_compliant, not_started"
+  status: String!
+  "List of required metrics for this framework"
+  requiredMetrics: [String!]!
+  "List of completed metrics"
+  completedMetrics: [String!]!
+  "List of missing metrics"
+  missingMetrics: [String!]!
+  "Compliance score (0-100)"
+  score: Float!
+  "Last updated timestamp"
+  lastUpdated: DateTime!
+}
+
+"""
+An activity record used for emissions calculation.
+"""
+type Activity {
+  id: ID!
+  "Activity source"
+  source: String!
+  "Activity category"
+  category: String!
+  "Quantity"
+  quantity: Float!
+  "Unit of measurement"
+  unit: String!
+  "Location/region"
+  location: String!
+  "Start of activity period"
+  periodStart: DateTime!
+  "End of activity period"
+  periodEnd: DateTime!
+  "Record creation timestamp"
+  createdAt: DateTime!
+}
+
+"""
+Paginated activity connection.
+"""
+type ActivityConnection {
+  edges: [ActivityEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Edge in activity connection.
+"""
+type ActivityEdge {
+  node: Activity!
+  cursor: String!
+}
+
+"""
+Organization settings.
+"""
+type OrgSettings {
+  "Organization ID"
+  orgId: ID!
+  "Default region for calculations"
+  defaultRegion: String!
+  "Calculation methodology"
+  methodology: String!
+  "Primary reporting framework"
+  reportingFramework: String!
+}
+
+"""
+Real-time emissions update event.
+"""
+type EmissionsUpdate {
+  "Event type: created, updated, deleted"
+  eventType: String!
+  "Updated emission record"
+  emission: Emission!
+  "Event timestamp"
+  timestamp: DateTime!
+}
+
+# =============================================================================
+# Scalars
+# =============================================================================
+
+"ISO 8601 DateTime"
+scalar DateTime
+
+"Arbitrary JSON data"
+scalar JSON

@@ -1,0 +1,184 @@
+groups:
+  - name: offgridflow_alerts
+    interval: 30s
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_request_count{job="offgridflow-api",http_status_code=~"5.."}[5m]))
+            /
+            sum(rate(http_request_count{job="offgridflow-api"}[5m]))
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High error rate detected"
+          description: "API error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # High 4xx error rate alert
+      - alert: HighClientErrorRate
+        expr: |
+          (
+            sum(rate(http_request_count{job="offgridflow-api",http_status_code=~"4.."}[5m]))
+            /
+            sum(rate(http_request_count{job="offgridflow-api"}[5m]))
+          ) * 100 > 20
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High client error rate detected"
+          description: "API 4xx error rate is {{ $value | humanizePercentage }} (threshold: 20%)"
+
+      # High API latency alert
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_bucket{job="offgridflow-api"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API latency detected"
+          description: "API p95 latency is {{ $value | humanizeDuration }} (threshold: 1s)"
+
+      # Ingestion job failures
+      - alert: IngestionJobFailures
+        expr: |
+          sum(rate(job_failure_count{job="offgridflow-worker"}[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: ingestion
+        annotations:
+          summary: "Ingestion jobs failing"
+          description: "Ingestion job failure rate: {{ $value | humanize }} jobs/sec"
+
+      # Connector sync failures
+      - alert: ConnectorSyncFailures
+        expr: |
+          sum by (connector_type) (rate(connector_errors_count{job="offgridflow-worker"}[5m])) > 0.05
+        for: 15m
+        labels:
+          severity: warning
+          component: connectors
+        annotations:
+          summary: "Connector {{$labels.connector_type}} experiencing failures"
+          description: "Connector error rate: {{ $value | humanize }} errors/sec"
+
+      # Database connection pool exhaustion
+      - alert: DatabaseConnectionPoolExhaustion
+        expr: |
+          db_connections_active{job="offgridflow-api"} / 100 > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "{{ $value | humanizePercentage }} of database connections in use (threshold: 90%)"
+
+      # Job queue depth growing
+      - alert: JobQueueBacklog
+        expr: |
+          job_queue_depth{job="offgridflow-worker"} > 1000
+        for: 15m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Job queue has significant backlog"
+          description: "Job queue depth: {{ $value | humanize }} (threshold: 1000)"
+
+      # Rate limit exceeded frequently
+      - alert: FrequentRateLimitExceeded
+        expr: |
+          sum(rate(ratelimit_exceeded_count{job="offgridflow-api"}[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Rate limits being exceeded frequently"
+          description: "Rate limit exceeded: {{ $value | humanize }} times/sec"
+
+      # Authentication failures spike
+      - alert: AuthenticationFailureSpike
+        expr: |
+          sum(rate(auth_failure_count{job="offgridflow-api"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: auth
+        annotations:
+          summary: "Spike in authentication failures"
+          description: "Auth failure rate: {{ $value | humanize }} failures/sec (threshold: 5/sec)"
+
+      # Service availability
+      - alert: ServiceDown
+        expr: |
+          up{job=~"offgridflow-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Service {{$labels.job}} is down"
+          description: "{{$labels.job}} has been down for more than 1 minute"
+
+      # Emissions calculation errors
+      - alert: EmissionsCalculationErrors
+        expr: |
+          sum(rate(emissions_calculated_count{job="offgridflow-api"}[5m])) == 0 and
+          sum(rate(http_request_count{job="offgridflow-api",http_route=~"/api/emissions.*"}[5m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          component: emissions
+        annotations:
+          summary: "Emissions calculations not completing"
+          description: "Emissions API is receiving requests but no calculations are completing"
+
+      # Report generation slow
+      - alert: SlowReportGeneration
+        expr: |
+          histogram_quantile(0.95, rate(report_generation_duration_bucket{job="offgridflow-api"}[5m])) > 30
+        for: 10m
+        labels:
+          severity: warning
+          component: reporting
+        annotations:
+          summary: "Report generation is slow"
+          description: "p95 report generation time: {{ $value | humanizeDuration }} (threshold: 30s)"
+
+      # Cache miss rate high
+      - alert: HighCacheMissRate
+        expr: |
+          (
+            sum(rate(cache_misses_count{job="offgridflow-api"}[5m]))
+            /
+            (sum(rate(cache_hits_count{job="offgridflow-api"}[5m])) + sum(rate(cache_misses_count{job="offgridflow-api"}[5m])))
+          ) * 100 > 50
+        for: 15m
+        labels:
+          severity: info
+          component: cache
+        annotations:
+          summary: "High cache miss rate"
+          description: "Cache miss rate: {{ $value | humanizePercentage }} (threshold: 50%)"
+
+      # Memory usage high (if available)
+      - alert: HighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes{job=~"offgridflow-.*"} / (1024*1024*1024)) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage on {{$labels.job}}"
+          description: "Memory usage: {{ $value | humanize }}GB (threshold: 1GB)"

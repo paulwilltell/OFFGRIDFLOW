@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: offgridflow-worker
+  namespace: offgridflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: offgridflow-worker
+  template:
+    metadata:
+      labels:
+        app: offgridflow-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/example/offgridflow-worker:latest
+          command: ["/app/offgridflow-worker"]
+          args: []
+          env:
+            - name: OFFGRIDFLOW_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: offgridflow-config
+                  key: OFFGRIDFLOW_ENV
+            - name: OFFGRIDFLOW_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: database-url
+            - name: OFFGRIDFLOW_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: redis-url
+            - name: OFFGRIDFLOW_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: openai-api-key
+          envFrom:
+            - configMapRef:
+                name: offgridflow-config
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - pgrep -f worker || exit 1
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - pgrep -f worker || exit 1
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2

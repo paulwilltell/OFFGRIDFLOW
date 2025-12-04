@@ -1,0 +1,11 @@
+{
+  "name": "offgridflow",
+  "private": true,
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "lint": "echo \"TODO: add linting\"",
+    "dev": "cd web && next dev"
+  }
+}

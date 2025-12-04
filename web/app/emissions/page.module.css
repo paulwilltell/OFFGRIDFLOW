@@ -1,0 +1,183 @@
+.container {
+  padding: 2rem;
+}
+
+.loadingText {
+  color: #888;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0;
+}
+
+.subtitle {
+  color: #888;
+  margin: 0.25rem 0 0 0;
+  font-size: 0.9rem;
+}
+
+.refreshButton {
+  padding: 0.5rem 1rem;
+  background: #1d2940;
+  color: #8aa9ff;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.refreshButton:hover {
+  background: #2d3a54;
+}
+
+.refreshButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.summaryCard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(145deg, #0f172a, #1a2744);
+  border: 1px solid #1d2940;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.section {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.regionGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.regionItem {
+  padding: 0.5rem 0.75rem;
+  background: #0f172a;
+  border: 1px solid #1d2940;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.regionName {
+  color: #8aa9ff;
+}
+
+.regionValue {
+  font-weight: 600;
+}
+
+.card {
+  padding: 1rem;
+  border: 1px solid #1d2940;
+  border-radius: 12px;
+}
+
+.label {
+  color: #8aa9ff;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.description {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.loading {
+  color: #666;
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.errorBox {
+  color: #ff6b6b;
+  padding: 1rem;
+  background: #1a1a2e;
+  border-radius: 8px;
+}
+
+.backLink {
+  color: #8aa9ff;
+  margin-top: 1rem;
+  display: inline-block;
+}
+
+.tableContainer {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #1d2940;
+}
+
+.table th {
+  background: #0f172a;
+  color: #8aa9ff;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.table tr:hover {
+  background: rgba(138, 169, 255, 0.05);
+}
+
+.pagination {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  justify-content: center;
+}
+
+.pageButton {
+  padding: 0.5rem 0.75rem;
+  background: #1d2940;
+  color: #8aa9ff;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pageButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageButton.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}

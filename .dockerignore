@@ -1,0 +1,70 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+docs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+api
+offgridflow-api
+offgridflow-worker
+
+# Test files
+*_test.go
+testdata
+
+# Coverage
+coverage.*
+*.out
+
+# Environment files
+.env*
+!.env.example
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.log
+
+# Node modules (handled in web/)
+node_modules
+web/node_modules
+web/.next
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Memory bank and analysis
+memory-bank
+evaluation
+*_structure.md
+*_REPORT.md
+*_COMPLETE.md
+*_SUMMARY.md
+PLAN.md
+
+# Scripts (not needed in container)
+scripts
+
+# Terraform state
+infra/terraform/*.tfstate
+infra/terraform/.terraform
+
+# Backups
+*.bak
+backup-*

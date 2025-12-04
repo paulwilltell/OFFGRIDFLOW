@@ -1,0 +1,269 @@
+.container {
+  padding: 2rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0 0 0.25rem 0;
+}
+
+.loadingText {
+  color: #888;
+}
+
+.dashboardGrid {
+  display: grid;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08), transparent 25%),
+    radial-gradient(circle at 80% 0%, rgba(34, 197, 94, 0.08), transparent 25%),
+    #0b1224;
+  min-height: 100vh;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.navLink {
+  padding: 0.5rem 1rem;
+  background: #1d2940;
+  color: #8aa9ff;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  border: 1px solid #2f3e62;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.navLink:hover {
+  background: #24375a;
+  border-color: #3b82f6;
+}
+
+.secondaryButton {
+  padding: 0.45rem 0.9rem;
+  background: #0f172a;
+  color: #e5e7eb;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1rem;
+  border: 1px solid #1d2940;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.label {
+  color: #8aa9ff;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.modeValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.modeNormal {
+  color: #4ade80;
+}
+
+.modeWarning {
+  color: #facc15;
+}
+
+.subText {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+.description {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.loading {
+  color: #666;
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statusLabel {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.sectionHeader {
+  margin: 0.5rem 0 0 0;
+  font-size: 1.1rem;
+  color: #e5e7eb;
+}
+
+.sectionHeaderRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.scopeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.frameworkGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.chatCard {
+  padding: 1rem;
+  border: 1px solid #1d2940;
+  border-radius: 12px;
+  max-width: 600px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.chatActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chatButton {
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+
+.chatButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.chatResultContainer {
+  margin-top: 0.5rem;
+}
+
+.chatSource {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.sourceCloud {
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.sourceLocal {
+  font-weight: 600;
+  color: #facc15;
+}
+
+.chatResponse {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #0f172a;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.statusBadge {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+}
+
+.frameworkCard {
+  padding: 1rem;
+  border: 1px solid #1d2940;
+  border-radius: 12px;
+  text-decoration: none;
+  display: block;
+  transition: border-color 0.2s;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.frameworkCard:hover {
+  border-color: #8aa9ff;
+}
+
+.frameworkHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.frameworkName {
+  color: #fff;
+  font-weight: 600;
+}
+
+.frameworkStatus {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.muted {
+  color: #94a3b8;
+  margin: 0;
+  font-size: 0.9rem;
+}
