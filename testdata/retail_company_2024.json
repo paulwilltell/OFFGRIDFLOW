@@ -1,0 +1,324 @@
+{
+  "organization": {
+    "name": "Global Retail Group",
+    "sector": "Retail / E-Commerce",
+    "employees": 12500,
+    "locations": ["Distribution Centers (8)", "Retail Stores (250)", "Corporate Offices (3)"],
+    "description": "Multi-channel retail company with physical stores and e-commerce platform"
+  },
+  "reporting_period": {
+    "year": 2024,
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31"
+  },
+  "activities": [
+    {
+      "id": "act-r001",
+      "name": "Natural Gas - Distribution Centers",
+      "category": "Stationary Combustion",
+      "scope": "scope1",
+      "quantity": 285000,
+      "unit": "m3",
+      "location": "8 DCs Nationwide",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.89,
+      "emissions_tonnes": 538.65
+    },
+    {
+      "id": "act-r002",
+      "name": "Natural Gas - Retail Stores",
+      "category": "Stationary Combustion",
+      "scope": "scope1",
+      "quantity": 425000,
+      "unit": "m3",
+      "location": "250 Stores",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.89,
+      "emissions_tonnes": 803.25
+    },
+    {
+      "id": "act-r003",
+      "name": "Delivery Fleet - Diesel Trucks",
+      "category": "Mobile Combustion",
+      "scope": "scope1",
+      "quantity": 850000,
+      "unit": "L",
+      "location": "National Fleet",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 2.68,
+      "emissions_tonnes": 2278.00
+    },
+    {
+      "id": "act-r004",
+      "name": "Delivery Fleet - Gasoline Vans",
+      "category": "Mobile Combustion",
+      "scope": "scope1",
+      "quantity": 125000,
+      "unit": "L",
+      "location": "Last-Mile Delivery",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 2.31,
+      "emissions_tonnes": 288.75
+    },
+    {
+      "id": "act-r005",
+      "name": "Refrigerant - Store HVAC (R-134a)",
+      "category": "Fugitive Emissions",
+      "scope": "scope1",
+      "quantity": 85,
+      "unit": "kg",
+      "location": "250 Stores",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1430,
+      "emissions_tonnes": 121.55
+    },
+    {
+      "id": "act-r006",
+      "name": "Refrigerant - Cold Storage (R-404A)",
+      "category": "Fugitive Emissions",
+      "scope": "scope1",
+      "quantity": 45,
+      "unit": "kg",
+      "location": "Distribution Centers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 3922,
+      "emissions_tonnes": 176.49
+    },
+    {
+      "id": "act-r007",
+      "name": "Electricity - Distribution Centers",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 18500000,
+      "unit": "kWh",
+      "location": "8 DCs",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.385,
+      "emissions_tonnes": 7122.50
+    },
+    {
+      "id": "act-r008",
+      "name": "Electricity - Retail Stores",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 42500000,
+      "unit": "kWh",
+      "location": "250 Stores",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.385,
+      "emissions_tonnes": 16362.50
+    },
+    {
+      "id": "act-r009",
+      "name": "Electricity - Corporate Offices",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 2800000,
+      "unit": "kWh",
+      "location": "3 Offices",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.385,
+      "emissions_tonnes": 1078.00
+    },
+    {
+      "id": "act-r010",
+      "name": "Purchased Goods - Apparel",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 12500000,
+      "unit": "USD",
+      "location": "Asia Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.00085,
+      "emissions_tonnes": 10625.00
+    },
+    {
+      "id": "act-r011",
+      "name": "Purchased Goods - Electronics",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 8500000,
+      "unit": "USD",
+      "location": "Global Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.00125,
+      "emissions_tonnes": 10625.00
+    },
+    {
+      "id": "act-r012",
+      "name": "Purchased Goods - Home Goods",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 6200000,
+      "unit": "USD",
+      "location": "Various",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.00095,
+      "emissions_tonnes": 5890.00
+    },
+    {
+      "id": "act-r013",
+      "name": "Packaging Materials - Cardboard",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 2850,
+      "unit": "tonnes",
+      "location": "Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.92,
+      "emissions_tonnes": 2622.00
+    },
+    {
+      "id": "act-r014",
+      "name": "Packaging Materials - Plastic",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 425,
+      "unit": "tonnes",
+      "location": "Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 3.18,
+      "emissions_tonnes": 1351.50
+    },
+    {
+      "id": "act-r015",
+      "name": "Inbound Freight - Ocean",
+      "category": "Upstream Transportation",
+      "scope": "scope3",
+      "quantity": 45000000,
+      "unit": "tonne-km",
+      "location": "International",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.011,
+      "emissions_tonnes": 495.00
+    },
+    {
+      "id": "act-r016",
+      "name": "Inbound Freight - Rail",
+      "category": "Upstream Transportation",
+      "scope": "scope3",
+      "quantity": 12500000,
+      "unit": "tonne-km",
+      "location": "Domestic",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.022,
+      "emissions_tonnes": 275.00
+    },
+    {
+      "id": "act-r017",
+      "name": "Inbound Freight - Trucking",
+      "category": "Upstream Transportation",
+      "scope": "scope3",
+      "quantity": 8500000,
+      "unit": "tonne-km",
+      "location": "Domestic",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.062,
+      "emissions_tonnes": 527.00
+    },
+    {
+      "id": "act-r018",
+      "name": "Last-Mile Delivery (Outsourced)",
+      "category": "Downstream Transportation",
+      "scope": "scope3",
+      "quantity": 18500000,
+      "unit": "packages",
+      "location": "US",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.125,
+      "emissions_tonnes": 2312.50
+    },
+    {
+      "id": "act-r019",
+      "name": "Employee Commuting",
+      "category": "Employee Commuting",
+      "scope": "scope3",
+      "quantity": 12500,
+      "unit": "employees",
+      "location": "All Locations",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.25,
+      "emissions_tonnes": 15625.00
+    },
+    {
+      "id": "act-r020",
+      "name": "Business Travel - Air",
+      "category": "Business Travel",
+      "scope": "scope3",
+      "quantity": 485000,
+      "unit": "km",
+      "location": "N/A",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.195,
+      "emissions_tonnes": 94.58
+    },
+    {
+      "id": "act-r021",
+      "name": "Product Use - Electronics",
+      "category": "Use of Sold Products",
+      "scope": "scope3",
+      "quantity": 125000,
+      "unit": "units",
+      "location": "Customer Use",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.85,
+      "emissions_tonnes": 106.25
+    },
+    {
+      "id": "act-r022",
+      "name": "Waste - Landfill",
+      "category": "Waste Generated",
+      "scope": "scope3",
+      "quantity": 1850,
+      "unit": "tonnes",
+      "location": "All Sites",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.467,
+      "emissions_tonnes": 863.95
+    },
+    {
+      "id": "act-r023",
+      "name": "Waste - Recycling",
+      "category": "Waste Generated",
+      "scope": "scope3",
+      "quantity": 2450,
+      "unit": "tonnes",
+      "location": "All Sites",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.021,
+      "emissions_tonnes": 51.45
+    },
+    {
+      "id": "act-r024",
+      "name": "End-of-Life Product Disposal",
+      "category": "End-of-Life",
+      "scope": "scope3",
+      "quantity": 3250,
+      "unit": "tonnes",
+      "location": "Customer Disposal",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.185,
+      "emissions_tonnes": 601.25
+    }
+  ],
+  "emissions_summary": {
+    "scope1_tonnes": 4206.69,
+    "scope2_tonnes": 24563.00,
+    "scope3_tonnes": 52065.48,
+    "total_tonnes": 80835.17
+  },
+  "data_quality": {
+    "completeness_percentage": 95.8,
+    "total_activities": 24,
+    "complete_activities": 23,
+    "missing_fields": {
+      "location": 1
+    },
+    "data_quality_score": 89.3
+  },
+  "notes": {
+    "scope1_note": "Fleet emissions represent largest Scope 1 source. Company piloting electric delivery vans in urban areas.",
+    "scope2_note": "Retail stores and distribution centers are energy-intensive. Exploring solar installations at high-consumption sites.",
+    "scope3_note": "Purchased goods dominate Scope 3 profile. Engaging suppliers on sustainability initiatives and low-carbon materials."
+  }
+}

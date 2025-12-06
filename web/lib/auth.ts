@@ -1,4 +1,5 @@
 import { api, ACCESS_TOKEN_KEY, TENANT_ID_KEY } from './api';
+import { clearCSRFTokenCache } from './csrf';
 
 export interface User {
   id: string;
@@ -74,6 +75,7 @@ export async function logout(): Promise<void> {
     // Ignore errors during logout
   }
   clearSession();
+  clearCSRFTokenCache();
 }
 
 /**

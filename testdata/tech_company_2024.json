@@ -1,0 +1,274 @@
+{
+  "organization": {
+    "name": "CloudTech Solutions Inc",
+    "sector": "Technology / SaaS",
+    "employees": 1250,
+    "locations": ["San Francisco, CA", "Austin, TX", "Remote Workforce"],
+    "description": "Cloud infrastructure and SaaS platform provider"
+  },
+  "reporting_period": {
+    "year": 2024,
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31"
+  },
+  "activities": [
+    {
+      "id": "act-t001",
+      "name": "Company Fleet - Electric Vehicles",
+      "category": "Mobile Combustion",
+      "scope": "scope1",
+      "quantity": 450,
+      "unit": "kWh",
+      "location": "San Francisco, CA",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.001,
+      "emissions_tonnes": 0.45
+    },
+    {
+      "id": "act-t002",
+      "name": "Backup Generators - Diesel",
+      "category": "Stationary Combustion",
+      "scope": "scope1",
+      "quantity": 850,
+      "unit": "L",
+      "location": "SF Data Center",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 2.68,
+      "emissions_tonnes": 2.28
+    },
+    {
+      "id": "act-t003",
+      "name": "R-410A HVAC Refrigerant Leakage",
+      "category": "Fugitive Emissions",
+      "scope": "scope1",
+      "quantity": 12,
+      "unit": "kg",
+      "location": "SF Office",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 2088,
+      "emissions_tonnes": 25.06
+    },
+    {
+      "id": "act-t004",
+      "name": "San Francisco Office Electricity",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 1250000,
+      "unit": "kWh",
+      "location": "San Francisco, CA",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.214,
+      "emissions_tonnes": 267.50
+    },
+    {
+      "id": "act-t005",
+      "name": "Austin Office Electricity",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 680000,
+      "unit": "kWh",
+      "location": "Austin, TX",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.391,
+      "emissions_tonnes": 265.88
+    },
+    {
+      "id": "act-t006",
+      "name": "AWS Data Centers (us-west-2)",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 8500000,
+      "unit": "kWh",
+      "location": "Oregon, US",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.195,
+      "emissions_tonnes": 1657.50
+    },
+    {
+      "id": "act-t007",
+      "name": "AWS Data Centers (us-east-1)",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 6200000,
+      "unit": "kWh",
+      "location": "Virginia, US",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.285,
+      "emissions_tonnes": 1767.00
+    },
+    {
+      "id": "act-t008",
+      "name": "Google Cloud Platform (us-central1)",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 2100000,
+      "unit": "kWh",
+      "location": "Iowa, US",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.420,
+      "emissions_tonnes": 882.00
+    },
+    {
+      "id": "act-t009",
+      "name": "Cloud Server Hardware",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 450,
+      "unit": "servers",
+      "location": "Global Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.85,
+      "emissions_tonnes": 832.50
+    },
+    {
+      "id": "act-t010",
+      "name": "Laptops and Workstations",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 850,
+      "unit": "units",
+      "location": "Global Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.32,
+      "emissions_tonnes": 272.00
+    },
+    {
+      "id": "act-t011",
+      "name": "Office Equipment and Furniture",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 125,
+      "unit": "tonnes",
+      "location": "Various",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.45,
+      "emissions_tonnes": 181.25
+    },
+    {
+      "id": "act-t012",
+      "name": "Business Travel - Air",
+      "category": "Business Travel",
+      "scope": "scope3",
+      "quantity": 2850000,
+      "unit": "km",
+      "location": "N/A",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.195,
+      "emissions_tonnes": 555.75
+    },
+    {
+      "id": "act-t013",
+      "name": "Business Travel - Hotel",
+      "category": "Business Travel",
+      "scope": "scope3",
+      "quantity": 8500,
+      "unit": "room-nights",
+      "location": "N/A",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.0293,
+      "emissions_tonnes": 249.05
+    },
+    {
+      "id": "act-t014",
+      "name": "Employee Commuting",
+      "category": "Employee Commuting",
+      "scope": "scope3",
+      "quantity": 1250,
+      "unit": "employees",
+      "location": "Multi-site",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.95,
+      "emissions_tonnes": 1187.50
+    },
+    {
+      "id": "act-t015",
+      "name": "Remote Work - Home Energy",
+      "category": "Employee Commuting",
+      "scope": "scope3",
+      "quantity": 425,
+      "unit": "remote employees",
+      "location": "Various",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.42,
+      "emissions_tonnes": 178.50
+    },
+    {
+      "id": "act-t016",
+      "name": "Data Transfer and Network",
+      "category": "Downstream",
+      "scope": "scope3",
+      "quantity": 12500000,
+      "unit": "GB",
+      "location": "Global CDN",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.000006,
+      "emissions_tonnes": 75.00
+    },
+    {
+      "id": "act-t017",
+      "name": "Customer Cloud Usage (estimated)",
+      "category": "Use of Sold Products",
+      "scope": "scope3",
+      "quantity": 45000000,
+      "unit": "kWh",
+      "location": "Customer Infrastructure",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.385,
+      "emissions_tonnes": 17325.00
+    },
+    {
+      "id": "act-t018",
+      "name": "E-Waste - Equipment Disposal",
+      "category": "End-of-Life",
+      "scope": "scope3",
+      "quantity": 28,
+      "unit": "tonnes",
+      "location": "Certified Recyclers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.021,
+      "emissions_tonnes": 0.59
+    },
+    {
+      "id": "act-t019",
+      "name": "SaaS Subscriptions (Slack, Zoom, etc)",
+      "category": "Purchased Services",
+      "scope": "scope3",
+      "quantity": 1250,
+      "unit": "licenses",
+      "location": "Cloud Services",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.125,
+      "emissions_tonnes": 156.25
+    },
+    {
+      "id": "act-t020",
+      "name": "Marketing and Advertising",
+      "category": "Purchased Services",
+      "scope": "scope3",
+      "quantity": 2500000,
+      "unit": "USD spend",
+      "location": "Various",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.00028,
+      "emissions_tonnes": 700.00
+    }
+  ],
+  "emissions_summary": {
+    "scope1_tonnes": 27.79,
+    "scope2_tonnes": 4839.88,
+    "scope3_tonnes": 21713.39,
+    "total_tonnes": 26581.06
+  },
+  "data_quality": {
+    "completeness_percentage": 100.0,
+    "total_activities": 20,
+    "complete_activities": 20,
+    "missing_fields": {},
+    "data_quality_score": 91.5
+  },
+  "notes": {
+    "scope2_note": "Scope 2 emissions dominated by cloud infrastructure (AWS, GCP). Company pursuing renewable energy credits for data centers.",
+    "scope3_note": "Largest Scope 3 source is customer usage of cloud platform. Company working on carbon-aware workload scheduling to reduce downstream emissions.",
+    "scope1_note": "Minimal Scope 1 emissions due to technology sector profile. Primary source is HVAC refrigerant leakage."
+  }
+}

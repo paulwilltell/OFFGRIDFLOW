@@ -46,17 +46,52 @@ docker-compose up -d
 Start-Process http://localhost:3000
 ```
 
-**Full guide**: [QUICKSTART.md](./QUICKSTART.md)
+**Full guide**: [QUICKSTART.md](./docs/guides/QUICKSTART.md)
+
+## 📸 Screenshots
+
+### Dashboard - Real-time Emissions Tracking
+![Dashboard](docs/screenshots/02-dashboard.png)
+*Live carbon accounting with Scope 1, 2, and 3 breakdowns*
+
+### Activity Management
+![Activities](docs/screenshots/03-activities.png)
+*Track emissions across all operational activities*
+
+### Compliance Reporting
+![Reports](docs/screenshots/06-compliance-reports.png)
+*Generate CSRD, SEC, CBAM, California, and IFRS S2 reports with one click*
+
+[View all screenshots →](docs/screenshots/)
+
+## 📄 Example Reports
+
+Professional compliance reports generated from real data:
+
+| Report Type | Standard | File | Industry |
+|-------------|----------|------|----------|
+| **CSRD** | EU Sustainability | [📄 View](examples/reports/csrd-manufacturing-2024.pdf) | Manufacturing |
+| **SEC Climate** | US Disclosure | [📄 View](examples/reports/sec-tech-company-2024.pdf) | Technology |
+| **California SB 253** | State Climate | [📄 View](examples/reports/california-retail-2024.pdf) | Retail |
+| **CBAM** | EU Carbon Border | [📄 View](examples/reports/cbam-manufacturing-2024.pdf) | Import/Export |
+| **IFRS S2** | Global ISSB | [📄 View](examples/reports/ifrs-tech-company-2024.pdf) | Technology |
+
+**Emissions Coverage**: 114,920 tCO2e across 59 activities in 3 sectors
+
+[View report details →](examples/reports/)
 
 ## 📚 Documentation
 
 | Document | Description |
 |----------|-------------|
-| [📖 Quick Start](./QUICKSTART.md) | Get running in 5 minutes |
+| [📖 Quick Start](./docs/guides/QUICKSTART.md) | Get running in 5 minutes |
 | [🚀 Production Deployment](./PRODUCTION_DEPLOYMENT_GUIDE.md) | Complete deployment guide |
 | [✅ Final Checklist](./FINAL_CHECKLIST.md) | All completed tasks |
 | [🎉 Production Complete](./PRODUCTION_COMPLETE_FINAL.md) | Implementation summary |
-| [📊 API Documentation](http://localhost:8080/api/v1/docs) | Interactive API docs |
+| [📊 REST API Reference](./docs/rest-api-reference.md) | HTTP API documentation |
+| [🔌 GraphQL API Reference](./docs/graphql-api-reference.md) | GraphQL schema and queries |
+| [🏗️ Architecture](./docs/architecture.md) | System design and patterns |
+| [📈 Observability](./docs/OBSERVABILITY.md) | Monitoring and tracing setup |
 
 ## ✨ Key Features
 
@@ -71,8 +106,8 @@ Start-Process http://localhost:3000
 - ✅ **CSRD/ESRS** - EU Corporate Sustainability Reporting
 - ✅ **SEC Climate** - US Securities regulations
 - ✅ **CBAM** - Carbon Border Adjustment Mechanism
-- ✅ **California Climate** - State-level reporting
-- ✅ **IFRS S2** - Sustainability disclosure
+- ✅ **California Climate** - State-level reporting (SB 253)
+- ✅ **IFRS S2** - Sustainability disclosure (ISSB)
 - ✅ **GRI, CDP** - Voluntary frameworks
 
 ### Data Ingestion
@@ -84,8 +119,8 @@ Start-Process http://localhost:3000
 - ✅ **CSV** - Bulk imports
 
 ### Exports & Reporting
+- ✅ **PDF** - Professional compliance reports (5 types)
 - ✅ **XBRL/iXBRL** - Regulatory filings
-- ✅ **PDF** - Professional reports
 - ✅ **Excel/CSV** - Data exports
 - ✅ **JSON API** - Programmatic access
 
@@ -107,6 +142,8 @@ Start-Process http://localhost:3000
 │ SQL  │  │Cache│  │ Jobs  │  │Trace│
 └──────┘  └─────┘  └───────┘  └─────┘
 ```
+
+[Detailed architecture →](docs/architecture.md)
 
 ## 🛠️ Technology Stack
 
@@ -185,10 +222,16 @@ Access these dashboards after running `docker-compose up -d`:
 .\scripts\deploy-complete.ps1 -Environment production
 ```
 
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
 ## 📝 License
 
-MIT License
+MIT License - See [LICENSE](./LICENSE) for details
 
 ---
 
 **Made with ❤️ for a sustainable future** 🌍
+
+**Topics**: `carbon-accounting` `esg` `csrd` `sustainability` `emissions` `climate-tech` `saas` `golang` `nextjs` `typescript` `compliance` `sec-climate` `cbam` `ghg-protocol` `scope3` `multi-tenant` `enterprise`

@@ -38,10 +38,18 @@ func main() {
 }
 
 func run() (err error) {
+	// Set up JSON structured logging
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level:     slog.LevelInfo,
+		AddSource: true, // Include file:line in logs
+	})
+	logger := slog.New(jsonHandler)
+	slog.SetDefault(logger)
+
 	// Recover from any panics so we can log the stack trace for debugging.
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("[offgridflow] PANIC: %v\n%s", r, debug.Stack())
+			logger.Error("PANIC", "error", r, "stack", string(debug.Stack()))
 			err = fmt.Errorf("panic: %v", r)
 		}
 	}()

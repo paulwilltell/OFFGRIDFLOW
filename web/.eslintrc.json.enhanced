@@ -1,0 +1,15 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "react-hooks/exhaustive-deps": "warn",
+    "@next/next/no-img-element": "off",
+    "no-console": ["error", { "allow": ["warn", "error"] }]
+  },
+  "ignorePatterns": [
+    "__tests__/**/*",
+    "*.test.ts",
+    "*.test.tsx",
+    "jest.config.js",
+    "jest.setup.ts"
+  ]
+}

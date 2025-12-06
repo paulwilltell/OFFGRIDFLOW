@@ -1,3 +1,4 @@
+import { attachCSRFHeader } from './csrf';
 import { config } from './config';
 
 export interface ApiError {
@@ -48,17 +49,16 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
     return localStorage.getItem(TENANT_ID_KEY);
   };
 
-  const buildHeaders = (): HeadersInit => {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
+  const buildHeaders = (): Headers => {
+    const headers = new Headers();
+    headers.set('Content-Type', 'application/json');
     const token = getAuthToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers.set('Authorization', `Bearer ${token}`);
     }
     const tenantId = getTenantId();
     if (tenantId) {
-      headers['X-Tenant-ID'] = tenantId;
+      headers.set('X-Tenant-ID', tenantId);
     }
     return headers;
   };
@@ -93,18 +93,21 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
 
   return {
     get: async <T>(path: string): Promise<T> => {
+      const headers = buildHeaders();
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'GET',
-        headers: buildHeaders(),
+        headers,
         credentials: 'include', // Include cookies for session auth
       });
       return handleResponse<T>(response, path);
     },
 
     post: async <T>(path: string, body: unknown): Promise<T> => {
+      const headers = buildHeaders();
+      await attachCSRFHeader(headers);
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
-        headers: buildHeaders(),
+        headers,
         credentials: 'include',
         body: JSON.stringify(body),
       });
@@ -112,9 +115,11 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
     },
 
     put: async <T>(path: string, body: unknown): Promise<T> => {
+      const headers = buildHeaders();
+      await attachCSRFHeader(headers);
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'PUT',
-        headers: buildHeaders(),
+        headers,
         credentials: 'include',
         body: JSON.stringify(body),
       });
@@ -122,9 +127,11 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
     },
 
     patch: async <T>(path: string, body: unknown): Promise<T> => {
+      const headers = buildHeaders();
+      await attachCSRFHeader(headers);
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'PATCH',
-        headers: buildHeaders(),
+        headers,
         credentials: 'include',
         body: JSON.stringify(body),
       });
@@ -132,9 +139,11 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
     },
 
     delete: async <T>(path: string): Promise<T> => {
+      const headers = buildHeaders();
+      await attachCSRFHeader(headers);
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'DELETE',
-        headers: buildHeaders(),
+        headers,
         credentials: 'include',
       });
       return handleResponse<T>(response, path);

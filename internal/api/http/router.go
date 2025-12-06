@@ -74,6 +74,12 @@ type RouterConfig struct {
 	CookieDomain   string
 	CookieSecure   bool
 
+	// LockoutManager enforces login throttling for auth handlers.
+	LockoutManager *auth.LockoutManager
+
+	// CSRFMiddleware wraps routes to enforce CSRF protection.
+	CSRFMiddleware *middleware.CSRFMiddleware
+
 	// Billing configuration
 	BillingService *billing.Service
 
@@ -185,6 +191,24 @@ func NewRouterWithConfig(cfg *RouterConfig) http.Handler {
 		r.logger = slog.Default().With("component", "http-router")
 	}
 
+	if cfg.LockoutManager == nil {
+		cfg.LockoutManager = auth.NewLockoutManager(5, 15*time.Minute, 5*time.Minute, 5*time.Minute)
+	}
+	if cfg.CSRFMiddleware == nil {
+		cfg.CSRFMiddleware = middleware.NewCSRFMiddleware(middleware.CSRFMiddlewareConfig{
+			TokenTTL:        24 * time.Hour,
+			CleanupInterval: 10 * time.Minute,
+			ExemptPaths: []string{
+				"/api/auth/login",
+				"/api/auth/register",
+				"/api/auth/password/forgot",
+				"/api/auth/password/reset",
+				"/api/auth/csrf-token",
+				"/api/billing/webhook",
+			},
+		})
+	}
+
 	handlerDeps, err := cfg.buildHandlerDependencies()
 	if err != nil {
 		panic(fmt.Sprintf("invalid router dependencies: %v", err))
@@ -229,7 +253,12 @@ func (r *router) build() http.Handler {
 	// Register protected routes
 	r.registerProtectedRoutes(mux)
 
-	return mux
+	handler := http.Handler(mux)
+	if r.cfg != nil && r.cfg.CSRFMiddleware != nil {
+		handler = r.cfg.CSRFMiddleware.Wrap(handler)
+	}
+
+	return handler
 }
 
 // registerPublicRoutes adds routes that don't require authentication.
@@ -249,10 +278,14 @@ func (r *router) registerPublicRoutes(mux *http.ServeMux) {
 			SessionManager: r.cfg.SessionManager,
 			CookieDomain:   r.cfg.CookieDomain,
 			CookieSecure:   r.cfg.CookieSecure,
+			LockoutManager: r.cfg.LockoutManager,
 		})
 
 		mux.HandleFunc("/api/auth/register", authHandlers.Register)
 		mux.HandleFunc("/api/auth/login", authHandlers.Login)
+		if r.cfg.CSRFMiddleware != nil {
+			mux.HandleFunc("/api/auth/csrf-token", r.csrfTokenHandler())
+		}
 		mux.HandleFunc("/api/auth/logout", authHandlers.Logout)
 		if r.authSvc != nil {
 			mux.HandleFunc("/api/auth/password/forgot", handlers.NewPasswordForgotHandler(r.authSvc, r.logger))
@@ -278,6 +311,7 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 			SessionManager: r.cfg.SessionManager,
 			CookieDomain:   r.cfg.CookieDomain,
 			CookieSecure:   r.cfg.CookieSecure,
+			LockoutManager: r.cfg.LockoutManager,
 		})
 
 		protectedMux.HandleFunc("/api/auth/me", authHandlers.Me)
@@ -458,6 +492,42 @@ func (r *router) offgridModeHandler() http.Handler {
 			"mode": string(mode),
 		})
 	})
+}
+
+func (r *router) csrfTokenHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			responders.MethodNotAllowed(w, http.MethodGet)
+			return
+		}
+
+		if r.cfg == nil || r.cfg.CSRFMiddleware == nil {
+			responders.InternalError(w, "CSRF middleware not configured")
+			return
+		}
+
+		token, err := r.cfg.CSRFMiddleware.GenerateToken()
+		if err != nil {
+			r.logger.Error("failed to generate csrf token", "error", err)
+			responders.InternalError(w, "failed to generate CSRF token")
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     r.cfg.CSRFMiddleware.CookieName(),
+			Value:    token,
+			Path:     "/",
+			Domain:   r.cfg.CookieDomain,
+			HttpOnly: true,
+			Secure:   r.cfg.CookieSecure,
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   int(r.cfg.CSRFMiddleware.TokenTTL().Seconds()),
+		})
+
+		responders.JSON(w, http.StatusOK, map[string]string{
+			"csrf_token": token,
+		})
+	}
 }
 
 // aiChatHandler creates a handler for the AI chat endpoint.

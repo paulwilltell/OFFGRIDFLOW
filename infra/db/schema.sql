@@ -199,6 +199,83 @@ CREATE INDEX IF NOT EXISTS idx_emissions_activity_id ON emissions(activity_id);
 CREATE INDEX IF NOT EXISTS idx_ingestion_logs_source ON ingestion_logs(source);
 CREATE INDEX IF NOT EXISTS idx_workflow_tasks_status ON workflow_tasks(status);
 
+-- =============================================================================
+-- AUDIT LOGGING (Compliance Requirement)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id         UUID REFERENCES users(id) ON DELETE SET NULL,
+    action          VARCHAR(100) NOT NULL,
+    resource_type   VARCHAR(100) NOT NULL,
+    resource_id     UUID,
+    timestamp       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ip_address      INET,
+    user_agent      TEXT,
+    metadata        JSONB,
+    status          VARCHAR(50) NOT NULL DEFAULT 'success',
+    error_message   TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_timestamp ON audit_logs(tenant_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+
+-- =============================================================================
+-- COMPLIANCE REPORTS (CSRD, SEC, CBAM, etc.)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS compliance_reports (
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id                   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    report_type                 VARCHAR(50) NOT NULL,
+    reporting_year              INTEGER NOT NULL,
+    reporting_period_start      DATE NOT NULL,
+    reporting_period_end        DATE NOT NULL,
+    
+    -- Report metadata (required by compliance standards)
+    report_hash                 VARCHAR(64) NOT NULL,
+    data_quality_score          DECIMAL(5,2),
+    completeness_percentage     DECIMAL(5,2),
+    missing_data_points         JSONB,
+    calculation_methodology     TEXT,
+    
+    -- Emissions summary
+    scope1_emissions_tonnes     DECIMAL(15,3),
+    scope2_emissions_tonnes     DECIMAL(15,3),
+    scope3_emissions_tonnes     DECIMAL(15,3),
+    total_emissions_tonnes      DECIMAL(15,3),
+    
+    -- File references
+    pdf_url                     TEXT,
+    pdf_file_size               BIGINT,
+    xbrl_url                    TEXT,
+    xbrl_file_size              BIGINT,
+    
+    -- Audit trail
+    generated_by                UUID REFERENCES users(id) ON DELETE SET NULL,
+    generation_timestamp        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    approved_by                 UUID REFERENCES users(id) ON DELETE SET NULL,
+    approved_at                 TIMESTAMPTZ,
+    
+    -- Status tracking
+    status                      VARCHAR(50) NOT NULL DEFAULT 'draft',
+    version                     INTEGER NOT NULL DEFAULT 1,
+    
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at                  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    UNIQUE(tenant_id, report_type, reporting_year, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_compliance_reports_tenant ON compliance_reports(tenant_id, reporting_year DESC);
+CREATE INDEX IF NOT EXISTS idx_compliance_reports_type ON compliance_reports(report_type, reporting_year DESC);
+CREATE INDEX IF NOT EXISTS idx_compliance_reports_status ON compliance_reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_compliance_reports_generated_by ON compliance_reports(generated_by);
+
 CREATE TABLE IF NOT EXISTS connectors (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT NOT NULL,

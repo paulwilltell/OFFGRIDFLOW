@@ -1,0 +1,209 @@
+{
+  "organization": {
+    "name": "Precision Manufacturing Corp",
+    "sector": "Manufacturing",
+    "employees": 450,
+    "locations": ["Detroit, MI", "Cleveland, OH"],
+    "description": "Heavy machinery and industrial equipment manufacturer"
+  },
+  "reporting_period": {
+    "year": 2024,
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31"
+  },
+  "activities": [
+    {
+      "id": "act-001",
+      "name": "Natural Gas Heating - Detroit Plant",
+      "category": "Stationary Combustion",
+      "scope": "scope1",
+      "quantity": 185000,
+      "unit": "m3",
+      "location": "Detroit, MI",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.89,
+      "emissions_tonnes": 349.65
+    },
+    {
+      "id": "act-002",
+      "name": "Diesel - Forklifts and Equipment",
+      "category": "Mobile Combustion",
+      "scope": "scope1",
+      "quantity": 12500,
+      "unit": "L",
+      "location": "Detroit, MI",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 2.68,
+      "emissions_tonnes": 33.5
+    },
+    {
+      "id": "act-003",
+      "name": "Company Fleet - Diesel Trucks",
+      "category": "Mobile Combustion",
+      "scope": "scope1",
+      "quantity": 45000,
+      "unit": "L",
+      "location": "Multi-site",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 2.68,
+      "emissions_tonnes": 120.6
+    },
+    {
+      "id": "act-004",
+      "name": "Propane - Welding Operations",
+      "category": "Process Emissions",
+      "scope": "scope1",
+      "quantity": 8500,
+      "unit": "kg",
+      "location": "Cleveland, OH",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 2.98,
+      "emissions_tonnes": 25.33
+    },
+    {
+      "id": "act-005",
+      "name": "R-134a Refrigerant Leakage",
+      "category": "Fugitive Emissions",
+      "scope": "scope1",
+      "quantity": 15,
+      "unit": "kg",
+      "location": "Detroit, MI",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1430,
+      "emissions_tonnes": 21.45
+    },
+    {
+      "id": "act-006",
+      "name": "Electricity - Detroit Plant",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 2850000,
+      "unit": "kWh",
+      "location": "Detroit, MI",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.385,
+      "emissions_tonnes": 1097.25
+    },
+    {
+      "id": "act-007",
+      "name": "Electricity - Cleveland Plant",
+      "category": "Purchased Electricity",
+      "scope": "scope2",
+      "quantity": 1650000,
+      "unit": "kWh",
+      "location": "Cleveland, OH",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.412,
+      "emissions_tonnes": 679.8
+    },
+    {
+      "id": "act-008",
+      "name": "Steam - District Heating",
+      "category": "Purchased Heat",
+      "scope": "scope2",
+      "quantity": 45000,
+      "unit": "MMBTU",
+      "location": "Detroit, MI",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.0531,
+      "emissions_tonnes": 2.39
+    },
+    {
+      "id": "act-009",
+      "name": "Steel Procurement",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 850,
+      "unit": "tonnes",
+      "location": "Various Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.85,
+      "emissions_tonnes": 1572.5
+    },
+    {
+      "id": "act-010",
+      "name": "Aluminum Procurement",
+      "category": "Purchased Goods",
+      "scope": "scope3",
+      "quantity": 320,
+      "unit": "tonnes",
+      "location": "Various Suppliers",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 8.24,
+      "emissions_tonnes": 2636.8
+    },
+    {
+      "id": "act-011",
+      "name": "Business Travel - Air",
+      "category": "Business Travel",
+      "scope": "scope3",
+      "quantity": 145000,
+      "unit": "km",
+      "location": "N/A",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.255,
+      "emissions_tonnes": 36.98
+    },
+    {
+      "id": "act-012",
+      "name": "Employee Commuting",
+      "category": "Employee Commuting",
+      "scope": "scope3",
+      "quantity": 450,
+      "unit": "employees",
+      "location": "Multi-site",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 1.85,
+      "emissions_tonnes": 832.5
+    },
+    {
+      "id": "act-013",
+      "name": "Freight - Outbound Shipping",
+      "category": "Downstream Transportation",
+      "scope": "scope3",
+      "quantity": 850000,
+      "unit": "tonne-km",
+      "location": "N/A",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.062,
+      "emissions_tonnes": 52.7
+    },
+    {
+      "id": "act-014",
+      "name": "Waste - Metal Scrap",
+      "category": "Waste Generated",
+      "scope": "scope3",
+      "quantity": 125,
+      "unit": "tonnes",
+      "location": "Detroit, MI",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.021,
+      "emissions_tonnes": 2.63
+    },
+    {
+      "id": "act-015",
+      "name": "Waste - General Landfill",
+      "category": "Waste Generated",
+      "scope": "scope3",
+      "quantity": 85,
+      "unit": "tonnes",
+      "location": "Multi-site",
+      "period": "2024-01-01 to 2024-12-31",
+      "emission_factor": 0.467,
+      "emissions_tonnes": 39.70
+    }
+  ],
+  "emissions_summary": {
+    "scope1_tonnes": 550.53,
+    "scope2_tonnes": 1779.44,
+    "scope3_tonnes": 5173.81,
+    "total_tonnes": 7503.78
+  },
+  "data_quality": {
+    "completeness_percentage": 96.7,
+    "total_activities": 15,
+    "complete_activities": 15,
+    "missing_fields": {},
+    "data_quality_score": 94.2
+  }
+}

@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -66,6 +67,7 @@ type AuthHandlers struct {
 	logger         *slog.Logger
 	cookieDomain   string
 	cookieSecure   bool
+	lockoutManager *auth.LockoutManager
 }
 
 // AuthHandlersConfig holds configuration for auth handlers.
@@ -84,6 +86,9 @@ type AuthHandlersConfig struct {
 
 	// CookieSecure should be true in production (HTTPS only).
 	CookieSecure bool
+
+	// LockoutManager optionally enforces login lockouts.
+	LockoutManager *auth.LockoutManager
 }
 
 // NewAuthHandlers creates new authentication handlers.
@@ -99,6 +104,7 @@ func NewAuthHandlers(cfg AuthHandlersConfig) *AuthHandlers {
 		logger:         logger,
 		cookieDomain:   cfg.CookieDomain,
 		cookieSecure:   cfg.CookieSecure,
+		lockoutManager: cfg.LockoutManager,
 	}
 }
 
@@ -301,12 +307,16 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	email := normalizeEmail(req.Email)
+
+	if h.enforceLoginLockout(w, email) {
+		return
+	}
 
 	// Get user by email
-	user, err := h.authStore.GetUserByEmail(ctx, normalizeEmail(req.Email))
+	user, err := h.authStore.GetUserByEmail(ctx, email)
 	if err != nil || user == nil {
-		// Same response for security
-		responders.Unauthorized(w, "invalid_credentials", "invalid email or password")
+		h.handleLoginFailure(w, email)
 		return
 	}
 
@@ -317,7 +327,7 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 
 	// Check password
 	if !auth.CheckPassword(user.PasswordHash, req.Password) {
-		responders.Unauthorized(w, "invalid_credentials", "invalid email or password")
+		h.handleLoginFailure(w, email)
 		return
 	}
 
@@ -354,6 +364,12 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Record successful login
+	if h.lockoutManager != nil {
+		h.lockoutManager.RecordSuccess(email)
+	}
+
+	// Set session cookie
 	h.setSessionCookie(w, token)
 
 	h.logger.Info("user logged in",
@@ -378,6 +394,46 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *AuthHandlers) enforceLoginLockout(w http.ResponseWriter, email string) bool {
+	if h.lockoutManager == nil {
+		return false
+	}
+	if !h.lockoutManager.IsLocked(email) {
+		return false
+	}
+	_, lockedUntil := h.lockoutManager.GetLockoutInfo(email)
+	message := "Too many failed login attempts. Try again later."
+	if lockedUntil != nil {
+		message = fmt.Sprintf("Account locked until %s due to multiple failed login attempts.", lockedUntil.Format(time.RFC3339))
+	}
+	responders.TooManyRequests(w, message)
+	h.logger.Warn("login attempt blocked by lockout",
+		"email", email,
+		"locked_until", lockedUntil,
+	)
+	return true
+}
+
+func (h *AuthHandlers) handleLoginFailure(w http.ResponseWriter, email string) {
+	if h.lockoutManager == nil {
+		responders.Unauthorized(w, "invalid_credentials", "invalid email or password")
+		return
+	}
+
+	locked, remaining := h.lockoutManager.RecordFailure(email)
+	if locked {
+		responders.TooManyRequests(w, "Too many failed login attempts. Account temporarily locked.")
+		h.logger.Warn("account locked after repeated failures", "email", email)
+		return
+	}
+
+	message := "invalid email or password"
+	if remaining > 0 {
+		message = fmt.Sprintf("invalid email or password (%d attempts remaining)", remaining)
+	}
+	responders.Unauthorized(w, "invalid_credentials", message)
+}
+
 // Logout handles user logout.
 // POST /api/auth/logout
 func (h *AuthHandlers) Logout(w http.ResponseWriter, r *http.Request) {
@@ -395,7 +451,7 @@ func (h *AuthHandlers) Logout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   h.cookieSecure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 	})
 
 	responders.JSON(w, http.StatusOK, map[string]string{
@@ -720,7 +776,7 @@ func (h *AuthHandlers) setSessionCookie(w http.ResponseWriter, token string) {
 		MaxAge:   sessionCookieMaxAge,
 		HttpOnly: true,
 		Secure:   h.cookieSecure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 	})
 }
 
