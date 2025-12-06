@@ -1,6 +1,7 @@
 package compliance
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -91,13 +92,12 @@ func GenerateCBAMPDF(report CBAMReport) ([]byte, error) {
 	addCBAMMethodology(pdf, report)
 
 	// Generate PDF bytes
-	var buf []byte
-	var err error
-	if buf, err = pdf.Output(&buf); err != nil {
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
 		return nil, fmt.Errorf("generate CBAM PDF: %w", err)
 	}
 
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 func addCBAMCoverPage(pdf *gofpdf.Fpdf, report CBAMReport) {

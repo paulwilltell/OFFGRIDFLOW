@@ -1,6 +1,7 @@
 package compliance
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/jung-kurt/gofpdf"
@@ -84,13 +85,12 @@ func GenerateCaliforniaPDF(report CaliforniaReport) ([]byte, error) {
 	addCaliforniaActivityData(pdf, report)
 
 	// Generate PDF bytes
-	var buf []byte
-	var err error
-	if buf, err = pdf.Output(&buf); err != nil {
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
 		return nil, fmt.Errorf("generate California PDF: %w", err)
 	}
 
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 func addCaliforniaCoverPage(pdf *gofpdf.Fpdf, report CaliforniaReport) {

@@ -1,6 +1,7 @@
 package compliance
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/jung-kurt/gofpdf"
@@ -92,13 +93,12 @@ func GenerateSECPDF(report SECReport) ([]byte, error) {
 	addSECDataQualityAssurance(pdf, report)
 
 	// Generate PDF bytes
-	var buf []byte
-	var err error
-	if buf, err = pdf.Output(&buf); err != nil {
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
 		return nil, fmt.Errorf("generate SEC PDF: %w", err)
 	}
 
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 func addSECCoverPage(pdf *gofpdf.Fpdf, report SECReport) {

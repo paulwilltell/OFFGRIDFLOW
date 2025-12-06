@@ -117,13 +117,11 @@ func main() {
 		switch ds.reportType {
 		case "CSRD":
 			csrdReport := compliance.CSRDReport{
-				Report:            baseReport,
-				EmissionsData:     emissionsData,
-				QualityMetrics:    qualityMetrics,
-				OrganizationName:  testData.Organization.Name,
-				ReportingYear:     testData.ReportingPeriod.Year,
-				ReportingOfficer:  "Chief Sustainability Officer",
-				EUTaxonomyAligned: 25.5,
+			Report:           baseReport,
+			EmissionsData:    emissionsData,
+			QualityMetrics:   qualityMetrics,
+			OrganizationName: testData.Organization.Name,
+			ReportingOfficer: "Chief Sustainability Officer",
 			}
 			pdfBytes, genErr = compliance.GenerateCSRDPDF(csrdReport)
 
@@ -350,15 +348,17 @@ func convertToEmissionsData(data TestDataset) compliance.EmissionsData {
 
 	for _, act := range data.Activities {
 		activities = append(activities, compliance.ActivityEmission{
-			ActivityID:  act.ID,
-			Name:        act.Name,
-			Scope:       act.Scope,
-			Category:    act.Category,
-			Emissions:   act.Emissions,
-			Unit:        act.Unit,
-			Location:    act.Location,
-			DataQuality: act.DataQuality,
-		})
+		ID:              uuid.New(),
+		Name:            act.Name,
+		Scope:           act.Scope,
+		Category:        act.Category,
+		Quantity:        act.Amount,
+		Unit:            act.Unit,
+		EmissionsTonnes: act.Emissions,
+		EmissionFactor:  0.0,
+		 Location:        act.Location,
+				Period:          "2024",
+			})
 	}
 
 	return compliance.EmissionsData{
@@ -408,29 +408,31 @@ func createBaseReport(data TestDataset, reportType string) *compliance.Report {
 	userID := uuid.New()
 
 	report := &compliance.Report{
-		ID:                         uuid.New(),
-		TenantID:                   tenantID,
-		ReportType:                 reportType,
-		ReportingYear:              data.ReportingPeriod.Year,
-		PeriodStart:                startTime,
-		PeriodEnd:                  endTime,
-		ReportHash:                 "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6", // Example hash
-		DataQualityScore:           data.Summary.Quality,
-		CompletenessPercentage:     data.Summary.Completeness,
-		CalculationMethodology:     "GHG Protocol Corporate Standard",
-		Scope1EmissionsTonnes:      data.Summary.Scope1,
-		Scope2EmissionsTonnes:      data.Summary.Scope2,
-		Scope3EmissionsTonnes:      data.Summary.Scope3,
-		TotalEmissionsTonnes:       data.Summary.Total,
-		GeneratedBy:                &userID,
-		GenerationTimestamp:        time.Now(),
-		Status:                     "Draft",
-		Version:                    1,
+		ID:                     uuid.New(),
+		TenantID:               tenantID,
+		ReportType:             compliance.ReportType(reportType),
+		ReportingYear:          data.ReportingPeriod.Year,
+		PeriodStart:            startTime,
+		PeriodEnd:              endTime,
+		ReportHash:             "",
+		DataQualityScore:       data.Summary.Quality,
+		CompletenessPercentage: data.Summary.Completeness,
+		CalculationMethodology: "GHG Protocol Corporate Standard",
+		Scope1EmissionsTonnes:  data.Summary.Scope1,
+		Scope2EmissionsTonnes:  data.Summary.Scope2,
+		Scope3EmissionsTonnes:  data.Summary.Scope3,
+		TotalEmissionsTonnes:   data.Summary.Total,
+		GeneratedBy:            &userID,
+		GenerationTimestamp:    time.Now(),
+		Status:                 compliance.StatusDraft,
+		Version:                1,
+		CreatedAt:              time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 
-	// Calculate report hash (simplified)
+	// Calculate report hash
 	hashInput := fmt.Sprintf("%s-%d-%.2f", reportType, data.ReportingPeriod.Year, data.Summary.Total)
-	report.ReportHash, _ = compliance.CalculateReportHash(report, []byte(hashInput))
+	report.ReportHash = compliance.CalculateReportHash(report, []byte(hashInput))
 
 	return report
 }
@@ -441,7 +443,7 @@ func generateScope3Categories(emissionsData compliance.EmissionsData) []complian
 	categoryMap := make(map[string]float64)
 	for _, act := range emissionsData.Activities {
 		if act.Scope == "Scope 3" {
-			categoryMap[act.Category] += act.Emissions
+			categoryMap[act.Category] += act.EmissionsTonnes
 		}
 	}
 

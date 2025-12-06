@@ -1,6 +1,7 @@
 package compliance
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -144,13 +145,12 @@ func GenerateIFRSS2PDF(report IFRSS2Report) ([]byte, error) {
 	addIFRSS2GHGEmissions(pdf, report)
 
 	// Generate PDF bytes
-	var buf []byte
-	var err error
-	if buf, err = pdf.Output(&buf); err != nil {
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
 		return nil, fmt.Errorf("generate IFRS S2 PDF: %w", err)
 	}
 
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 func addIFRSS2CoverPage(pdf *gofpdf.Fpdf, report IFRSS2Report) {

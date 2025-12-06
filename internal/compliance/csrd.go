@@ -1,8 +1,8 @@
 package compliance
 
 import (
+	"bytes"
 	"fmt"
-	"time"
 
 	"github.com/jung-kurt/gofpdf"
 )
@@ -63,13 +63,12 @@ func GenerateCSRDPDF(report CSRDReport) ([]byte, error) {
 	addCSRDAssurance(pdf, report)
 
 	// Generate and return PDF bytes
-	var buf []byte
-	var err error
-	if buf, err = pdf.Output(&buf); err != nil {
+	var buf bytes.Buffer
+	if err := pdf.Output(&buf); err != nil {
 		return nil, fmt.Errorf("generate PDF output: %w", err)
 	}
 
-	return buf, nil
+	return buf.Bytes(), nil
 }
 
 func addCSRDTitlePage(pdf *gofpdf.Fpdf, report CSRDReport) {
