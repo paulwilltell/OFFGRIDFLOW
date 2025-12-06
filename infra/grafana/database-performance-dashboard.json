@@ -1,0 +1,228 @@
+{
+  "dashboard": {
+    "title": "OffGridFlow - Database Performance",
+    "tags": ["offgridflow", "database", "postgresql"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Query Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(pg_stat_database_xact_commit{datname=\"offgridflow\"}[5m])",
+            "legendFormat": "Commits/sec",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(pg_stat_database_xact_rollback{datname=\"offgridflow\"}[5m])",
+            "legendFormat": "Rollbacks/sec",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "ops", "label": "Transactions/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Active Connections",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "pg_stat_database_numbackends{datname=\"offgridflow\"}",
+            "legendFormat": "Active connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Connections"},
+          {"format": "short"}
+        ],
+        "thresholds": [
+          {"value": 20, "colorMode": "warning"},
+          {"value": 23, "colorMode": "critical"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Cache Hit Ratio",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "pg_stat_database_blks_hit{datname=\"offgridflow\"} / (pg_stat_database_blks_hit{datname=\"offgridflow\"} + pg_stat_database_blks_read{datname=\"offgridflow\"}) * 100",
+            "legendFormat": "Cache hit %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Hit Ratio", "min": 0, "max": 100},
+          {"format": "short"}
+        ],
+        "thresholds": [
+          {"value": 90, "colorMode": "warning"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Slow Queries (>100ms)",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 8, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "sum(rate(pg_stat_statements_calls{datname=\"offgridflow\",mean_time_ms>100}[5m]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 10},
+              {"color": "red", "value": 50}
+            ]
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Deadlocks",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 8, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "rate(pg_stat_database_deadlocks{datname=\"offgridflow\"}[5m])",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 0.01}
+            ]
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Database Size",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "pg_database_size_bytes{datname=\"offgridflow\"}",
+            "legendFormat": "Database size",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Size"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Top Tables by Size",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "topk(10, pg_stat_user_tables_n_tup_ins{datname=\"offgridflow\"})",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {"relname": 0, "Value": 1},
+              "renameByName": {"relname": "Table", "Value": "Rows Inserted"}
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Replication Lag",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "pg_replication_lag_seconds",
+            "legendFormat": "Replica {{application_name}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Lag (seconds)"},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [30], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High replication lag",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 9,
+        "title": "Connection Pool Stats",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 20, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "database_connection_pool_open{job=\"offgridflow-api\"}",
+            "legendFormat": "Open connections",
+            "refId": "A"
+          },
+          {
+            "expr": "database_connection_pool_in_use{job=\"offgridflow-api\"}",
+            "legendFormat": "In use",
+            "refId": "B"
+          },
+          {
+            "expr": "database_connection_pool_idle{job=\"offgridflow-api\"}",
+            "legendFormat": "Idle",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Connections"},
+          {"format": "short"}
+        ]
+      }
+    ]
+  }
+}

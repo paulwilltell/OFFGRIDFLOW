@@ -1,0 +1,193 @@
+{
+  "dashboard": {
+    "title": "OffGridFlow - API Performance",
+    "tags": ["offgridflow", "api", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (RPS)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"offgridflow-api\"}[5m])",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Response Time (p95)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"offgridflow-api\"}[5m]))",
+            "legendFormat": "{{endpoint}} p95",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=\"offgridflow-api\"}[5m]))",
+            "legendFormat": "{{endpoint}} p99",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "label": "Latency"},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [200], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "1m",
+          "handler": 1,
+          "name": "API p95 latency high",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"offgridflow-api\",status=~\"5..\"}[5m]) / rate(http_requests_total{job=\"offgridflow-api\"}[5m]) * 100",
+            "legendFormat": "{{endpoint}} error %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Error Rate"},
+          {"format": "short"}
+        ],
+        "thresholds": [
+          {"value": 1, "colorMode": "critical"},
+          {"value": 5, "colorMode": "critical"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Active Goroutines",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "go_goroutines{job=\"offgridflow-api\"}",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Goroutines"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Memory Usage",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "go_memstats_heap_inuse_bytes{job=\"offgridflow-api\"}",
+            "legendFormat": "{{instance}} heap in-use",
+            "refId": "A"
+          },
+          {
+            "expr": "go_memstats_heap_alloc_bytes{job=\"offgridflow-api\"}",
+            "legendFormat": "{{instance}} heap alloc",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Memory"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "CPU Usage",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total{job=\"offgridflow-api\"}[5m]) * 100",
+            "legendFormat": "{{instance}} CPU %",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "CPU Usage"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Top Endpoints by Request Count",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (endpoint) (rate(http_requests_total{job=\"offgridflow-api\"}[5m])))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {"endpoint": 0, "Value": 1},
+              "renameByName": {"Value": "Requests/sec"}
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Top Endpoints by Latency (p95)",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "topk(10, histogram_quantile(0.95, sum by (endpoint, le) (rate(http_request_duration_seconds_bucket{job=\"offgridflow-api\"}[5m]))))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {"endpoint": 0, "Value": 1},
+              "renameByName": {"Value": "p95 Latency (s)"}
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

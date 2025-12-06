@@ -1,0 +1,213 @@
+{
+  "dashboard": {
+    "title": "OffGridFlow - System Resources",
+    "tags": ["offgridflow", "infrastructure", "kubernetes"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pod CPU Usage",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"offgridflow\"}[5m])) by (pod) * 100",
+            "legendFormat": "{{pod}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "CPU %"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Pod Memory Usage",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(container_memory_working_set_bytes{namespace=\"offgridflow\"}) by (pod)",
+            "legendFormat": "{{pod}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Memory"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "HPA Replica Count",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"offgridflow\"}",
+            "legendFormat": "{{horizontalpodautoscaler}} current",
+            "refId": "A"
+          },
+          {
+            "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"offgridflow\"}",
+            "legendFormat": "{{horizontalpodautoscaler}} desired",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Replicas"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Network I/O",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(container_network_receive_bytes_total{namespace=\"offgridflow\"}[5m])) by (pod)",
+            "legendFormat": "{{pod}} RX",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(container_network_transmit_bytes_total{namespace=\"offgridflow\"}[5m])) by (pod)",
+            "legendFormat": "{{pod}} TX",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "Bps", "label": "Bytes/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Disk I/O",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(container_fs_reads_bytes_total{namespace=\"offgridflow\"}[5m])) by (pod)",
+            "legendFormat": "{{pod}} reads",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(container_fs_writes_bytes_total{namespace=\"offgridflow\"}[5m])) by (pod)",
+            "legendFormat": "{{pod}} writes",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "Bps", "label": "Bytes/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Pod Restarts",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 16, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"offgridflow\"}[1h]))",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "orientation": "auto",
+          "textMode": "value",
+          "colorMode": "value",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 5}
+            ]
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Pods Not Ready",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 16, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "count(kube_pod_status_ready{namespace=\"offgridflow\",condition=\"false\"} == 1)",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "orientation": "auto",
+          "textMode": "value",
+          "colorMode": "value",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 1}
+            ]
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Resource Quotas",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 20, "w": 24, "h": 8},
+        "targets": [
+          {
+            "expr": "kube_resourcequota{namespace=\"offgridflow\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true},
+              "indexByName": {},
+              "renameByName": {}
+            }
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Node Resource Allocation",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 28, "w": 24, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(kube_pod_container_resource_requests{namespace=\"offgridflow\",resource=\"cpu\"}) / sum(kube_node_status_allocatable{resource=\"cpu\"}) * 100",
+            "legendFormat": "CPU allocation %",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(kube_pod_container_resource_requests{namespace=\"offgridflow\",resource=\"memory\"}) / sum(kube_node_status_allocatable{resource=\"memory\"}) * 100",
+            "legendFormat": "Memory allocation %",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "percent", "label": "Allocation %"},
+          {"format": "short"}
+        ],
+        "thresholds": [
+          {"value": 70, "colorMode": "warning"},
+          {"value": 85, "colorMode": "critical"}
+        ]
+      }
+    ]
+  }
+}
