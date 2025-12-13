@@ -203,7 +203,7 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - uses: infracost/actions/setup@v2
+      - uses: infracost/actions/setup@v3
       - name: Generate cost report
         run: |
           infracost breakdown --path=infra/terraform --format=json --out-file=/tmp/infracost.json
