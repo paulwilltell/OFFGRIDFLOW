@@ -331,22 +331,46 @@ export const EmissionChartJS: React.FC<EmissionChartProps> = memo(({
   }, [chartData, timeframe, height, onPointClick]);
 
   return (
-    <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6">
+    <div 
+      className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6"
+      role="region"
+      aria-label="Emission trends chart"
+    >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+        <h3 
+          id="chart-title"
+          className="text-sm font-semibold text-gray-400 uppercase tracking-wider"
+        >
           Emission Trends
         </h3>
-        <div className="flex items-center gap-2">
-          <button className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors">
+        <div 
+          className="flex items-center gap-2"
+          role="group"
+          aria-label="Time range selector"
+        >
+          <button 
+            className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-gray-900"
+            aria-label="Show 1 month of data"
+          >
             1M
           </button>
-          <button className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors">
+          <button 
+            className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-gray-900"
+            aria-label="Show 3 months of data"
+          >
             3M
           </button>
-          <button className="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded">
+          <button 
+            className="px-3 py-1 text-xs font-medium bg-green-500/20 text-green-400 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-gray-900"
+            aria-label="Show 1 year of data"
+            aria-pressed="true"
+          >
             1Y
           </button>
-          <button className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors">
+          <button 
+            className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-gray-900"
+            aria-label="Show all available data"
+          >
             All
           </button>
         </div>
@@ -356,11 +380,23 @@ export const EmissionChartJS: React.FC<EmissionChartProps> = memo(({
         <canvas 
           ref={canvasRef}
           style={{ width: '100%', height: '100%' }}
+          role="img"
+          aria-labelledby="chart-title"
+          aria-describedby="chart-description"
         />
+        {/* Screen reader accessible data summary */}
+        <div id="chart-description" className="sr-only">
+          Line chart showing carbon emission trends over time. 
+          Displays Scope 1 (direct emissions), Scope 2 (energy), and Scope 3 (value chain) emissions.
+          Use keyboard to navigate data points. Scroll to zoom, drag to pan.
+        </div>
       </div>
 
       {/* Chart footer */}
-      <div className="mt-4 pt-4 border-t border-gray-700/50 flex items-center justify-between text-xs text-gray-500">
+      <div 
+        className="mt-4 pt-4 border-t border-gray-700/50 flex items-center justify-between text-xs text-gray-500"
+        aria-hidden="true"
+      >
         <span>Scroll to zoom • Drag to pan</span>
         <span>Data updated in real-time</span>
       </div>
