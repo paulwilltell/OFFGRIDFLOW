@@ -1,4 +1,6 @@
-const CSRF_ENDPOINT = '/api/auth/csrf-token';
+import { config } from './config';
+
+const CSRF_ENDPOINT = `${config.apiBaseUrl}/api/auth/csrf-token`;
 export const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
 let cachedToken: string | null = null;

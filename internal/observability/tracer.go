@@ -34,11 +34,18 @@ type TracerProvider struct {
 
 // NewTracerProvider creates and configures an OTLP tracer provider
 func NewTracerProvider(ctx context.Context, config TracerConfig) (*TracerProvider, error) {
-	// Create OTLP exporter
-	client := otlptracehttp.NewClient(
+	// Create OTLP exporter with environment-appropriate TLS settings
+	opts := []otlptracehttp.Option{
 		otlptracehttp.WithEndpoint(config.OTLPEndpoint),
-		otlptracehttp.WithInsecure(), // Use WithTLSCredentials in production
-	)
+	}
+	// Use TLS in production; insecure transport only for local dev/test
+	if config.Environment == "production" || config.Environment == "staging" {
+		// In production, require TLS (default behavior without WithInsecure)
+		// Ensure OTLP endpoint uses https:// or configure certificates
+	} else {
+		opts = append(opts, otlptracehttp.WithInsecure())
+	}
+	client := otlptracehttp.NewClient(opts...)
 
 	exporter, err := otlptrace.New(ctx, client)
 	if err != nil {

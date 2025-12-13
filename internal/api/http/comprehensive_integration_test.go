@@ -4,15 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/example/offgridflow/internal/api/http"
+	jwt "github.com/golang-jwt/jwt/v5"
+
+	apihttp "github.com/example/offgridflow/internal/api/http"
 	"github.com/example/offgridflow/internal/auth"
 	"github.com/example/offgridflow/internal/db"
 	"github.com/example/offgridflow/internal/emissions"
+	"github.com/example/offgridflow/internal/emissions/factors"
 	"github.com/example/offgridflow/internal/ingestion"
 )
 
@@ -20,19 +25,23 @@ import (
 // User registration → login → create activity → calculate emissions → generate report
 func TestFullEmissionsCalculationFlow(t *testing.T) {
 	// Setup test database
-	ctx := context.Background()
 	testDB := setupTestDB(t)
 	defer testDB.Close()
 
 	// Setup test dependencies
 	router := setupTestRouter(t, testDB)
 
+	var authToken string
+
 	// Step 1: Register new user
 	t.Run("user registration", func(t *testing.T) {
+		email := uniqueEmail("test")
+		name := fmt.Sprintf("Test User %d", time.Now().UnixNano())
+
 		payload := map[string]string{
-			"email":    "test@offgridflow.com",
+			"email":    email,
 			"password": "SecurePass123!",
-			"name":     "Test User",
+			"name":     name,
 		}
 
 		resp := makeRequest(t, router, "POST", "/api/auth/register", payload)
@@ -40,14 +49,22 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		
+
 		assert(t, result["user"] != nil, "user should be in response")
 		assert(t, result["token"] != nil, "token should be in response")
+
+		// Use token returned at registration for subsequent steps
+		if tok, ok := result["token"].(string); ok {
+			authToken = tok
+		}
 	})
 
 	// Step 2: Login to get auth token
-	var authToken string
 	t.Run("user login", func(t *testing.T) {
+		if authToken != "" {
+			t.Skip("login covered by registration token")
+		}
+
 		payload := map[string]string{
 			"email":    "test@offgridflow.com",
 			"password": "SecurePass123!",
@@ -58,8 +75,10 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		
-		authToken = result["token"].(string)
+
+		if tok, ok := result["token"].(string); ok {
+			authToken = tok
+		}
 		assert(t, authToken != "", "token should not be empty")
 	})
 
@@ -79,10 +98,10 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		
+
 		activity := result["activity"].(map[string]interface{})
 		activityID = activity["id"].(string)
-		
+
 		assert(t, activityID != "", "activity ID should not be empty")
 		assert(t, activity["emissions"] != nil, "emissions should be calculated")
 	})
@@ -94,7 +113,7 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		
+
 		summary := result["summary"].(map[string]interface{})
 		assert(t, summary["total_emissions"].(float64) > 0, "total emissions should be positive")
 		assert(t, summary["total_activities"].(float64) >= 1, "should have at least one activity")
@@ -112,7 +131,7 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 
 		var result map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&result)
-		
+
 		assert(t, result["report_id"] != nil, "report ID should be present")
 		assert(t, result["status"] == "generated", "report should be generated")
 	})
@@ -120,10 +139,13 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 	// Step 6: Verify data isolation (create second user)
 	t.Run("multi-tenant isolation", func(t *testing.T) {
 		// Register second user
+		email2 := uniqueEmail("user2")
+		name2 := fmt.Sprintf("User Two %d", time.Now().UnixNano())
+
 		payload := map[string]string{
-			"email":    "user2@offgridflow.com",
+			"email":    email2,
 			"password": "SecurePass456!",
-			"name":     "User Two",
+			"name":     name2,
 		}
 
 		resp := makeRequest(t, router, "POST", "/api/auth/register", payload)
@@ -139,7 +161,7 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 
 		var actResult map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&actResult)
-		
+
 		activities := actResult["activities"].([]interface{})
 		assert(t, len(activities) == 0, "user 2 should not see user 1's activities")
 	})
@@ -153,16 +175,19 @@ func TestRateLimitingFlow(t *testing.T) {
 	router := setupTestRouter(t, testDB)
 
 	// Register and login
+	emailRL := uniqueEmail("ratelimit")
+	nameRL := fmt.Sprintf("Rate Test %d", time.Now().UnixNano())
+
 	registerPayload := map[string]string{
-		"email":    "ratelimit@test.com",
+		"email":    emailRL,
 		"password": "Pass123!",
-		"name":     "Rate Test",
+		"name":     nameRL,
 	}
 
 	makeRequest(t, router, "POST", "/api/auth/register", registerPayload)
 
 	loginPayload := map[string]string{
-		"email":    "ratelimit@test.com",
+		"email":    emailRL,
 		"password": "Pass123!",
 	}
 
@@ -175,8 +200,8 @@ func TestRateLimitingFlow(t *testing.T) {
 	var lastStatus int
 	for i := 0; i < 10; i++ {
 		resp := makeAuthRequest(t, router, "GET", "/api/emissions/activities", nil, token)
-		lastStatus = resp.StatusCode
-		
+		lastStatus = resp.Code
+
 		if lastStatus == http.StatusTooManyRequests {
 			t.Logf("Rate limited after %d requests", i+1)
 			break
@@ -190,7 +215,7 @@ func TestRateLimitingFlow(t *testing.T) {
 
 	// Should be able to make requests again
 	resp = makeAuthRequest(t, router, "GET", "/api/emissions/activities", nil, token)
-	assert(t, resp.StatusCode == http.StatusOK, "rate limit should reset after cooldown")
+	assert(t, resp.Code == http.StatusOK, "rate limit should reset after cooldown")
 }
 
 // TestDatabaseFailover tests graceful degradation when database is unavailable
@@ -204,15 +229,18 @@ func TestDatabaseFailover(t *testing.T) {
 
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
-	
+
 	assert(t, result["status"] == "degraded", "should be in degraded mode")
 	assert(t, result["checks"].(map[string]interface{})["database"] == "not_configured", "DB should be unavailable")
 
 	// But basic endpoints should still work with in-memory store
+	emailOff := uniqueEmail("offline")
+	nameOff := fmt.Sprintf("Offline User %d", time.Now().UnixNano())
+
 	registerPayload := map[string]string{
-		"email":    "offline@test.com",
+		"email":    emailOff,
 		"password": "Pass123!",
-		"name":     "Offline User",
+		"name":     nameOff,
 	}
 
 	resp = makeRequest(t, router, "POST", "/api/auth/register", registerPayload)
@@ -227,15 +255,17 @@ func TestConcurrentRequests(t *testing.T) {
 	router := setupTestRouter(t, testDB)
 
 	// Register user
+	emailCon := uniqueEmail("concurrent")
+	nameCon := fmt.Sprintf("Concurrent User %d", time.Now().UnixNano())
 	registerPayload := map[string]string{
-		"email":    "concurrent@test.com",
+		"email":    emailCon,
 		"password": "Pass123!",
-		"name":     "Concurrent User",
+		"name":     nameCon,
 	}
 	makeRequest(t, router, "POST", "/api/auth/register", registerPayload)
 
 	loginPayload := map[string]string{
-		"email":    "concurrent@test.com",
+		"email":    emailCon,
 		"password": "Pass123!",
 	}
 	resp := makeRequest(t, router, "POST", "/api/auth/login", loginPayload)
@@ -277,7 +307,7 @@ func TestConcurrentRequests(t *testing.T) {
 	resp = makeAuthRequest(t, router, "GET", "/api/emissions/activities", nil, token)
 	var actResult map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&actResult)
-	
+
 	activities := actResult["activities"].([]interface{})
 	assert(t, len(activities) == numRequests, "should have all activities")
 }
@@ -298,15 +328,17 @@ func TestAuthenticationFlow(t *testing.T) {
 		{
 			name: "valid token",
 			setup: func() string {
+				emailV := uniqueEmail("valid")
+				nameV := fmt.Sprintf("Valid User %d", time.Now().UnixNano())
 				registerPayload := map[string]string{
-					"email":    "valid@test.com",
+					"email":    emailV,
 					"password": "Pass123!",
-					"name":     "Valid User",
+					"name":     nameV,
 				}
 				makeRequest(t, router, "POST", "/api/auth/register", registerPayload)
 
 				loginPayload := map[string]string{
-					"email":    "valid@test.com",
+					"email":    emailV,
 					"password": "Pass123!",
 				}
 				resp := makeRequest(t, router, "POST", "/api/auth/login", loginPayload)
@@ -356,15 +388,22 @@ func TestAuthenticationFlow(t *testing.T) {
 
 func setupTestDB(t *testing.T) *db.DB {
 	t.Helper()
-	
-	// Use in-memory SQLite for testing
-	dsn := "file::memory:?cache=shared"
+
+	// Use local Postgres started via docker-compose for integration tests
+	// Connect to local Postgres (docker-compose) for integration tests
+	dsn := "postgresql://offgridflow:changeme@localhost:5432/offgridflow?sslmode=disable"
 	database, err := db.Connect(context.Background(), db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf("failed to setup test database: %v", err)
 	}
 
-	// Run migrations
+	// If the tables are not present, run migrations; otherwise assume docker init applied schema
+	var tenantsExists bool
+	if err := database.QueryRowContext(context.Background(), "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='tenants')").Scan(&tenantsExists); err != nil {
+		t.Fatalf("failed to check existing tables: %v", err)
+	}
+
+	// Run migrations to ensure schema is up-to-date (idempotent)
 	if err := database.RunMigrations(context.Background()); err != nil {
 		t.Fatalf("failed to run migrations: %v", err)
 	}
@@ -376,39 +415,47 @@ func setupTestRouter(t *testing.T, database *db.DB) http.Handler {
 	t.Helper()
 
 	authStore := auth.NewPostgresStore(database.DB)
-	sessionManager, _ := auth.NewSessionManager("test-secret-key")
+	sessionManager, _ := auth.NewSessionManager("test-secret-key-0123456789012345")
 	activityStore := ingestion.NewPostgresActivityStore(database.DB)
-	scope2Calc := emissions.NewScope2Calculator(emissions.Scope2Config{})
+	// Setup emissions factor registry (in-memory for tests)
+	factorRegistry := factors.NewInMemoryRegistry(factors.DefaultRegistryConfig())
 
-	cfg := &http.RouterConfig{
+	scope2Calc := emissions.NewScope2Calculator(emissions.Scope2Config{Registry: factorRegistry})
+
+	cfg := &apihttp.RouterConfig{
 		DB:               database,
 		AuthStore:        authStore,
 		SessionManager:   sessionManager,
 		ActivityStore:    activityStore,
 		Scope2Calculator: scope2Calc,
+		FactorRegistry:   factorRegistry,
 		RequireAuth:      true,
 	}
 
-	return http.NewRouterWithConfig(cfg)
+	return apihttp.NewRouterWithConfig(cfg)
 }
 
 func setupTestRouterNoDB(t *testing.T) http.Handler {
 	t.Helper()
 
 	authStore := auth.NewInMemoryStore()
-	sessionManager, _ := auth.NewSessionManager("test-secret-key")
+	sessionManager, _ := auth.NewSessionManager("test-secret-key-0123456789012345")
 	activityStore := ingestion.NewInMemoryActivityStore()
-	scope2Calc := emissions.NewScope2Calculator(emissions.Scope2Config{})
 
-	cfg := &http.RouterConfig{
+	// In-memory factor registry for no-DB router
+	factorRegistry := factors.NewInMemoryRegistry(factors.DefaultRegistryConfig())
+	scope2Calc := emissions.NewScope2Calculator(emissions.Scope2Config{Registry: factorRegistry})
+
+	cfg := &apihttp.RouterConfig{
 		AuthStore:        authStore,
 		SessionManager:   sessionManager,
 		ActivityStore:    activityStore,
 		Scope2Calculator: scope2Calc,
+		FactorRegistry:   factorRegistry,
 		RequireAuth:      true,
 	}
 
-	return http.NewRouterWithConfig(cfg)
+	return apihttp.NewRouterWithConfig(cfg)
 }
 
 func makeRequest(t *testing.T, handler http.Handler, method, path string, payload interface{}) *httptest.ResponseRecorder {
@@ -446,6 +493,34 @@ func makeAuthRequest(t *testing.T, handler http.Handler, method, path string, pa
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
+		// Also attach session cookie (handlers set this cookie on login/registration)
+		req.AddCookie(&http.Cookie{Name: "offgrid_session", Value: token, Path: "/"})
+	}
+
+	// For mutating requests, fetch CSRF token and attach cookie/header
+	if method != http.MethodGet && method != http.MethodHead && method != http.MethodOptions {
+		// Get CSRF token
+		csrfResp := makeRequest(t, handler, "GET", "/api/auth/csrf-token", nil)
+		if csrfResp.Code == http.StatusOK {
+			var body map[string]interface{}
+			json.NewDecoder(csrfResp.Body).Decode(&body)
+			if tokenVal, ok := body["csrf_token"].(string); ok && tokenVal != "" {
+				req.Header.Set("X-CSRF-Token", tokenVal)
+				// extract set-cookie header
+				if setCookie := csrfResp.Header().Get("Set-Cookie"); setCookie != "" {
+					// parse cookie name/value (simple split)
+					// expected format: "csrf_token=VALUE; Path=/;"
+					parts := strings.SplitN(setCookie, "=", 2)
+					if len(parts) == 2 {
+						name := strings.TrimSpace(parts[0])
+						rest := parts[1]
+						valParts := strings.SplitN(rest, ";", 2)
+						value := valParts[0]
+						req.AddCookie(&http.Cookie{Name: name, Value: value, Path: "/"})
+					}
+				}
+			}
+		}
 	}
 
 	resp := httptest.NewRecorder()
@@ -457,7 +532,7 @@ func makeAuthRequest(t *testing.T, handler http.Handler, method, path string, pa
 func assertStatus(t *testing.T, resp *httptest.ResponseRecorder, expected int) {
 	t.Helper()
 	if resp.Code != expected {
-		t.Errorf("expected status %d, got %d. Body: %s", expected, resp.Code, resp.Body.String())
+		t.Fatalf("expected status %d, got %d. Body: %s", expected, resp.Code, resp.Body.String())
 	}
 }
 
@@ -471,13 +546,22 @@ func assert(t *testing.T, condition bool, message string) {
 func generateExpiredToken(t *testing.T) string {
 	t.Helper()
 	// Generate a JWT token that's already expired
-	sessionManager, _ := auth.NewSessionManager("test-secret-key")
 	claims := &auth.SessionClaims{
 		UserID:   "test-user",
 		TenantID: "test-tenant",
 		Email:    "test@test.com",
 	}
-	token, _ := sessionManager.GenerateToken(claims)
-	// In real implementation, this would use a past expiry time
+	// Create an expired token by setting expiry in the past
+	now := time.Now().Add(-2 * time.Hour)
+	claims.IssuedAt = jwt.NewNumericDate(now)
+	claims.ExpiresAt = jwt.NewNumericDate(now.Add(1 * time.Hour))
+
+	sessionManager, _ := auth.NewSessionManager("test-secret-key-0123456789012345")
+	token, _ := sessionManager.CreateTokenWithClaims(*claims)
 	return token
+}
+
+// uniqueEmail generates a test-unique email address to avoid collisions across runs.
+func uniqueEmail(prefix string) string {
+	return fmt.Sprintf("%s+%d@offgridflow.test", prefix, time.Now().UnixNano())
 }

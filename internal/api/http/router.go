@@ -40,6 +40,7 @@ import (
 	"github.com/example/offgridflow/internal/ingestion"
 	"github.com/example/offgridflow/internal/ingestion/sources/utility_bills"
 	"github.com/example/offgridflow/internal/offgrid"
+	"github.com/example/offgridflow/internal/ratelimit"
 	"github.com/example/offgridflow/internal/workflow"
 )
 
@@ -94,6 +95,10 @@ type RouterConfig struct {
 	// ObservabilityMiddleware optionally wraps handlers with tracing/metrics.
 	// If nil, no observability middleware is applied.
 	ObservabilityMiddleware func(http.Handler) http.Handler
+
+	// RateLimiter applies per-tenant request rate limiting on protected routes.
+	// If nil, a default multi-tier limiter is used.
+	RateLimiter *ratelimit.MultiTierLimiter
 }
 
 // RouterDeps holds dependencies for HTTP handlers (legacy interface for compatibility).
@@ -194,6 +199,16 @@ func NewRouterWithConfig(cfg *RouterConfig) http.Handler {
 	if cfg.LockoutManager == nil {
 		cfg.LockoutManager = auth.NewLockoutManager(5, 15*time.Minute, 5*time.Minute, 5*time.Minute)
 	}
+	// Ensure calculators exist so downstream wiring (GraphQL/readyz/compliance) doesn't degrade with noisy logs.
+	if cfg.Scope1Calculator == nil {
+		cfg.Scope1Calculator = emissions.NewScope1Calculator(emissions.Scope1Config{})
+	}
+	if cfg.Scope3Calculator == nil {
+		cfg.Scope3Calculator = emissions.NewScope3Calculator(emissions.Scope3Config{})
+	}
+	if cfg.RateLimiter == nil {
+		cfg.RateLimiter = ratelimit.NewMultiTierLimiter(ratelimit.DefaultTiers())
+	}
 	if cfg.CSRFMiddleware == nil {
 		cfg.CSRFMiddleware = middleware.NewCSRFMiddleware(middleware.CSRFMiddlewareConfig{
 			TokenTTL:        24 * time.Hour,
@@ -258,6 +273,9 @@ func (r *router) build() http.Handler {
 		handler = r.cfg.CSRFMiddleware.Wrap(handler)
 	}
 
+	// Apply CORS middleware for cross-origin requests
+	handler = corsMiddleware(handler)
+
 	return handler
 }
 
@@ -283,6 +301,7 @@ func (r *router) registerPublicRoutes(mux *http.ServeMux) {
 
 		mux.HandleFunc("/api/auth/register", authHandlers.Register)
 		mux.HandleFunc("/api/auth/login", authHandlers.Login)
+		mux.HandleFunc("/api/auth/verify-email", authHandlers.VerifyEmail)
 		if r.cfg.CSRFMiddleware != nil {
 			mux.HandleFunc("/api/auth/csrf-token", r.csrfTokenHandler())
 		}
@@ -337,6 +356,18 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 	if scope2Handler := r.buildScope2Handler(); scope2Handler != nil {
 		protectedMux.HandleFunc("/api/emissions/scope2", scope2Handler.List)
 		protectedMux.HandleFunc("/api/emissions/scope2/summary", scope2Handler.Summary)
+	}
+
+	// Activities endpoints (create/list)
+	if r.cfg.ActivityStore != nil {
+		activitiesHandler := handlers.NewActivitiesHandler(handlers.ActivitiesHandlerConfig{
+			Store:        r.cfg.ActivityStore,
+			Scope1Calc:   r.cfg.Scope1Calculator,
+			Scope2Calc:   r.cfg.Scope2Calculator,
+			Scope3Calc:   r.cfg.Scope3Calculator,
+			DefaultOrgID: "",
+		})
+		protectedMux.Handle("/api/emissions/activities", activitiesHandler)
 	}
 
 	// Ingestion status endpoints
@@ -436,6 +467,11 @@ func (r *router) applyProtectedMiddleware(handler http.Handler) http.Handler {
 			},
 		})
 		result = subscriptionMiddleware.Wrap(result)
+	}
+
+	// Apply rate limiting (must run after auth to get tenant info in context).
+	if r.cfg != nil && r.cfg.RateLimiter != nil {
+		result = middleware.RateLimitMiddleware(r.cfg.RateLimiter)(result)
 	}
 
 	// Apply authentication middleware
@@ -590,6 +626,9 @@ func (r *router) readyzHandler() http.HandlerFunc {
 				checks["database"] = "ok"
 			}
 		} else {
+			// No DB configured means we're running in degraded mode (in-memory fallback).
+			status = "degraded"
+			httpStatus = http.StatusServiceUnavailable
 			checks["database"] = "not_configured"
 		}
 
@@ -729,4 +768,44 @@ func Router(handlers map[string]http.Handler) http.Handler {
 		mux.Handle(path, handler)
 	}
 	return mux
+}
+
+// corsMiddleware adds CORS headers to all responses and handles preflight requests.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		// Allow localhost origins for development
+		allowedOrigins := []string{
+			"http://localhost:3000",
+			"http://localhost:8080",
+			"http://127.0.0.1:3000",
+			"http://127.0.0.1:8080",
+		}
+
+		allowed := false
+		for _, ao := range allowedOrigins {
+			if origin == ao {
+				allowed = true
+				break
+			}
+		}
+
+		if allowed {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Request-ID, X-CSRF-Token, X-Tenant-ID")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		// Handle preflight requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

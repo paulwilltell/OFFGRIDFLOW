@@ -21,6 +21,9 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   not_applicable: { bg: '#111827', text: '#6b7280' },
 };
 
+// Key for storing welcome banner dismissal in localStorage
+const WELCOME_DISMISSED_KEY = 'offgridflow_welcome_dismissed';
+
 export default function DashboardPage() {
   const session = useRequireAuth();
 
@@ -35,6 +38,29 @@ export default function DashboardPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Check if we should show welcome banner
+  useEffect(() => {
+    if (session.isAuthenticated && session.user) {
+      const dismissed = localStorage.getItem(WELCOME_DISMISSED_KEY);
+      const userId = session.user.id;
+      // Show welcome if this user hasn't dismissed it yet
+      if (!dismissed || dismissed !== userId) {
+        setShowWelcome(true);
+      }
+    }
+  }, [session.isAuthenticated, session.user]);
+
+  const dismissWelcome = () => {
+    if (session.user) {
+      localStorage.setItem(WELCOME_DISMISSED_KEY, session.user.id);
+    }
+    setShowWelcome(false);
+  };
+
+  // Get the user's display name (prefer first name, fall back to full name)
+  const displayName = session.user?.firstName || session.user?.name?.split(' ')[0] || 'User';
 
   useEffect(() => {
     if (!session.isAuthenticated) return;
@@ -107,6 +133,34 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.dashboardGrid}>
+      {/* Welcome Banner */}
+      {showWelcome && (
+        <div className={styles.welcomeBanner}>
+          <div className={styles.welcomeContent}>
+            <div className={styles.welcomeIcon}>
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <div className={styles.welcomeText}>
+              <h2 className={styles.welcomeTitle}>Welcome, {displayName}! 🎉</h2>
+              <p className={styles.welcomeMessage}>
+                Your OffGridFlow account is ready. Start tracking emissions, managing compliance, and gaining insights into your organization&apos;s environmental impact.
+              </p>
+            </div>
+            <button
+              onClick={dismissWelcome}
+              className={styles.welcomeDismiss}
+              aria-label="Dismiss welcome message"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.headerRow}>
         <div>
           <p className={styles.eyebrow}>Operational Overview</p>
@@ -303,7 +357,7 @@ function EmissionCard({
     <div className={styles.card}>
       <div className={styles.label}>{label}</div>
       <div className={styles.value}>
-        {loading ? '…' : `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} tCO2e`}
+        {loading ? '…' : `${(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 1 })} tCO2e`}
       </div>
       <div className={styles.description}>{description}</div>
     </div>

@@ -165,4 +165,4 @@ docker exec offgridflow-api env | grep OTEL
 ✅ **14 alerts** for critical issues (error rates, latency, failures)  
 ✅ **< 5ms overhead** per request  
 
-**When something breaks, you see where and why—no more guessing.**
+**When something goes wrong, you can see where and why—no more guessing.**

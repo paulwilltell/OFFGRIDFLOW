@@ -62,161 +62,18 @@ const fonts = {
   mono: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
 };
 
-const fontSizes = {
-  xs: '0.75rem',    // 12px
-  sm: '0.875rem',   // 14px
-  md: '1rem',       // 16px
-  lg: '1.125rem',   // 18px
-  xl: '1.25rem',    // 20px
-  '2xl': '1.5rem',  // 24px
-  '3xl': '1.875rem',// 30px
-  '4xl': '2.25rem', // 36px
-  '5xl': '3rem',    // 48px
-  '6xl': '3.75rem', // 60px
-  '7xl': '4.5rem',  // 72px
-  '8xl': '6rem',    // 96px
-  '9xl': '8rem',    // 128px
-};
-
-const space = {
-  px: '1px',
-  0: '0',
-  0.5: '0.125rem',  // 2px
-  1: '0.25rem',     // 4px
-  1.5: '0.375rem',  // 6px
-  2: '0.5rem',      // 8px
-  2.5: '0.625rem',  // 10px
-  3: '0.75rem',     // 12px
-  3.5: '0.875rem',  // 14px
-  4: '1rem',        // 16px
-  5: '1.25rem',     // 20px
-  6: '1.5rem',      // 24px
-  7: '1.75rem',     // 28px
-  8: '2rem',        // 32px
-  9: '2.25rem',     // 36px
-  10: '2.5rem',     // 40px
-  12: '3rem',       // 48px
-  14: '3.5rem',     // 56px
-  16: '4rem',       // 64px
-  20: '5rem',       // 80px
-  24: '6rem',       // 96px
-  28: '7rem',       // 112px
-  32: '8rem',       // 128px
-  36: '9rem',       // 144px
-  40: '10rem',      // 160px
-  44: '11rem',      // 176px
-  48: '12rem',      // 192px
-  52: '13rem',      // 208px
-  56: '14rem',      // 224px
-  60: '15rem',      // 240px
-  64: '16rem',      // 256px
-  72: '18rem',      // 288px
-  80: '20rem',      // 320px
-  96: '24rem',      // 384px
-};
-
-const breakpoints = {
-  sm: '640px',
-  md: '768px',
-  lg: '1024px',
-  xl: '1280px',
-  '2xl': '1536px',
-};
-
 const styles = {
   global: (props: any) => ({
     body: {
       bg: props.colorMode === 'dark' ? 'gray.900' : 'gray.50',
       color: props.colorMode === 'dark' ? 'gray.100' : 'gray.900',
     },
-    '*::placeholder': {
-      color: props.colorMode === 'dark' ? 'gray.400' : 'gray.500',
-    },
   }),
-};
-
-const components = {
-  Button: {
-    baseStyle: {
-      fontWeight: 'semibold',
-      borderRadius: 'md',
-    },
-    sizes: {
-      sm: {
-        fontSize: 'sm',
-        px: 4,
-        py: 2,
-      },
-      md: {
-        fontSize: 'md',
-        px: 6,
-        py: 3,
-      },
-      lg: {
-        fontSize: 'lg',
-        px: 8,
-        py: 4,
-      },
-    },
-    variants: {
-      solid: (props: any) => ({
-        bg: props.colorMode === 'dark' ? 'brand.600' : 'brand.500',
-        color: 'white',
-        _hover: {
-          bg: props.colorMode === 'dark' ? 'brand.700' : 'brand.600',
-        },
-      }),
-      outline: (props: any) => ({
-        borderColor: props.colorMode === 'dark' ? 'brand.600' : 'brand.500',
-        color: props.colorMode === 'dark' ? 'brand.400' : 'brand.600',
-        _hover: {
-          bg: props.colorMode === 'dark' ? 'brand.900' : 'brand.50',
-        },
-      }),
-    },
-    defaultProps: {
-      size: 'md',
-      variant: 'solid',
-    },
-  },
-  Card: {
-    baseStyle: (props: any) => ({
-      container: {
-        bg: props.colorMode === 'dark' ? 'gray.800' : 'white',
-        borderRadius: 'lg',
-        boxShadow: props.colorMode === 'dark' ? 'dark-lg' : 'md',
-        p: 6,
-      },
-    }),
-  },
-  Input: {
-    variants: {
-      outline: (props: any) => ({
-        field: {
-          borderColor: props.colorMode === 'dark' ? 'gray.600' : 'gray.300',
-          _hover: {
-            borderColor: props.colorMode === 'dark' ? 'gray.500' : 'gray.400',
-          },
-          _focus: {
-            borderColor: 'brand.500',
-            boxShadow: `0 0 0 1px ${props.colorMode === 'dark' ? '#047857' : '#059669'}`,
-          },
-        },
-      }),
-    },
-    defaultProps: {
-      variant: 'outline',
-    },
-  },
 };
 
 export const theme = extendTheme({
   config,
   colors,
   fonts,
-  fontSizes,
-  space,
-  breakpoints,
   styles,
-  components,
 });

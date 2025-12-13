@@ -13,10 +13,13 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: string;
   default_tenant_id?: string;
   tenants?: Tenant[];
   two_factor_enabled?: boolean;
+  email_verified?: boolean;
 }
 
 export interface SessionState {

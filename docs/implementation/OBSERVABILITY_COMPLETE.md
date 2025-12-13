@@ -227,7 +227,7 @@ for i in {1..20}; do curl http://localhost:8080/api/health; sleep 1; done
 
 ## Result
 
-**"When something breaks, you see where and why, instead of guessing."**
+**"When something goes wrong, you can see where and why, instead of guessing."**
 
 The observability infrastructure is:
 - **Complete**: All requirements met

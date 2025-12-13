@@ -279,4 +279,4 @@ for i in {1..100}; do curl http://localhost:8080/api/health; done
 
 All requirements from "7. Observability → 100%" have been implemented and verified.
 
-**Now when something breaks, you see where and why, instead of guessing.**
+**Now when something goes wrong, you can see where and why, instead of guessing.**

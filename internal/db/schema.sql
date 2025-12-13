@@ -1,5 +1,5 @@
 ﻿-- OffGridFlow Database Schema (PostgreSQL)
--- NOTE: This file mirrors infra/db/schema.sql. Update both when schema changes.
+-- Source of truth for migrations. Keep in sync with infra/db/schema.sql.
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
@@ -10,11 +10,23 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE IF NOT EXISTS tenants (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT NOT NULL UNIQUE,
+    slug       TEXT NOT NULL UNIQUE,
     plan       TEXT NOT NULL DEFAULT 'free',
     is_active  BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure slug column exists for upgrades and backfills
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slug TEXT;
+DO $$
+BEGIN
+    -- Backfill slug for existing tenants without one
+    IF EXISTS (SELECT 1 FROM tenants WHERE slug IS NULL) THEN
+        UPDATE tenants SET slug = lower(regexp_replace(name, '[^a-z0-9]+', '-', 'g')) || '-' || substring(gen_random_uuid()::text, 1, 8) WHERE slug IS NULL;
+    END IF;
+END$$;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug);
 
 CREATE TABLE IF NOT EXISTS users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -27,6 +39,18 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure last_login_at exists for tracking user logins
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+
+-- Ensure single-role column exists for legacy compatibility
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM users WHERE role IS NULL) THEN
+        UPDATE users SET role = split_part(roles, ',', 1) WHERE role IS NULL;
+    END IF;
+END$$;
 
 CREATE TABLE IF NOT EXISTS api_keys (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),

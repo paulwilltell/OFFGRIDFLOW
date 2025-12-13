@@ -3,9 +3,21 @@ package ratelimit
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 )
+
+// getEnvInt reads an integer from an environment variable, or returns the default.
+func getEnvInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i > 0 {
+			return i
+		}
+	}
+	return defaultVal
+}
 
 // RateLimiter provides token bucket rate limiting
 type RateLimiter struct {
@@ -152,24 +164,25 @@ type MultiTierLimiter struct {
 	mu       sync.RWMutex
 }
 
-// DefaultTiers returns default tier configurations
+// DefaultTiers returns default tier configurations.
+// Override via env vars: RATELIMIT_FREE_RPS, RATELIMIT_FREE_BURST, etc.
 func DefaultTiers() map[string]Config {
 	return map[string]Config{
 		"free": {
-			RequestsPerSecond: 5,
-			BurstSize:         10,
+			RequestsPerSecond: getEnvInt("RATELIMIT_FREE_RPS", 5),
+			BurstSize:         getEnvInt("RATELIMIT_FREE_BURST", 5),
 			CleanupInterval:   1 * time.Minute,
 			BucketTTL:         5 * time.Minute,
 		},
 		"pro": {
-			RequestsPerSecond: 50,
-			BurstSize:         100,
+			RequestsPerSecond: getEnvInt("RATELIMIT_PRO_RPS", 50),
+			BurstSize:         getEnvInt("RATELIMIT_PRO_BURST", 100),
 			CleanupInterval:   1 * time.Minute,
 			BucketTTL:         5 * time.Minute,
 		},
 		"enterprise": {
-			RequestsPerSecond: 500,
-			BurstSize:         1000,
+			RequestsPerSecond: getEnvInt("RATELIMIT_ENTERPRISE_RPS", 500),
+			BurstSize:         getEnvInt("RATELIMIT_ENTERPRISE_BURST", 1000),
 			CleanupInterval:   1 * time.Minute,
 			BucketTTL:         5 * time.Minute,
 		},

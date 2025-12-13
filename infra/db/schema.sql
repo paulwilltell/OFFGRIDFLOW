@@ -10,11 +10,23 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE IF NOT EXISTS tenants (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT NOT NULL UNIQUE,
+    slug       TEXT NOT NULL UNIQUE,
     plan       TEXT NOT NULL DEFAULT 'free',
     is_active  BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure slug column exists for upgrades and backfills
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slug TEXT;
+DO $$
+BEGIN
+    -- Backfill slug for existing tenants without one
+    IF EXISTS (SELECT 1 FROM tenants WHERE slug IS NULL) THEN
+        UPDATE tenants SET slug = lower(regexp_replace(name, '[^a-z0-9]+', '-', 'g')) || '-' || substring(gen_random_uuid()::text, 1, 8) WHERE slug IS NULL;
+    END IF;
+END$$;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_slug ON tenants(slug);
 
 CREATE TABLE IF NOT EXISTS users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -27,6 +39,18 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure single-role column exists for legacy compatibility
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM users WHERE role IS NULL) THEN
+        UPDATE users SET role = split_part(roles, ',', 1) WHERE role IS NULL;
+    END IF;
+END$$;
+
+-- Ensure last_login_at exists for tracking user logins
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS api_keys (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -202,27 +226,7 @@ CREATE INDEX IF NOT EXISTS idx_workflow_tasks_status ON workflow_tasks(status);
 -- =============================================================================
 -- AUDIT LOGGING (Compliance Requirement)
 -- =============================================================================
-
-CREATE TABLE IF NOT EXISTS audit_logs (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    user_id         UUID REFERENCES users(id) ON DELETE SET NULL,
-    action          VARCHAR(100) NOT NULL,
-    resource_type   VARCHAR(100) NOT NULL,
-    resource_id     UUID,
-    timestamp       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    ip_address      INET,
-    user_agent      TEXT,
-    metadata        JSONB,
-    status          VARCHAR(50) NOT NULL DEFAULT 'success',
-    error_message   TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant_timestamp ON audit_logs(tenant_id, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action, timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+-- NOTE: audit logging table is defined earlier in the schema; duplicate definitions removed to avoid conflicts.
 
 -- =============================================================================
 -- COMPLIANCE REPORTS (CSRD, SEC, CBAM, etc.)

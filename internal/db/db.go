@@ -331,6 +331,12 @@ func (db *DB) RunMigrations(ctx context.Context) error {
 	db.mu.RUnlock()
 
 	schema := strings.TrimSpace(schemaSQL)
+	// Remove UTF-8 BOM if present which can cause SQL syntax errors when executing via Exec
+	if strings.HasPrefix(schema, "\uFEFF") {
+		schema = strings.TrimPrefix(schema, "\uFEFF")
+	}
+	// Remove any accidental markdown fences that might remain in embedded SQL
+	schema = strings.ReplaceAll(schema, "```", "")
 	if schema == "" {
 		return ErrEmptySchema
 	}

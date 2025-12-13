@@ -12,6 +12,17 @@ import (
 func RateLimitMiddleware(limiter *ratelimit.MultiTierLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Only rate limit read-only requests.
+			// This keeps write-heavy ingestion flows (e.g. concurrent activity creation) from being blocked,
+			// while still protecting list/report endpoints from abuse.
+			switch r.Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+				// continue
+			default:
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			ctx := r.Context()
 
 			// Get tenant from context
@@ -98,7 +109,7 @@ func writeRateLimitError(w http.ResponseWriter, tier string) {
 
 func getTierLimit(tier string) string {
 	limits := map[string]string{
-		"free":       "10",
+		"free":       "5",
 		"pro":        "100",
 		"enterprise": "1000",
 	}

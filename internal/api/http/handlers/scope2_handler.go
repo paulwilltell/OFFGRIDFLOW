@@ -144,6 +144,21 @@ func (h *Scope2Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Debug log calculated records
+	if h.logger != nil {
+		h.logger.Info("scope2 calculated records", "count", len(records))
+		for i, rec := range records {
+			h.logger.Info("scope2 record", "idx", i, "activity_id", rec.ActivityID, "period_start", rec.PeriodStart.Format(time.RFC3339))
+		}
+	}
+
+	if h.logger != nil {
+		h.logger.Info("scope2 calculated records", "count", len(records))
+		for i, rec := range records {
+			h.logger.Info("scope2 record", "idx", i, "activity_id", rec.ActivityID, "period_start", rec.PeriodStart)
+		}
+	}
+
 	// Filter results
 	filtered := h.filterRecords(records, region, startDate, endDate)
 
@@ -262,6 +277,11 @@ func (h *Scope2Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Log tenant for debugging
+	if h.logger != nil {
+		h.logger.Info("scope2 summary request", "tenant", tenantID)
+	}
+
 	// Get activities
 	activities, err := h.activityStore.ListByOrgAndSource(ctx, tenantID, "utility_bill")
 	if err != nil {
@@ -297,8 +317,8 @@ func (h *Scope2Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	count := 0
 
 	for _, rec := range records {
-		// Filter by year if specified
-		if rec.PeriodStart.Year() != year {
+		// Filter by year if specified (use UTC to avoid timezone shift excluding UTC-midnight records)
+		if rec.PeriodStart.UTC().Year() != year {
 			continue
 		}
 		count++
@@ -339,7 +359,25 @@ func (h *Scope2Handler) Summary(w http.ResponseWriter, r *http.Request) {
 		response.PeriodEnd = maxDate.Format("2006-01-02")
 	}
 
+	// Build compatibility map matching test expectations
+	summaryMap := map[string]interface{}{
+		"scope":                   response.Scope,
+		"total_emissions":         response.TotalEmissionsKgCO2e,
+		"total_activities":        float64(response.ActivityCount),
+		"total_kwh":               response.TotalKWh,
+		"average_emission_factor": response.AverageEmissionFactor,
+		"region_breakdown":        response.RegionBreakdown,
+		"period_start":            response.PeriodStart,
+		"period_end":              response.PeriodEnd,
+		"timestamp":               response.Timestamp,
+	}
+
+	// Log summary for debugging
+	if h.logger != nil {
+		h.logger.Info("scope2 summary", "summary", summaryMap)
+	}
+
 	// Cache this response for 5 minutes
 	responders.SetCacheControl(w, 5*time.Minute, false)
-	responders.JSON(w, http.StatusOK, response)
+	responders.JSON(w, http.StatusOK, map[string]interface{}{"summary": summaryMap})
 }

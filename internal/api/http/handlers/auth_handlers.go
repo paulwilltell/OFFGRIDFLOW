@@ -117,7 +117,10 @@ type RegisterRequest struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	Name        string `json:"name"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
 	CompanyName string `json:"company_name"` // Used as tenant name
+	JobTitle    string `json:"job_title"`
 }
 
 // LoginRequest is the request body for login.
@@ -134,17 +137,22 @@ type ChangePasswordRequest struct {
 
 // AuthResponse is the response for successful authentication.
 type AuthResponse struct {
-	Token  string    `json:"token"`
-	User   UserDTO   `json:"user"`
-	Tenant TenantDTO `json:"tenant"`
+	Token                string    `json:"token"`
+	User                 UserDTO   `json:"user"`
+	Tenant               TenantDTO `json:"tenant"`
+	RequiresVerification bool      `json:"requires_verification,omitempty"`
+	VerificationToken    string    `json:"verification_token,omitempty"` // Only in dev mode
 }
 
 // UserDTO is user data returned in auth responses.
 type UserDTO struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
-	Role  string `json:"role"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	FirstName     string `json:"first_name,omitempty"`
+	LastName      string `json:"last_name,omitempty"`
+	Role          string `json:"role"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 // TenantDTO is tenant data returned in auth responses.
@@ -223,18 +231,32 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate email verification token
+	verificationToken := generateVerificationToken()
+
+	// Build full name from first/last or use provided name
+	fullName := strings.TrimSpace(req.Name)
+	if req.FirstName != "" || req.LastName != "" {
+		fullName = strings.TrimSpace(req.FirstName + " " + req.LastName)
+	}
+
 	// Create user (first user is admin)
 	userID := uuid.New().String()
 	user := &auth.User{
-		ID:           userID,
-		TenantID:     tenantID,
-		Email:        normalizeEmail(req.Email),
-		Name:         strings.TrimSpace(req.Name),
-		PasswordHash: passwordHash,
-		Role:         "admin",
-		IsActive:     true,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:                     userID,
+		TenantID:               tenantID,
+		Email:                  normalizeEmail(req.Email),
+		Name:                   fullName,
+		FirstName:              strings.TrimSpace(req.FirstName),
+		LastName:               strings.TrimSpace(req.LastName),
+		JobTitle:               strings.TrimSpace(req.JobTitle),
+		PasswordHash:           passwordHash,
+		Role:                   "admin",
+		IsActive:               true,
+		EmailVerified:          false, // Requires verification
+		EmailVerificationToken: verificationToken,
+		CreatedAt:              now,
+		UpdatedAt:              now,
 	}
 
 	if err := h.authStore.CreateUser(ctx, user); err != nil {
@@ -250,30 +272,27 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create session token
-	token, err := h.sessionManager.CreateToken(user, tenant)
-	if err != nil {
-		h.logger.Error("failed to create session token", "error", err.Error())
-		responders.InternalError(w, "failed to create session")
-		return
-	}
+	// In production, send verification email here
+	// For now, we'll include the token in the response for development
+	// TODO: Implement email sending service
 
-	// Set session cookie
-	h.setSessionCookie(w, token)
-
-	h.logger.Info("user registered",
+	h.logger.Info("user registered - verification required",
 		"userId", user.ID,
 		"tenantId", tenant.ID,
 		"email", user.Email,
 	)
 
+	// Return response indicating verification is required
+	// Don't create session until email is verified
 	responders.Created(w, AuthResponse{
-		Token: token,
 		User: UserDTO{
-			ID:    user.ID,
-			Email: user.Email,
-			Name:  user.Name,
-			Role:  user.Role,
+			ID:            user.ID,
+			Email:         user.Email,
+			Name:          user.Name,
+			FirstName:     user.FirstName,
+			LastName:      user.LastName,
+			Role:          user.Role,
+			EmailVerified: user.EmailVerified,
 		},
 		Tenant: TenantDTO{
 			ID:   tenant.ID,
@@ -281,6 +300,8 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 			Slug: tenant.Slug,
 			Plan: tenant.Plan,
 		},
+		RequiresVerification: true,
+		VerificationToken:    verificationToken, // Only in dev - remove in production
 	})
 }
 
@@ -380,10 +401,13 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	responders.JSON(w, http.StatusOK, AuthResponse{
 		Token: token,
 		User: UserDTO{
-			ID:    user.ID,
-			Email: user.Email,
-			Name:  user.Name,
-			Role:  user.Role,
+			ID:            user.ID,
+			Email:         user.Email,
+			Name:          user.Name,
+			FirstName:     user.FirstName,
+			LastName:      user.LastName,
+			Role:          user.Role,
+			EmailVerified: user.EmailVerified,
 		},
 		Tenant: TenantDTO{
 			ID:   tenant.ID,
@@ -481,10 +505,13 @@ func (h *AuthHandlers) Me(w http.ResponseWriter, r *http.Request) {
 
 	responders.JSON(w, http.StatusOK, AuthResponse{
 		User: UserDTO{
-			ID:    user.ID,
-			Email: user.Email,
-			Name:  user.Name,
-			Role:  user.Role,
+			ID:            user.ID,
+			Email:         user.Email,
+			Name:          user.Name,
+			FirstName:     user.FirstName,
+			LastName:      user.LastName,
+			Role:          user.Role,
+			EmailVerified: user.EmailVerified,
 		},
 		Tenant: TenantDTO{
 			ID:   tenant.ID,
@@ -827,4 +854,73 @@ func generateSlug(name string) string {
 	// Add random suffix for uniqueness
 	slug += "-" + uuid.New().String()[:slugRandomSuffixLength]
 	return slug
+}
+
+// generateVerificationToken creates a random token for email verification
+func generateVerificationToken() string {
+	return uuid.New().String()
+}
+
+// VerifyEmailRequest represents the email verification request
+type VerifyEmailRequest struct {
+	Token string `json:"token"`
+}
+
+// VerifyEmail verifies a user's email address using the verification token
+func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		responders.MethodNotAllowed(w, http.MethodPost)
+		return
+	}
+
+	ctx := r.Context()
+
+	var req VerifyEmailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		responders.BadRequest(w, "invalid_json", "invalid request body")
+		return
+	}
+
+	if req.Token == "" {
+		responders.BadRequest(w, "validation_error", "verification token is required")
+		return
+	}
+
+	// Find user by verification token
+	user, err := h.authStore.GetUserByVerificationToken(ctx, req.Token)
+	if err != nil {
+		h.logger.Error("failed to find user by verification token", "error", err.Error())
+		responders.BadRequest(w, "invalid_token", "invalid or expired verification token")
+		return
+	}
+
+	if user.EmailVerified {
+		responders.JSON(w, http.StatusOK, map[string]interface{}{
+			"success": true,
+			"message": "Email already verified. Please login.",
+		})
+		return
+	}
+
+	// Update user as verified
+	user.EmailVerified = true
+	user.EmailVerificationToken = "" // Clear the token
+	user.UpdatedAt = time.Now()
+
+	if err := h.authStore.UpdateUser(ctx, user); err != nil {
+		h.logger.Error("failed to update user verification status", "error", err.Error())
+		responders.InternalError(w, "failed to verify email")
+		return
+	}
+
+	h.logger.Info("email verified successfully",
+		"userId", user.ID,
+		"email", user.Email,
+	)
+
+	responders.JSON(w, http.StatusOK, map[string]interface{}{
+		"success":   true,
+		"message":   "Email verified successfully. Please login to continue.",
+		"firstName": user.FirstName,
+	})
 }

@@ -33,6 +33,35 @@ Next.js sessions, API tokens, and RBAC share the same JWT claims and contracts. 
 **Confident infra (push button "prod" deploy).**  
 Run `scripts\deploy-complete.ps1` to execute pre-flight checks, database migrations, Docker builds, and Kubernetes rollouts in one repeatable flow.
 
+## Reliability & graceful degradation
+
+OffGridFlow is designed to stay operational under common real-world failure modes by reducing capability safely rather than crashing or returning incorrect results.
+
+**What can trigger degraded behavior**:
+- **Offline / restricted networks**: Edge environments can lose internet access or block outbound traffic.
+- **Cloud dependency issues**: Upstream APIs (cloud providers, third-party connectors, AI providers) can be slow, rate-limited, or unavailable.
+- **Database misconfiguration or outages**: Postgres may be down, unreachable, or not configured correctly.
+- **Traffic spikes / abuse**: Sudden load increases can overload an API without backpressure.
+
+**How OffGridFlow responds**:
+- **Offline-first fallbacks (where supported)**: Components that support offline mode can switch to local providers when external connectivity is unavailable.
+- **Degraded readiness signaling**: Health/readiness endpoints can report degraded state (and return 503 for readiness) so orchestration/load balancers can drain traffic from unhealthy instances.
+- **Backpressure via rate limiting**: Read-heavy endpoints can be throttled (HTTP 429) to protect availability under load.
+- **Resilient ingestion**: Ingestion and batch processing classify errors and apply retry policies for transient failures; non-transient failures are not retried.
+
+**When OffGridFlow will fail fast (by design)**:
+- **AuthZ/AuthN errors** (401/403) to prevent cross-tenant data exposure.
+- **Invalid input / data integrity issues** (4xx) rather than guessing.
+- **Missing hard dependencies for a given feature** (e.g., persistence without a configured database).
+
+**Operational tuning**:
+- **Rate-limit tiers** are configurable via `RATELIMIT_*_RPS` / `RATELIMIT_*_BURST` env vars (see `.env.example`).
+- **DB pool sizing** via `OFFGRIDFLOW_DB_MAX_OPEN_CONNS` / `OFFGRIDFLOW_DB_MAX_IDLE_CONNS`.
+- **Tracing sampling** via `OTEL_SAMPLING_RATE` (use 0.1–0.2 in production to reduce overhead).
+- **Connector timeouts/retries** are pre-tuned in the hardened adapters; adjust `RequestTimeout`, `MaxRetries` in adapter configs if needed.
+
+See also: `error-handling-resilience.md` and the observability setup in `docs/OBSERVABILITY.md`.
+
 ## 🚀 Quick Start (5 Minutes)
 
 ```powershell

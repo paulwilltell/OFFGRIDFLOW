@@ -62,7 +62,7 @@ func (p *Provider) Shutdown(ctx context.Context) error {
 	}
 
 	p.logger.Info("shutting down trace provider")
-	
+
 	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -118,13 +118,19 @@ func Setup(cfg Config) (*Provider, error) {
 		"sampling_rate", cfg.SamplingRate,
 	)
 
-	// Create OTLP HTTP exporter
+	// Create OTLP HTTP exporter with environment-appropriate TLS
+	clientOpts := []otlptracehttp.Option{
+		otlptracehttp.WithEndpoint(stripScheme(cfg.OTLPEndpoint)),
+	}
+	if cfg.Environment == "production" || cfg.Environment == "staging" {
+		// Require TLS in production/staging; ensure endpoint is https
+		logger.Info("tracing: using TLS for OTLP exporter (production/staging)")
+	} else {
+		clientOpts = append(clientOpts, otlptracehttp.WithInsecure())
+	}
 	exporter, err := otlptrace.New(
 		context.Background(),
-		otlptracehttp.NewClient(
-			otlptracehttp.WithEndpoint(stripScheme(cfg.OTLPEndpoint)),
-			otlptracehttp.WithInsecure(), // Local development
-		),
+		otlptracehttp.NewClient(clientOpts...),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("tracing: failed to create OTLP exporter: %w", err)

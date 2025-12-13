@@ -1,0 +1,417 @@
+# ============================================================================
+# OffGridFlow Production Docker Compose
+# ============================================================================
+# Optimized for production deployment with security hardening,
+# resource limits, and high availability settings.
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# Pre-requisites:
+#   - Create .env.production with all required secrets
+#   - Configure SSL certificates in ./certs/
+#   - Set up external load balancer (optional)
+# ============================================================================
+
+version: '3.8'
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  offgridflow-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+
+  # Internal network for database/cache (no external access)
+  offgridflow-internal:
+    driver: bridge
+    internal: true
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# =============================================================================
+# Services
+# =============================================================================
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database (Production)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: offgridflow-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-offgridflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-offgridflow}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      # Performance tuning
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./infra/db/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    networks:
+      - offgridflow-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-offgridflow} -d ${POSTGRES_DB:-offgridflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Redis Cache (Production)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: offgridflow-redis-prod
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 300
+    volumes:
+      - redis_data:/data
+    networks:
+      - offgridflow-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 768M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Prometheus (Metrics)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: offgridflow-prometheus-prod
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    volumes:
+      - ./deployments/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deployments/grafana/alerts:/etc/prometheus/alerts:ro
+      - prometheus_data:/prometheus
+    networks:
+      - offgridflow-network
+      - offgridflow-internal
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Grafana (Visualization)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: offgridflow-grafana-prod
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_USERS_ALLOW_ORG_CREATE: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_SECURITY_DISABLE_GRAVATAR: 'true'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+      GF_LOG_LEVEL: warn
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deployments/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - offgridflow-network
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # OffGridFlow Backend API (Production)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_VERSION=${BUILD_VERSION:-latest}
+        - BUILD_TIME=${BUILD_TIME:-unknown}
+    image: offgridflow/api:${BUILD_VERSION:-latest}
+    container_name: offgridflow-api-prod
+    restart: unless-stopped
+    environment:
+      # Database
+      OFFGRIDFLOW_DB_DSN: postgresql://${POSTGRES_USER:-offgridflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-offgridflow}?sslmode=require
+      OFFGRIDFLOW_DB_MAX_CONNS: '100'
+      OFFGRIDFLOW_DB_MIN_CONNS: '10'
+      
+      # Redis
+      OFFGRIDFLOW_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      OFFGRIDFLOW_REDIS_POOL_SIZE: '50'
+      
+      # Server
+      OFFGRIDFLOW_SERVER_PORT: '8080'
+      OFFGRIDFLOW_SERVER_HOST: '0.0.0.0'
+      OFFGRIDFLOW_ENV: production
+      
+      # Security
+      OFFGRIDFLOW_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      OFFGRIDFLOW_CSRF_SECRET: ${CSRF_SECRET:?CSRF_SECRET is required}
+      OFFGRIDFLOW_CORS_ORIGINS: ${CORS_ORIGINS:-https://offgridflow.com}
+      
+      # Telemetry
+      OTEL_SERVICE_NAME: offgridflow-api
+      OTEL_SERVICE_VERSION: ${BUILD_VERSION:-latest}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://prometheus:9090
+      
+      # Rate Limiting
+      OFFGRIDFLOW_RATE_LIMIT_REQUESTS: '1000'
+      OFFGRIDFLOW_RATE_LIMIT_WINDOW: '60s'
+    networks:
+      - offgridflow-network
+      - offgridflow-internal
+    ports:
+      - "${API_PORT:-8080}:8080"
+      - "${METRICS_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+      replicas: 2
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ---------------------------------------------------------------------------
+  # OffGridFlow Frontend (Production - Next.js)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.prod
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.offgridflow.com}
+        - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-wss://api.offgridflow.com}
+    image: offgridflow/web:${BUILD_VERSION:-latest}
+    container_name: offgridflow-web-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:8080}
+      NEXT_TELEMETRY_DISABLED: '1'
+    networks:
+      - offgridflow-network
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+      replicas: 2
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # OffGridFlow Worker (Background Jobs)
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_VERSION=${BUILD_VERSION:-latest}
+    image: offgridflow/worker:${BUILD_VERSION:-latest}
+    container_name: offgridflow-worker-prod
+    restart: unless-stopped
+    command: ["/app/offgridflow-worker"]
+    environment:
+      # Database
+      OFFGRIDFLOW_DB_DSN: postgresql://${POSTGRES_USER:-offgridflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-offgridflow}?sslmode=require
+      
+      # Redis
+      OFFGRIDFLOW_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      
+      # Worker settings
+      OFFGRIDFLOW_ENV: production
+      OFFGRIDFLOW_WORKER_CONCURRENCY: '10'
+      
+      # Telemetry
+      OTEL_SERVICE_NAME: offgridflow-worker
+      OTEL_SERVICE_VERSION: ${BUILD_VERSION:-latest}
+    networks:
+      - offgridflow-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

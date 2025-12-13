@@ -387,6 +387,6 @@ docker logs offgridflow-api | jq .
 
 ## 🎉 Result
 
-**"When something breaks, you see where and why, instead of guessing."**
+**"When something goes wrong, you can see where and why, instead of guessing."**
 
 All requirements from section 7 (Observability → 100%) have been completed and tested.

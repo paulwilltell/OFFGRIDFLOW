@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ func setupComplianceTest(t *testing.T) (*handlers.ComplianceHandlerDeps, *ingest
 
 	// Create in-memory activity store with test data
 	store := ingestion.NewInMemoryActivityStore()
-	
+
 	// Seed with comprehensive test data covering all scopes
 	seedTestActivities(t, store)
 
@@ -130,6 +131,7 @@ func TestCSRDComplianceHandler(t *testing.T) {
 		name           string
 		method         string
 		queryParams    string
+		body           interface{}
 		expectedStatus int
 		validateBody   func(t *testing.T, body map[string]interface{})
 	}{
@@ -137,6 +139,7 @@ func TestCSRDComplianceHandler(t *testing.T) {
 			name:           "GET request succeeds",
 			method:         http.MethodGet,
 			queryParams:    "?org_id=org-test&year=2024",
+			body:           nil,
 			expectedStatus: http.StatusOK,
 			validateBody: func(t *testing.T, body map[string]interface{}) {
 				// CSRD report might be wrapped - check for org_id in different locations
@@ -153,16 +156,35 @@ func TestCSRDComplianceHandler(t *testing.T) {
 			},
 		},
 		{
-			name:           "POST method not allowed",
-			method:         http.MethodPost,
+			name:        "POST request succeeds",
+			method:      http.MethodPost,
+			queryParams: "?org_id=org-test",
+			body: map[string]interface{}{
+				"year":   2024,
+				"format": "pdf",
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "PUT method not allowed",
+			method:         http.MethodPut,
 			queryParams:    "",
+			body:           nil,
 			expectedStatus: http.StatusMethodNotAllowed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, "/api/compliance/csrd"+tt.queryParams, nil)
+			var bodyReader *strings.Reader
+			if tt.body != nil {
+				b, _ := json.Marshal(tt.body)
+				bodyReader = strings.NewReader(string(b))
+			} else {
+				bodyReader = strings.NewReader("")
+			}
+			req := httptest.NewRequest(tt.method, "/api/compliance/csrd"+tt.queryParams, bodyReader)
+			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
 			handler(w, req)
@@ -458,7 +480,7 @@ func TestComplianceHandlersWithNoData(t *testing.T) {
 	for fwName, fwData := range frameworks {
 		fwMap := fwData.(map[string]interface{})
 		status := fwMap["status"].(string)
-		
+
 		// CBAM might be "not_required", others should be "not_started"
 		if fwName != "cbam" && status != "not_started" {
 			t.Errorf("Framework %s should have status 'not_started' with no data, got %s", fwName, status)

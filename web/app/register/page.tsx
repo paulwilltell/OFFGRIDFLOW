@@ -6,17 +6,38 @@ import Link from 'next/link';
 import { ApiRequestError, api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 
+interface RegisterResponse {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    first_name?: string;
+    last_name?: string;
+    email_verified: boolean;
+  };
+  tenant: {
+    id: string;
+    name: string;
+  };
+  requires_verification?: boolean;
+  verification_token?: string; // Only in dev mode
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { login } = useSession();
   
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -37,15 +58,28 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await api.post('/api/auth/register', {
-        name,
+      const response = await api.post<RegisterResponse>('/api/auth/register', {
+        name: `${firstName} ${lastName}`.trim(),
+        first_name: firstName,
+        last_name: lastName,
         email,
         password,
         company_name: companyName || undefined,
+        job_title: jobTitle || undefined,
       });
-      // After successful registration, sign the user in to establish a session.
-      await login({ email, password });
-      router.push('/');
+      
+      // Check if email verification is required
+      if (response.requires_verification) {
+        setVerificationSent(true);
+        // In dev mode, we can show the verification token
+        if (response.verification_token) {
+          setVerificationToken(response.verification_token);
+        }
+      } else {
+        // Legacy flow - auto login if verification not required
+        await login({ email, password });
+        router.push('/');
+      }
     } catch (err) {
       if (err instanceof ApiRequestError) {
         setError(err.message);
@@ -56,6 +90,59 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  // Show verification success screen
+  if (verificationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+              <svg className="h-8 w-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+              Check Your Email
+            </h1>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">
+              We&apos;ve sent a verification link to <strong className="text-gray-900 dark:text-white">{email}</strong>
+            </p>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
+              Please click the link in the email to verify your account and continue.
+            </p>
+          </div>
+
+          {/* Dev mode: Show verification link */}
+          {verificationToken && (
+            <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium mb-2">
+                🔧 Development Mode
+              </p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                Click below to verify your email:
+              </p>
+              <Link
+                href={`/verify-email?token=${verificationToken}`}
+                className="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-md transition-colors"
+              >
+                Verify Email Now
+              </Link>
+            </div>
+          )}
+
+          <div className="mt-6 space-y-4">
+            <Link
+              href="/login"
+              className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Go to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -86,26 +173,44 @@ export default function RegisterPage() {
           )}
 
           <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Full Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                placeholder="John Doe"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  First Name
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  placeholder="John"
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Last Name
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  placeholder="Doe"
+                />
+              </div>
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email Address
+                Work Email
               </label>
               <input
                 id="email"
@@ -116,24 +221,41 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                placeholder="john@company.com"
+                placeholder="john.doe@company.com"
               />
             </div>
 
-            <div>
-              <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Company Name <span className="text-gray-500">(optional)</span>
-              </label>
-              <input
-                id="company"
-                name="company"
-                type="text"
-                autoComplete="organization"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                placeholder="Acme Corp"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Company Name <span className="text-gray-500 text-xs">(optional)</span>
+                </label>
+                <input
+                  id="company"
+                  name="company"
+                  type="text"
+                  autoComplete="organization"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <div>
+                <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Position/Title <span className="text-gray-500 text-xs">(optional)</span>
+                </label>
+                <input
+                  id="jobTitle"
+                  name="jobTitle"
+                  type="text"
+                  autoComplete="organization-title"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  placeholder="Sustainability Manager"
+                />
+              </div>
             </div>
 
             <div>

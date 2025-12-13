@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/example/offgridflow/internal/api/http/middleware"
 	"github.com/example/offgridflow/internal/api/http/responders"
 	"github.com/example/offgridflow/internal/compliance"
+	"github.com/google/uuid"
 )
 
 // ComplianceHandlerDeps holds dependencies for compliance handlers.
@@ -15,10 +17,11 @@ type ComplianceHandlerDeps struct {
 	ComplianceService *compliance.Service
 }
 
-// NewCSRDComplianceHandler creates an HTTP handler for GET /api/compliance/csrd.
+// NewCSRDComplianceHandler creates an HTTP handler for /api/compliance/csrd (GET or POST).
 func NewCSRDComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
+		// Support GET for query params and POST for JSON payloads
+		if r.Method != http.MethodGet && r.Method != http.MethodPost {
 			responders.Error(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 			return
 		}
@@ -41,9 +44,21 @@ func NewCSRDComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		}
 
 		year := time.Now().Year()
-		if yearStr := r.URL.Query().Get("year"); yearStr != "" {
-			if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-				year = y
+		// Allow year via query param (GET) or JSON body (POST)
+		if r.Method == http.MethodGet {
+			if yearStr := r.URL.Query().Get("year"); yearStr != "" {
+				if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
+					year = y
+				}
+			}
+		} else if r.Method == http.MethodPost {
+			var body struct {
+				Year   int    `json:"year"`
+				Format string `json:"format"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			if body.Year > 2000 && body.Year <= time.Now().Year()+1 {
+				year = body.Year
 			}
 		}
 
@@ -54,7 +69,14 @@ func NewCSRDComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 			return
 		}
 
-		responders.JSON(w, http.StatusOK, report)
+		// Return a concise response containing a report id and status for the caller
+		resp := map[string]interface{}{
+			"report_id": uuid.New().String(),
+			"status":    "generated",
+			"report":    report,
+		}
+
+		responders.JSON(w, http.StatusOK, resp)
 	}
 }
 
