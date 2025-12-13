@@ -33,7 +33,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     ./cmd/worker
 
 # Stage 2: Runtime
-FROM alpine:3.18
+FROM alpine:3.23
 
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata curl
@@ -70,7 +70,7 @@ ENTRYPOINT ["/app/offgridflow-api"]
 CMD []
 
 # Stage 3: Worker runtime
-FROM alpine:3.18 AS worker
+FROM alpine:3.23 AS worker
 
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata curl
