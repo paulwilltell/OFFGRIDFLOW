@@ -103,7 +103,7 @@ jobs:
           OFFGRIDFLOW_JWT_SECRET: test-secret-for-ci-pipeline-32chars
 
       - name: Upload Go coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: coverage.out
           flags: backend
@@ -136,7 +136,7 @@ jobs:
           CI: true
 
       - name: Upload frontend coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           directory: web/coverage
           flags: frontend
