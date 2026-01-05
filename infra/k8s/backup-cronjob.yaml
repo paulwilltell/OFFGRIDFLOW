@@ -1,0 +1,210 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: offgridflow
+  labels:
+    app: postgres-backup
+    component: database
+spec:
+  # Run daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  
+  # Keep last 3 successful jobs and 1 failed job for debugging
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  # Prevent concurrent backup jobs
+  concurrencyPolicy: Forbid
+  
+  # Start new job if previous missed
+  startingDeadlineSeconds: 3600
+  
+  jobTemplate:
+    spec:
+      # Keep backup pods for 1 hour after completion for log inspection
+      ttlSecondsAfterFinished: 3600
+      
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+            component: database
+          annotations:
+            prometheus.io/scrape: "false"
+        
+        spec:
+          restartPolicy: OnFailure
+          
+          # Use service account with S3 access (if using IRSA/Workload Identity)
+          serviceAccountName: postgres-backup-sa
+          
+          containers:
+          - name: backup
+            image: postgres:15-alpine
+            imagePullPolicy: IfNotPresent
+            
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              
+              echo "🔄 Starting PostgreSQL backup at $(date)"
+              
+              # Generate timestamp
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              BACKUP_FILE="offgridflow_backup_${TIMESTAMP}.sql.gz"
+              
+              # Create backup with compression
+              echo "📦 Creating compressed backup: ${BACKUP_FILE}"
+              PGPASSWORD="${POSTGRES_PASSWORD}" pg_dump \
+                -h "${POSTGRES_HOST}" \
+                -p "${POSTGRES_PORT}" \
+                -U "${POSTGRES_USER}" \
+                -d "${POSTGRES_DB}" \
+                --format=custom \
+                --compress=9 \
+                --verbose \
+                --file="/tmp/${BACKUP_FILE}"
+              
+              # Verify backup file was created
+              if [ ! -f "/tmp/${BACKUP_FILE}" ]; then
+                echo "❌ Backup file not created!"
+                exit 1
+              fi
+              
+              BACKUP_SIZE=$(du -h "/tmp/${BACKUP_FILE}" | cut -f1)
+              echo "✅ Backup created successfully: ${BACKUP_SIZE}"
+              
+              # Upload to S3 (or other cloud storage)
+              echo "☁️ Uploading to S3..."
+              aws s3 cp "/tmp/${BACKUP_FILE}" \
+                "s3://${S3_BUCKET}/backups/postgres/${BACKUP_FILE}" \
+                --storage-class STANDARD_IA \
+                --server-side-encryption AES256
+              
+              if [ $? -eq 0 ]; then
+                echo "✅ Backup uploaded to S3 successfully"
+              else
+                echo "❌ Failed to upload backup to S3"
+                exit 1
+              fi
+              
+              # Cleanup local backup file
+              rm -f "/tmp/${BACKUP_FILE}"
+              
+              # Cleanup old backups (keep last 30 days)
+              echo "🧹 Cleaning up old backups..."
+              CUTOFF_DATE=$(date -d '30 days ago' +%Y%m%d)
+              aws s3 ls "s3://${S3_BUCKET}/backups/postgres/" | \
+                awk '{print $4}' | \
+                grep "offgridflow_backup_" | \
+                while read file; do
+                  FILE_DATE=$(echo "$file" | grep -oP '\d{8}')
+                  if [ "$FILE_DATE" -lt "$CUTOFF_DATE" ]; then
+                    echo "Deleting old backup: $file"
+                    aws s3 rm "s3://${S3_BUCKET}/backups/postgres/$file"
+                  fi
+                done
+              
+              echo "✅ Backup process completed successfully at $(date)"
+            
+            env:
+            - name: POSTGRES_HOST
+              value: postgres-service
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: offgridflow-secrets
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: offgridflow
+            - name: S3_BUCKET
+              value: offgridflow-backups
+            - name: AWS_REGION
+              value: us-east-1
+            
+            # AWS credentials (if not using IRSA)
+            # - name: AWS_ACCESS_KEY_ID
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: offgridflow-secrets
+            #       key: aws-access-key-id
+            # - name: AWS_SECRET_ACCESS_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: offgridflow-secrets
+            #       key: aws-secret-access-key
+            
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+            
+            # Security context
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsNonRoot: true
+              runAsUser: 999
+              capabilities:
+                drop:
+                - ALL
+              readOnlyRootFilesystem: true
+            
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          
+          volumes:
+          - name: tmp
+            emptyDir: {}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-backup-sa
+  namespace: offgridflow
+  annotations:
+    # For AWS IRSA (IAM Roles for Service Accounts)
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/offgridflow-backup-role
+    # For GCP Workload Identity
+    iam.gke.io/gcp-service-account: offgridflow-backup@PROJECT_ID.iam.gserviceaccount.com
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres-backup-role
+  namespace: offgridflow
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames: ["offgridflow-secrets"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-backup-rolebinding
+  namespace: offgridflow
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: postgres-backup-role
+subjects:
+- kind: ServiceAccount
+  name: postgres-backup-sa
+  namespace: offgridflow

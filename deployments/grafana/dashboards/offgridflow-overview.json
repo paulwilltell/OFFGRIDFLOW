@@ -1,0 +1,170 @@
+{
+  "dashboard": {
+    "title": "OffGridFlow - System Overview",
+    "tags": ["offgridflow", "overview"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "API Request Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"offgridflow-api\"}[5m])) by (status)",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "API Latency (P95/P99)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"offgridflow-api\"}[5m])) by (le))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"offgridflow-api\"}[5m])) by (le))",
+            "legendFormat": "P99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"offgridflow-api\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"offgridflow-api\"}[5m])) * 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 5, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Active Users",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+        "targets": [
+          {
+            "expr": "count(count by (user_id) (rate(http_requests_total{job=\"offgridflow-api\"}[5m])))"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Database Connections",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "pg_stat_database_numbackends{job=\"postgres\"}",
+            "legendFormat": "Active Connections"
+          },
+          {
+            "expr": "pg_settings_max_connections{job=\"postgres\"}",
+            "legendFormat": "Max Connections"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Memory Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [
+          {
+            "expr": "container_memory_working_set_bytes{namespace=\"offgridflow\"} / container_spec_memory_limit_bytes{namespace=\"offgridflow\"} * 100",
+            "legendFormat": "{{pod}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Ingestion Success Rate",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "sum(rate(ingestion_jobs_success_total{job=\"offgridflow-worker\"}[5m])) / sum(rate(ingestion_jobs_total{job=\"offgridflow-worker\"}[5m])) * 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 80, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Pod Status",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 18, "x": 6, "y": 20},
+        "targets": [
+          {
+            "expr": "kube_pod_status_phase{namespace=\"offgridflow\"}",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true, "Value": true}
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,805 @@
+openapi: 3.0.3
+info:
+  title: OffGridFlow API
+  description: |
+    Enterprise Carbon Accounting & ESG Compliance Platform API
+    
+    # Authentication
+    Most endpoints require authentication via JWT Bearer token.
+    Obtain a token by calling `/v1/auth/login`.
+    
+    # Rate Limiting
+    Rate limits vary by subscription tier:
+    - Free: 5 req/s
+    - Basic: 20 req/s
+    - Pro: 50 req/s
+    - Enterprise: 500 req/s
+    
+  version: 1.0.0
+  contact:
+    name: OffGridFlow Support
+    email: support@offgridflow.com
+    url: https://offgridflow.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.offgridflow.com/v1
+    description: Production server
+  - url: https://api.staging.offgridflow.com/v1
+    description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Activities
+    description: Emission activity tracking
+  - name: Emissions
+    description: Emission calculations and factors
+  - name: Reports
+    description: Compliance report generation
+  - name: Compliance
+    description: Regulatory compliance frameworks
+  - name: Dashboard
+    description: Analytics and dashboards
+  - name: Health
+    description: System health and monitoring
+
+paths:
+  # ============================================================================
+  # Health Endpoints
+  # ============================================================================
+  /health:
+    get:
+      tags: [Health]
+      summary: Comprehensive health check
+      description: Returns detailed system health information
+      operationId: getHealth
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: Kubernetes liveness probe endpoint
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Application is alive
+
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      description: Kubernetes readiness probe endpoint
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Application is ready to serve traffic
+        '503':
+          description: Application is not ready
+
+  # ============================================================================
+  # Authentication
+  # ============================================================================
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register new user
+      description: Create a new user account
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: SecurePass123!
+                name:
+                  type: string
+                  example: John Doe
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User already exists
+
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      description: Authenticate user and receive JWT token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT bearer token
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user
+      description: Returns authenticated user information
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ============================================================================
+  # Activities
+  # ============================================================================
+  /activities:
+    get:
+      tags: [Activities]
+      summary: List activities
+      description: Get paginated list of emission activities
+      operationId: listActivities
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: scope
+          in: query
+          schema:
+            type: integer
+            enum: [1, 2, 3]
+        - name: activity_type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Activity'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+    post:
+      tags: [Activities]
+      summary: Create activity
+      description: Record a new emission activity
+      operationId: createActivity
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityInput'
+      responses:
+        '201':
+          description: Activity created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    $ref: '#/components/schemas/Activity'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /activities/{id}:
+    get:
+      tags: [Activities]
+      summary: Get activity
+      description: Retrieve activity by ID
+      operationId: getActivity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Activity details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    $ref: '#/components/schemas/Activity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Activities]
+      summary: Update activity
+      operationId: updateActivity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityInput'
+      responses:
+        '200':
+          description: Activity updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activity:
+                    $ref: '#/components/schemas/Activity'
+
+    delete:
+      tags: [Activities]
+      summary: Delete activity
+      operationId: deleteActivity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Activity deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # Emissions
+  # ============================================================================
+  /emissions/calculate:
+    post:
+      tags: [Emissions]
+      summary: Calculate emissions
+      description: Calculate CO2e emissions for given activity parameters
+      operationId: calculateEmissions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activity_type, quantity, unit]
+              properties:
+                activity_type:
+                  type: string
+                quantity:
+                  type: number
+                  format: double
+                unit:
+                  type: string
+                region:
+                  type: string
+                  default: global
+      responses:
+        '200':
+          description: Emission calculation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmissionCalculation'
+
+  /emission-factors:
+    get:
+      tags: [Emissions]
+      summary: List emission factors
+      description: Get database of emission factors
+      operationId: listEmissionFactors
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: region
+          in: query
+          schema:
+            type: string
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of emission factors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  emission_factors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EmissionFactor'
+
+  # ============================================================================
+  # Dashboard
+  # ============================================================================
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard data
+      description: Retrieve aggregated metrics for dashboard
+      operationId: getDashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+
+  /emissions/summary:
+    get:
+      tags: [Dashboard]
+      summary: Get emissions summary
+      description: Get emissions breakdown by scope
+      operationId: getEmissionsSummary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Emissions summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmissionsSummary'
+
+  # ============================================================================
+  # Reports
+  # ============================================================================
+  /reports/generate:
+    post:
+      tags: [Reports]
+      summary: Generate compliance report
+      description: Generate PDF/XBRL compliance report
+      operationId: generateReport
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+      responses:
+        '202':
+          description: Report generation started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [pending, processing]
+
+  /reports:
+    get:
+      tags: [Reports]
+      summary: List reports
+      description: Get list of generated reports
+      operationId: listReports
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Report'
+
+  /compliance/status:
+    get:
+      tags: [Compliance]
+      summary: Get compliance status
+      description: Check compliance status for all frameworks
+      operationId: getComplianceStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Compliance status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceStatus'
+
+# ============================================================================
+# Components
+# ============================================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        organization_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [superadmin, admin, user, viewer]
+        created_at:
+          type: string
+          format: date-time
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        activity_type:
+          type: string
+        scope:
+          type: integer
+          enum: [1, 2, 3]
+        quantity:
+          type: number
+          format: double
+        unit:
+          type: string
+        emissions_total_co2e:
+          type: number
+          format: double
+        activity_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+
+    ActivityInput:
+      type: object
+      required: [name, activity_type, scope, quantity, unit, activity_date]
+      properties:
+        name:
+          type: string
+        activity_type:
+          type: string
+        scope:
+          type: integer
+          enum: [1, 2, 3]
+        quantity:
+          type: number
+          format: double
+        unit:
+          type: string
+        activity_date:
+          type: string
+          format: date
+
+    EmissionFactor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        category:
+          type: string
+        total_co2e_factor:
+          type: number
+          format: double
+        unit:
+          type: string
+        region:
+          type: string
+        year:
+          type: integer
+
+    EmissionCalculation:
+      type: object
+      properties:
+        emissions_co2e:
+          type: number
+          format: double
+        emissions_co2:
+          type: number
+          format: double
+        emissions_ch4:
+          type: number
+          format: double
+        emissions_n2o:
+          type: number
+          format: double
+        emission_factor:
+          $ref: '#/components/schemas/EmissionFactor'
+
+    Dashboard:
+      type: object
+      properties:
+        total_emissions:
+          type: number
+          format: double
+        scope1_emissions:
+          type: number
+          format: double
+        scope2_emissions:
+          type: number
+          format: double
+        scope3_emissions:
+          type: number
+          format: double
+        activity_count:
+          type: integer
+        recent_activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+
+    EmissionsSummary:
+      type: object
+      properties:
+        scope1:
+          type: number
+        scope2:
+          type: number
+        scope3:
+          type: number
+        total:
+          type: number
+        by_category:
+          type: object
+          additionalProperties:
+            type: number
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        report_type:
+          type: string
+          enum: [csrd, sec, cbam, california, ifrs_s2]
+        report_year:
+          type: integer
+        status:
+          type: string
+          enum: [draft, in_review, approved, submitted]
+        pdf_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+
+    ReportRequest:
+      type: object
+      required: [report_type, report_year, reporting_period_start, reporting_period_end]
+      properties:
+        report_type:
+          type: string
+          enum: [csrd, sec, cbam, california, ifrs_s2]
+        report_year:
+          type: integer
+        reporting_period_start:
+          type: string
+          format: date
+        reporting_period_end:
+          type: string
+          format: date
+
+    ComplianceStatus:
+      type: object
+      properties:
+        frameworks:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [compliant, non_compliant, in_progress]
+              last_check:
+                type: string
+                format: date-time
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        uptime:
+          type: string
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+              message:
+                type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

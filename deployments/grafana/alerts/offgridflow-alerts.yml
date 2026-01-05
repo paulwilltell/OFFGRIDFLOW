@@ -1,0 +1,324 @@
+groups:
+  # ============================================================================
+  # Application Health Alerts
+  # ============================================================================
+  - name: offgridflow_application
+    interval: 30s
+    rules:
+      - alert: OffGridFlowAPIDown
+        expr: up{job="offgridflow-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+          team: platform
+        annotations:
+          summary: "OffGridFlow API is down"
+          description: "API instance {{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://docs.offgridflow.com/runbooks/api-down"
+          dashboard_url: "https://grafana.offgridflow.com/d/offgridflow-api"
+
+      - alert: OffGridFlowAPIHighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="offgridflow-api", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="offgridflow-api"}[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+          team: platform
+        annotations:
+          summary: "High error rate detected (> 5%)"
+          description: "API error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+          runbook_url: "https://docs.offgridflow.com/runbooks/high-error-rate"
+
+      - alert: OffGridFlowAPIHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{job="offgridflow-api"}[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+          team: platform
+        annotations:
+          summary: "API P99 latency above 2 seconds"
+          description: "API P99 response time is {{ $value | humanizeDuration }} (threshold: 2s)."
+          runbook_url: "https://docs.offgridflow.com/runbooks/high-latency"
+
+      - alert: OffGridFlowWorkerDown
+        expr: up{job="offgridflow-worker"} == 0
+        for: 3m
+        labels:
+          severity: warning
+          component: worker
+          team: platform
+        annotations:
+          summary: "Background worker is down"
+          description: "Worker instance {{ $labels.instance }} has been down for more than 3 minutes."
+          runbook_url: "https://docs.offgridflow.com/runbooks/worker-down"
+
+  # ============================================================================
+  # Database Health Alerts
+  # ============================================================================
+  - name: offgridflow_database
+    interval: 30s
+    rules:
+      - alert: PostgreSQLDown
+        expr: pg_up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          team: platform
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL instance {{ $labels.instance }} is unreachable."
+          runbook_url: "https://docs.offgridflow.com/runbooks/postgres-down"
+
+      - alert: PostgreSQLHighConnections
+        expr: |
+          (
+            sum(pg_stat_database_numbackends{job="postgres"})
+            /
+            pg_settings_max_connections{job="postgres"}
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          team: platform
+        annotations:
+          summary: "PostgreSQL connection pool nearing capacity"
+          description: "PostgreSQL is using {{ $value | humanizePercentage }} of max connections."
+          runbook_url: "https://docs.offgridflow.com/runbooks/postgres-high-connections"
+
+      - alert: PostgreSQLHighQueryTime
+        expr: |
+          rate(pg_stat_statements_total_exec_time_ms{job="postgres"}[5m])
+          /
+          rate(pg_stat_statements_calls{job="postgres"}[5m])
+          > 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+          team: platform
+        annotations:
+          summary: "High average query execution time"
+          description: "Average query time is {{ $value | humanizeDuration }} (threshold: 1s)."
+          runbook_url: "https://docs.offgridflow.com/runbooks/slow-queries"
+
+      - alert: PostgreSQLDiskSpaceHigh
+        expr: |
+          (
+            pg_database_size_bytes{job="postgres"}
+            /
+            node_filesystem_size_bytes{mountpoint="/var/lib/postgresql/data"}
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+          team: platform
+        annotations:
+          summary: "PostgreSQL disk usage above 85%"
+          description: "Database disk usage is {{ $value | humanizePercentage }}."
+          runbook_url: "https://docs.offgridflow.com/runbooks/disk-space"
+
+  # ============================================================================
+  # Redis Cache Alerts
+  # ============================================================================
+  - name: offgridflow_cache
+    interval: 30s
+    rules:
+      - alert: RedisDown
+        expr: redis_up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: cache
+          team: platform
+        annotations:
+          summary: "Redis is down"
+          description: "Redis instance {{ $labels.instance }} is unreachable."
+          runbook_url: "https://docs.offgridflow.com/runbooks/redis-down"
+
+      - alert: RedisHighMemoryUsage
+        expr: |
+          (
+            redis_memory_used_bytes{job="redis"}
+            /
+            redis_memory_max_bytes{job="redis"}
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+          team: platform
+        annotations:
+          summary: "Redis memory usage above 90%"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}."
+          runbook_url: "https://docs.offgridflow.com/runbooks/redis-memory"
+
+      - alert: RedisHighEvictionRate
+        expr: rate(redis_evicted_keys_total{job="redis"}[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+          team: platform
+        annotations:
+          summary: "High Redis key eviction rate"
+          description: "Redis is evicting {{ $value | humanize }} keys per second."
+          runbook_url: "https://docs.offgridflow.com/runbooks/redis-evictions"
+
+  # ============================================================================
+  # Kubernetes Pod Alerts
+  # ============================================================================
+  - name: offgridflow_kubernetes
+    interval: 30s
+    rules:
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total{namespace="offgridflow"}[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: kubernetes
+          team: platform
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes."
+          runbook_url: "https://docs.offgridflow.com/runbooks/crash-loop"
+
+      - alert: PodMemoryPressure
+        expr: |
+          (
+            container_memory_working_set_bytes{namespace="offgridflow"}
+            /
+            container_spec_memory_limit_bytes{namespace="offgridflow"}
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: kubernetes
+          team: platform
+        annotations:
+          summary: "Pod memory usage above 90%"
+          description: "Pod {{ $labels.pod }} memory usage is {{ $value | humanizePercentage }}."
+          runbook_url: "https://docs.offgridflow.com/runbooks/memory-pressure"
+
+      - alert: PodCPUThrottling
+        expr: |
+          rate(container_cpu_cfs_throttled_seconds_total{namespace="offgridflow"}[5m])
+          > 0.3
+        for: 10m
+        labels:
+          severity: warning
+          component: kubernetes
+          team: platform
+        annotations:
+          summary: "Pod is experiencing CPU throttling"
+          description: "Pod {{ $labels.pod }} is being CPU throttled {{ $value | humanizePercentage }} of the time."
+          runbook_url: "https://docs.offgridflow.com/runbooks/cpu-throttling"
+
+  # ============================================================================
+  # Business Logic Alerts
+  # ============================================================================
+  - name: offgridflow_business
+    interval: 1m
+    rules:
+      - alert: IngestionFailureRate
+        expr: |
+          (
+            sum(rate(ingestion_jobs_failed_total{job="offgridflow-worker"}[10m]))
+            /
+            sum(rate(ingestion_jobs_total{job="offgridflow-worker"}[10m]))
+          ) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          component: ingestion
+          team: data-engineering
+        annotations:
+          summary: "High ingestion failure rate (> 10%)"
+          description: "Ingestion failure rate is {{ $value | humanizePercentage }}."
+          runbook_url: "https://docs.offgridflow.com/runbooks/ingestion-failures"
+
+      - alert: NoRecentIngestions
+        expr: |
+          time() - max(ingestion_last_success_timestamp{job="offgridflow-worker"}) > 3600
+        for: 5m
+        labels:
+          severity: warning
+          component: ingestion
+          team: data-engineering
+        annotations:
+          summary: "No successful ingestions in last hour"
+          description: "Last successful ingestion was {{ $value | humanizeDuration }} ago."
+          runbook_url: "https://docs.offgridflow.com/runbooks/no-ingestions"
+
+      - alert: EmissionsCalculationErrors
+        expr: rate(emissions_calculation_errors_total{job="offgridflow-api"}[10m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: calculations
+          team: data-engineering
+        annotations:
+          summary: "Emissions calculation errors detected"
+          description: "{{ $value | humanize }} calculation errors per second."
+          runbook_url: "https://docs.offgridflow.com/runbooks/calculation-errors"
+
+  # ============================================================================
+  # Security Alerts
+  # ============================================================================
+  - name: offgridflow_security
+    interval: 30s
+    rules:
+      - alert: HighFailedLoginAttempts
+        expr: |
+          rate(auth_failed_login_attempts_total{job="offgridflow-api"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+          team: security
+        annotations:
+          summary: "High rate of failed login attempts"
+          description: "{{ $value | humanize }} failed login attempts per second from {{ $labels.ip }}."
+          runbook_url: "https://docs.offgridflow.com/runbooks/failed-logins"
+
+      - alert: UnauthorizedAccessAttempts
+        expr: |
+          rate(http_requests_total{job="offgridflow-api", status="403"}[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: security
+          team: security
+        annotations:
+          summary: "High rate of 403 Forbidden responses"
+          description: "{{ $value | humanize }} unauthorized access attempts per second."
+          runbook_url: "https://docs.offgridflow.com/runbooks/unauthorized-access"
+
+      - alert: CertificateExpiringSoon
+        expr: |
+          (
+            probe_ssl_earliest_cert_expiry{job="blackbox"}
+            - time()
+          ) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          component: security
+          team: platform
+        annotations:
+          summary: "TLS certificate expiring in less than 30 days"
+          description: "Certificate for {{ $labels.instance }} expires in {{ $value | humanize }} days."
+          runbook_url: "https://docs.offgridflow.com/runbooks/certificate-expiry"
