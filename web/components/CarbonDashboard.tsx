@@ -5,13 +5,13 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useCarbonStore } from '@/stores/carbonStore';
 import { useCompliance } from '@/hooks/useCompliance';
-import { RealTimeDataProvider, useRealTimeData } from '@/providers/RealTimeDataProvider';
+import RealTimeProvider, { useRealTime } from '@/providers/RealTimeDataProvider';
 import { LoadingSkeleton, DashboardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { CarbonMetrics } from '@/components/metrics/CarbonMetrics';
 import { ComplianceCalendar } from '@/components/compliance/ComplianceCalendar';
 import { CarbonApi, downloadFile, formatNumber } from '@/lib/api/carbon';
-import { EmissionData, DataSource, Timeframe } from '@/types/carbon';
-import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
+import { EmissionData, DataSource, Timeframe, ReductionTarget } from '@/types/carbon';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Dynamic imports for code splitting
 const DataGlobe = dynamic(() => import('@/components/visualizations/DataGlobe'), {
@@ -279,12 +279,32 @@ const CarbonIntensityCard = memo(function CarbonIntensityCard({
 });
 
 // Reduction Targets Component
-const ReductionTargets = memo(function ReductionTargets() {
-  const targets = [
+const ReductionTargets = memo(function ReductionTargets({ targets }: { targets?: ReductionTarget[] }) {
+  const defaultTargets = [
     { year: 2025, target: 15, current: 12.3, color: 'green' },
     { year: 2030, target: 50, current: 12.3, color: 'blue' },
     { year: 2050, target: 100, current: 12.3, color: 'purple' },
-  ];
+  ] as const;
+
+  const statusColorMap: Record<ReductionTarget['status'], 'green' | 'blue' | 'orange' | 'red' | 'purple'> = {
+    achieved: 'green',
+    on_track: 'blue',
+    at_risk: 'orange',
+    behind: 'red',
+  };
+
+  const displayTargets = targets && targets.length > 0
+    ? targets.map((target) => {
+        const parsed = Date.parse(target.deadline);
+        const year = Number.isNaN(parsed) ? target.deadline : new Date(parsed).getFullYear();
+        return {
+          year,
+          target: target.targetValue,
+          current: target.currentValue,
+          color: statusColorMap[target.status] ?? 'purple',
+        };
+      })
+    : defaultTargets;
 
   return (
     <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6">
@@ -293,7 +313,7 @@ const ReductionTargets = memo(function ReductionTargets() {
       </h3>
       
       <div className="space-y-4">
-        {targets.map((target) => (
+        {displayTargets.map((target) => (
           <div key={target.year}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-white font-medium">{target.year}</span>
@@ -318,40 +338,6 @@ const ReductionTargets = memo(function ReductionTargets() {
   );
 });
 
-// Error Boundary Component
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback?: React.ReactNode },
-  { hasError: boolean; error?: Error }
-> {
-  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback || (
-        <div className="bg-red-900/20 border border-red-700/50 rounded-xl p-6 text-center">
-          <p className="text-red-400 font-medium">Something went wrong</p>
-          <p className="text-sm text-red-300/70 mt-1">{this.state.error?.message}</p>
-          <button
-            onClick={() => this.setState({ hasError: false })}
-            className="mt-3 px-4 py-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
 // ============================================================================
 // Main Dashboard Content
 // ============================================================================
@@ -370,6 +356,7 @@ const DashboardContent = memo(function DashboardContent({
     emissions, 
     complianceStatus, 
     metrics,
+    reductionTargets,
     dataSources,
     fetchEmissions,
     updateMetrics 
@@ -377,6 +364,7 @@ const DashboardContent = memo(function DashboardContent({
     emissions: state.emissions,
     complianceStatus: state.complianceStatus,
     metrics: state.metrics,
+    reductionTargets: state.reductionTargets,
     dataSources: state.dataSources,
     fetchEmissions: state.fetchEmissions,
     updateMetrics: state.updateMetrics
@@ -384,7 +372,7 @@ const DashboardContent = memo(function DashboardContent({
 
   // Custom hooks for business logic
   const { deadlines, checkCompliance } = useCompliance(tenantId);
-  const { subscribe, unsubscribe, isConnected } = useRealTimeData();
+  const { subscribe, isConnected } = useRealTime();
   
   // State for modals
   const [selectedDataSource, setSelectedDataSource] = useState<DataSource | null>(null);
@@ -417,19 +405,17 @@ const DashboardContent = memo(function DashboardContent({
 
   // Subscribe to real-time updates
   useEffect(() => {
-    const handleUpdate = (update: unknown) => {
+    const handleUpdate = (update: Partial<EmissionData>) => {
       updateMetrics(update as Partial<typeof metrics>);
       if (emissions && onDataChange) {
         onDataChange(emissions);
       }
     };
 
-    subscribe('emissions', handleUpdate);
-    
-    return () => {
-      unsubscribe('emissions', handleUpdate);
-    };
-  }, [subscribe, unsubscribe, updateMetrics, emissions, onDataChange]);
+    const unsubscribe = subscribe(tenantId, handleUpdate);
+
+    return unsubscribe;
+  }, [subscribe, tenantId, updateMetrics, emissions, onDataChange]);
 
   // Event handlers with useCallback
   const handleMetricClick = useCallback((metricId: string, value?: number) => {
@@ -473,10 +459,6 @@ const DashboardContent = memo(function DashboardContent({
   const handleNodeClick = useCallback((node: DataSource) => {
     setSelectedDataSource(node);
   }, []);
-
-  const handleDeadlineClick = useCallback((deadline: unknown) => {
-    router.push(`/dashboard/compliance/${(deadline as any).id}`);
-  }, [router]);
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -522,12 +504,14 @@ const DashboardContent = memo(function DashboardContent({
           {/* Left Column - Metrics */}
           <div className="metrics-section lg:col-span-3 space-y-6">
             <CarbonMetrics 
+              metrics={metrics}
+              reductionTargets={reductionTargets}
               onMetricClick={handleMetricClick}
             />
             
             <ComplianceCalendar 
               deadlines={deadlines}
-              onDeadlineClick={handleDeadlineClick}
+              complianceStatus={complianceStatus}
             />
           </div>
           
@@ -639,13 +623,15 @@ export const CarbonDashboard: React.FC<CarbonDashboardProps> = memo(({
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8090/ws';
 
   return (
-    <RealTimeDataProvider url={wsUrl}>
-      <DashboardContent 
-        tenantId={tenantId}
-        timeframe={timeframe}
-        onDataChange={onDataChange}
-      />
-    </RealTimeDataProvider>
+    <RealTimeProvider tenantId={tenantId} baseUrl={wsUrl}>
+      <ErrorBoundary componentName="CarbonDashboard">
+        <DashboardContent 
+          tenantId={tenantId}
+          timeframe={timeframe}
+          onDataChange={onDataChange}
+        />
+      </ErrorBoundary>
+    </RealTimeProvider>
   );
 });
 

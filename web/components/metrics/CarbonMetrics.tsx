@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
-import { CarbonMetrics as CarbonMetricsType } from '@/stores/carbonStore';
+import { CarbonMetrics as CarbonMetricsType, ReductionTarget } from '@/stores/carbonStore';
 
 interface MetricCardProps {
   id: string;
@@ -93,11 +93,13 @@ const MetricCard = memo(function MetricCard({
 
 interface CarbonMetricsProps {
   metrics: CarbonMetricsType;
+  reductionTargets?: ReductionTarget[];
   onMetricClick?: (metricId: string, value: number) => void;
 }
 
 export const CarbonMetrics = memo(function CarbonMetrics({
   metrics,
+  reductionTargets = [],
   onMetricClick,
 }: CarbonMetricsProps) {
   return (
@@ -131,7 +133,7 @@ export const CarbonMetrics = memo(function CarbonMetrics({
         <MetricCard
           id="employees"
           label="Employees"
-          value={metrics.employees}
+          value={metrics.employees ?? 0}
           color="purple"
           icon={<EmployeesIcon />}
           onClick={onMetricClick}
@@ -140,7 +142,7 @@ export const CarbonMetrics = memo(function CarbonMetrics({
         <MetricCard
           id="facilities"
           label="Facilities"
-          value={metrics.facilities}
+          value={metrics.facilities ?? 0}
           color="orange"
           icon={<FacilitiesIcon />}
           onClick={onMetricClick}
@@ -148,13 +150,13 @@ export const CarbonMetrics = memo(function CarbonMetrics({
       </div>
 
       {/* Reduction Targets */}
-      {metrics.reductionTargets.length > 0 && (
+      {reductionTargets.length > 0 && (
         <div className="mt-6">
           <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
             Reduction Targets
           </h4>
           <div className="space-y-3">
-            {metrics.reductionTargets.map((target) => (
+            {reductionTargets.map((target) => (
               <TargetCard key={target.id} target={target} />
             ))}
           </div>
@@ -165,7 +167,7 @@ export const CarbonMetrics = memo(function CarbonMetrics({
 });
 
 interface TargetCardProps {
-  target: CarbonMetricsType['reductionTargets'][0];
+  target: ReductionTarget;
 }
 
 function TargetCard({ target }: TargetCardProps) {
@@ -177,6 +179,7 @@ function TargetCard({ target }: TargetCardProps) {
     on_track: 'bg-green-500',
     at_risk: 'bg-yellow-500',
     behind: 'bg-red-500',
+    achieved: 'bg-green-500',
   };
 
   return (

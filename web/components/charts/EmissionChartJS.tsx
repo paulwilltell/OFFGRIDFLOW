@@ -203,11 +203,12 @@ export const EmissionChartJS: React.FC<EmissionChartProps> = memo(({
               if (label) {
                 label += ': ';
               }
-              label += formatNumber(context.parsed.y) + ' tCO₂e';
+              const yValue = context.parsed.y ?? 0;
+              label += formatNumber(yValue) + ' tCO₂e';
               return label;
             },
             footer: (tooltipItems) => {
-              const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0);
+              const total = tooltipItems.reduce((sum, item) => sum + (item.parsed.y ?? 0), 0);
               return `Total: ${formatNumber(total)} tCO₂e`;
             }
           }

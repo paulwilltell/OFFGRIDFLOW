@@ -14,7 +14,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  TooltipProps,
+  TooltipContentProps,
 } from 'recharts';
 import { Box, Button, ButtonGroup, useColorMode } from '@chakra-ui/react';
 import html2canvas from 'html2canvas';
@@ -38,6 +38,7 @@ interface ScopeBreakdownData {
 }
 
 interface EmissionSourceData {
+  [key: string]: string | number;
   source: string;
   value: number;
   color: string;
@@ -239,7 +240,7 @@ export function EmissionSourcesPieChart({ data }: { data: EmissionSourceData[] }
     }
   };
 
-  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+  const CustomTooltip = ({ active, payload }: TooltipContentProps<number, string>) => {
     if (active && payload && payload.length) {
       return (
         <Box
@@ -273,7 +274,7 @@ export function EmissionSourcesPieChart({ data }: { data: EmissionSourceData[] }
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+            label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1)}%`}
             outerRadius={120}
             fill="#8884d8"
             dataKey="value"
@@ -282,7 +283,7 @@ export function EmissionSourcesPieChart({ data }: { data: EmissionSourceData[] }
               <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={CustomTooltip} />
         </PieChart>
       </ResponsiveContainer>
     </Box>

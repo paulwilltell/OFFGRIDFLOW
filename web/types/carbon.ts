@@ -12,7 +12,9 @@ export interface EmissionData {
   intensity: number;
   timeframe: Timeframe;
   dataSources: DataSource[];
-  updatedAt: Date;
+  updatedAt: Date | string;
+  trend?: 'up' | 'down';
+  percentageChange?: number;
   methodology: Methodology;
   uncertainty: number;
   region: Region;
@@ -21,6 +23,7 @@ export interface EmissionData {
 export interface CarbonMetrics {
   totalEmissions: number;
   carbonIntensity: number;
+  benchmarkComparison: number;
   reductionTarget: number;
   progress: number;
   revenue: number;

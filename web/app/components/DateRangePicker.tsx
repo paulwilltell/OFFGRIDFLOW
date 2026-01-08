@@ -51,7 +51,7 @@ export function DateRangePicker({
             selectsEnd
             startDate={startDate}
             endDate={endDate}
-            minDate={startDate}
+            minDate={startDate ?? undefined}
             placeholderText="End Date"
             dateFormat="MMM d, yyyy"
             className="custom-datepicker"

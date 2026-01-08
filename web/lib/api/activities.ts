@@ -63,7 +63,7 @@ export interface RequestOptions {
   signal?: AbortSignal;
   timeout?: number;
   retry?: boolean;
-  cache?: boolean;
+  cache?: RequestCache;
 }
 
 export interface GetActivitiesOptions extends RequestOptions {

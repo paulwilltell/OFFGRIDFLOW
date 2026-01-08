@@ -27,25 +27,25 @@ export const toast = {
   success: (message: string, options?: ToastOptions) => {
     toastify.success(message, {
       ...options,
-      icon: '✅',
+      icon: () => '✅',
     });
   },
   error: (message: string, options?: ToastOptions) => {
     toastify.error(message, {
       ...options,
-      icon: '❌',
+      icon: () => '❌',
     });
   },
   warning: (message: string, options?: ToastOptions) => {
     toastify.warning(message, {
       ...options,
-      icon: '⚠️',
+      icon: () => '⚠️',
     });
   },
   info: (message: string, options?: ToastOptions) => {
     toastify.info(message, {
       ...options,
-      icon: 'ℹ️',
+      icon: () => 'ℹ️',
     });
   },
   promise: async <T,>(

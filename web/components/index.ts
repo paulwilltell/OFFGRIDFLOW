@@ -15,8 +15,6 @@ export {
 export type {
   DataSource,
   EmissionData,
-  FlatEmissions,
-  DashboardMetrics,
   ReductionTarget,
   ComplianceStatus,
 } from '@/stores/carbonStore';
@@ -26,7 +24,7 @@ export { useCompliance } from '@/hooks/useCompliance';
 export type { ComplianceDeadline, ComplianceCheckResult } from '@/hooks/useCompliance';
 
 // Providers
-export { RealTimeDataProvider, useRealTimeData } from '@/providers/RealTimeDataProvider';
+export { RealTimeDataProvider, RealTimeProvider, useRealTime } from '@/providers/RealTimeDataProvider';
 
 // UI Components
 export { LoadingSkeleton, DashboardSkeleton } from './ui/LoadingSkeleton';

@@ -46,6 +46,9 @@
     "jest.config.js",
     "jest.setup.ts",
     "tailwind.config.js",
-    "postcss.config.js"
+    "e2e/**/*",
+    "postcss.config.js",
+    "lib/testutils/**/*",
+    "playwright.config.ts"
   ]
 }

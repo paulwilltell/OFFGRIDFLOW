@@ -183,15 +183,16 @@ interface RealTimeProviderProps {
   children?: React.ReactNode;
   tenantId: string;
   onUpdate?: UpdateCallback;
+  baseUrl?: string;
 }
 
-export function RealTimeProvider({ children, tenantId, onUpdate }: RealTimeProviderProps) {
+export function RealTimeProvider({ children, tenantId, onUpdate, baseUrl }: RealTimeProviderProps) {
   const callbackRef = useRef(onUpdate);
   callbackRef.current = onUpdate;
 
   useEffect(() => {
     // Connect on mount
-    RealTimeDataProvider.connect();
+    RealTimeDataProvider.connect(baseUrl);
 
     // Subscribe to updates
     const unsubscribe = RealTimeDataProvider.subscribe(tenantId, (data) => {
@@ -201,7 +202,7 @@ export function RealTimeProvider({ children, tenantId, onUpdate }: RealTimeProvi
     return () => {
       unsubscribe();
     };
-  }, [tenantId]);
+  }, [tenantId, baseUrl]);
 
   const contextValue: RealTimeContextValue = {
     subscribe: RealTimeDataProvider.subscribe,

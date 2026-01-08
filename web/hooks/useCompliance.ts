@@ -4,7 +4,7 @@ import { useCarbonStore, ComplianceStatus } from '@/stores/carbonStore';
 
 export interface ComplianceDeadline {
   id: string;
-  framework: 'csrd' | 'sec' | 'cbam' | 'california';
+  framework: 'csrd' | 'sec' | 'cbam' | 'sb253' | 'ifrs';
   title: string;
   description: string;
   dueDate: string;
@@ -36,6 +36,14 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
   const [checkResults, setCheckResults] = useState<Map<string, ComplianceCheckResult>>(new Map());
 
   const { setComplianceStatus } = useCarbonStore();
+
+  const statusScoreMap: Record<ComplianceStatus[keyof ComplianceStatus], number> = {
+    complete: 100,
+    in_progress: 60,
+    pending: 30,
+    at_risk: 40,
+    overdue: 10,
+  };
 
   // Calculate deadline status based on date
   const calculateStatus = (dueDate: string): ComplianceDeadline['status'] => {
@@ -112,7 +120,7 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
         },
         {
           id: '4',
-          framework: 'california',
+          framework: 'sb253',
           title: 'California SB 253 Report',
           description: 'California Climate Corporate Data Accountability Act',
           dueDate: '2025-12-31',
@@ -149,25 +157,23 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
       
       // Store individual check results
       const results = new Map<string, ComplianceCheckResult>();
-      Object.entries(response).forEach(([key, value]) => {
-        if (key !== 'overall' && typeof value === 'object') {
-          results.set(key, {
-            framework: key,
-            score: value.score,
-            gaps: [],
-            recommendations: [],
-          });
-        }
+      (Object.entries(response) as Array<[keyof ComplianceStatus, ComplianceStatus[keyof ComplianceStatus]]>).forEach(([key, value]) => {
+        results.set(key, {
+          framework: key,
+          score: statusScoreMap[value],
+          gaps: [],
+          recommendations: [],
+        });
       });
       setCheckResults(results);
     } catch (err) {
       // Mock compliance status
       const mockStatus: ComplianceStatus = {
-        csrd: { status: 'partial', score: 72 },
-        sec: { status: 'partial', score: 65 },
-        cbam: { status: 'compliant', score: 88 },
-        california: { status: 'non_compliant', score: 45 },
-        overall: 67.5,
+        csrd: 'in_progress',
+        sec: 'in_progress',
+        cbam: 'complete',
+        sb253: 'at_risk',
+        ifrs: 'pending',
       };
       
       setComplianceStatus(mockStatus);
@@ -175,27 +181,33 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
       const results = new Map<string, ComplianceCheckResult>();
       results.set('csrd', {
         framework: 'csrd',
-        score: 72,
+        score: statusScoreMap[mockStatus.csrd],
         gaps: ['Missing biodiversity assessment', 'Incomplete Scope 3 data'],
         recommendations: ['Complete double materiality assessment', 'Engage supply chain partners'],
       });
       results.set('sec', {
         framework: 'sec',
-        score: 65,
+        score: statusScoreMap[mockStatus.sec],
         gaps: ['Climate risk governance documentation incomplete'],
         recommendations: ['Document board oversight of climate risks'],
       });
       results.set('cbam', {
         framework: 'cbam',
-        score: 88,
+        score: statusScoreMap[mockStatus.cbam],
         gaps: [],
         recommendations: ['Maintain current reporting quality'],
       });
-      results.set('california', {
-        framework: 'california',
-        score: 45,
+      results.set('sb253', {
+        framework: 'sb253',
+        score: statusScoreMap[mockStatus.sb253],
         gaps: ['Missing third-party verification', 'Incomplete Scope 3 inventory'],
         recommendations: ['Engage verification provider', 'Expand supply chain data collection'],
+      });
+      results.set('ifrs', {
+        framework: 'ifrs',
+        score: statusScoreMap[mockStatus.ifrs],
+        gaps: ['Draft disclosure statements incomplete'],
+        recommendations: ['Align disclosures with IFRS S2 requirements'],
       });
       setCheckResults(results);
     } finally {
@@ -232,7 +244,18 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
 // Additional utility hooks
 export function useComplianceScore(tenantId: string) {
   const complianceStatus = useCarbonStore((state) => state.complianceStatus);
-  return complianceStatus?.overall ?? 0;
+  if (!complianceStatus) return 0;
+  const scoreMap: Record<ComplianceStatus[keyof ComplianceStatus], number> = {
+    complete: 100,
+    in_progress: 60,
+    pending: 30,
+    at_risk: 40,
+    overdue: 10,
+  };
+  const statuses = Object.values(complianceStatus) as Array<ComplianceStatus[keyof ComplianceStatus]>;
+  if (statuses.length === 0) return 0;
+  const total = statuses.reduce((sum, status) => sum + scoreMap[status], 0);
+  return Math.round(total / statuses.length);
 }
 
 export function useUpcomingDeadlines(tenantId: string, days: number = 30) {

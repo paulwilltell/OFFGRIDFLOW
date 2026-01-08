@@ -6,11 +6,22 @@
   ],
   "scripts": {
     "lint": "echo \"TODO: add linting\"",
-    "dev": "cd web && next dev"
+    "dev": "cd web && next dev",
+    "build": "npm run build --workspace web",
+    "start": "npm run start --workspace web"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "overrides": {
+    "glob": "10.5.0",
+    "@next/eslint-plugin-next": {
+      "glob": "10.5.0"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "eslint": "^8.57.1",
+    "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^16.5.0",
     "typescript-eslint": "^8.48.1"

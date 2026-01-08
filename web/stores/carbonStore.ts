@@ -85,6 +85,7 @@ const initialComplianceStatus: ComplianceStatus = {
 const initialMetrics: CarbonMetrics = {
   totalEmissions: 0,
   carbonIntensity: 0,
+  benchmarkComparison: 0,
   reductionTarget: 0,
   progress: 0,
   revenue: 0,
@@ -262,6 +263,7 @@ function generateMockMetrics(): CarbonMetrics {
   return {
     totalEmissions: 12450.5,
     carbonIntensity: 249.01,
+    benchmarkComparison: -7.5,
     reductionTarget: 10000,
     progress: 19.7,
     revenue: 50000000,

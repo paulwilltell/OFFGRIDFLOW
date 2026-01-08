@@ -50,6 +50,21 @@ export const ComplianceCalendar = memo(function ComplianceCalendar({
     return map;
   }, [deadlines]);
 
+  const overallScore = useMemo(() => {
+    if (!complianceStatus) return null;
+    const scoreMap: Record<ComplianceStatus[keyof ComplianceStatus], number> = {
+      complete: 100,
+      in_progress: 60,
+      pending: 30,
+      at_risk: 40,
+      overdue: 10,
+    };
+    const statuses = Object.values(complianceStatus) as Array<ComplianceStatus[keyof ComplianceStatus]>;
+    if (statuses.length === 0) return null;
+    const total = statuses.reduce((sum, status) => sum + scoreMap[status], 0);
+    return Math.round(total / statuses.length);
+  }, [complianceStatus]);
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate((prev) => {
       const newDate = new Date(prev);
@@ -89,15 +104,15 @@ export const ComplianceCalendar = memo(function ComplianceCalendar({
           <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
             Compliance Calendar
           </h3>
-          {complianceStatus && (
+          {overallScore !== null && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500">Overall Score</span>
               <span className={`text-sm font-bold ${
-                complianceStatus.overall >= 80 ? 'text-green-400' :
-                complianceStatus.overall >= 60 ? 'text-yellow-400' :
+                overallScore >= 80 ? 'text-green-400' :
+                overallScore >= 60 ? 'text-yellow-400' :
                 'text-red-400'
               }`}>
-                {complianceStatus.overall}%
+                {overallScore}%
               </span>
             </div>
           )}

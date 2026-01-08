@@ -135,8 +135,8 @@ export default function DataSourcesPage() {
         {schedule ? (
           <>
             <div>Interval: {schedule.interval || 'Manual only'}</div>
-            <div>Last run: {formatScheduleTime(schedule.lastRunAt)}</div>
-            <div>Next run: {formatScheduleTime(schedule.nextRunAt)}</div>
+            <div>Last run: {formatScheduleTime(schedule.last_run_at)}</div>
+            <div>Next run: {formatScheduleTime(schedule.next_run_at)}</div>
           </>
         ) : (
           <div className={styles.muted}>Scheduler not configured. Trigger ingestion manually below.</div>

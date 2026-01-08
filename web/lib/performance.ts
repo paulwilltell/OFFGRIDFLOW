@@ -4,7 +4,7 @@
  * debouncing, and performance monitoring.
  */
 
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import type { ComponentType } from 'react';
 
@@ -41,10 +41,10 @@ export function lazyLoad<P extends object>(
   importFn: () => Promise<{ default: ComponentType<P> }>,
   options: LazyLoadOptions = {}
 ): ComponentType<P> {
-  const { loading, ssr = true, delay = 200 } = options;
+  const { loading: Loading, ssr = true, delay = 200 } = options;
 
   return dynamic(importFn, {
-    loading: loading
+    loading: Loading
       ? () => {
           const [showLoading, setShowLoading] = useState(false);
           
@@ -53,7 +53,7 @@ export function lazyLoad<P extends object>(
             return () => clearTimeout(timer);
           }, []);
 
-          return showLoading ? <loading /> : null;
+          return showLoading ? createElement(Loading) : null;
         }
       : undefined,
     ssr,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo, useMemo, useState } from 'react';
-import { EmissionData, EmissionScope } from '@/stores/carbonStore';
+import { EmissionData } from '@/stores/carbonStore';
 
 interface EmissionChartProps {
   data: EmissionData | null;
@@ -37,9 +37,9 @@ export const EmissionChart = memo(function EmissionChart({
       const total = Math.max(0, baseValue + variation);
       
       // Distribute across scopes (approximate ratios)
-      const scope1Ratio = data.scopes.scope1 / data.total;
-      const scope2Ratio = data.scopes.scope2 / data.total;
-      const scope3Ratio = data.scopes.scope3 / data.total;
+      const scope1Ratio = data.total > 0 ? data.scope1 / data.total : 0;
+      const scope2Ratio = data.total > 0 ? data.scope2 / data.total : 0;
+      const scope3Ratio = data.total > 0 ? data.scope3 / data.total : 0;
 
       return {
         label,
@@ -65,6 +65,9 @@ export const EmissionChart = memo(function EmissionChart({
     );
   }
 
+  const trendDirection = data.trend ?? 'down';
+  const percentageChange = data.percentageChange ?? 0;
+
   return (
     <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
       {/* Header */}
@@ -74,8 +77,8 @@ export const EmissionChart = memo(function EmissionChart({
             <h3 className="text-lg font-semibold text-white">Emissions Overview</h3>
             <p className="text-sm text-gray-400">
               Total: {data.total.toLocaleString()} tCO₂e
-              <span className={`ml-2 ${data.trend === 'down' ? 'text-green-400' : 'text-red-400'}`}>
-                {data.trend === 'down' ? '↓' : '↑'} {Math.abs(data.percentageChange).toFixed(1)}%
+              <span className={`ml-2 ${trendDirection === 'down' ? 'text-green-400' : 'text-red-400'}`}>
+                {trendDirection === 'down' ? '↓' : '↑'} {Math.abs(percentageChange).toFixed(1)}%
               </span>
             </p>
           </div>
@@ -110,7 +113,10 @@ export const EmissionChart = memo(function EmissionChart({
           />
         )}
         {view === 'breakdown' && (
-          <BreakdownChart scopes={data.scopes} total={data.total} />
+          <BreakdownChart
+            scopes={{ scope1: data.scope1, scope2: data.scope2, scope3: data.scope3 }}
+            total={data.total}
+          />
         )}
         {view === 'comparison' && (
           <ComparisonChart data={chartData} maxValue={maxValue} />
@@ -235,7 +241,7 @@ function TrendChart({ data, maxValue, hoveredBar, setHoveredBar }: TrendChartPro
 }
 
 interface BreakdownChartProps {
-  scopes: EmissionScope;
+  scopes: Pick<EmissionData, 'scope1' | 'scope2' | 'scope3'>;
   total: number;
 }
 
