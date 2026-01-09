@@ -12,9 +12,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// HealthHandler provides comprehensive health check endpoints for Kubernetes
+// DetailedHealthHandler provides comprehensive health check endpoints for Kubernetes
 // Implements both liveness and readiness probes
-type HealthHandler struct {
+type DetailedHealthHandler struct {
 	db          *sql.DB
 	redis       *redis.Client
 	version     string
@@ -23,9 +23,9 @@ type HealthHandler struct {
 	degradedMsg string
 }
 
-// NewHealthHandler creates a new health check handler
-func NewHealthHandler(db *sql.DB, redis *redis.Client, version string) *HealthHandler {
-	return &HealthHandler{
+// NewDetailedHealthHandler creates a new health check handler
+func NewDetailedHealthHandler(db *sql.DB, redis *redis.Client, version string) *DetailedHealthHandler {
+	return &DetailedHealthHandler{
 		db:        db,
 		redis:     redis,
 		version:   version,
@@ -63,14 +63,14 @@ type SystemInfo struct {
 }
 
 // MarkDegraded marks the service as degraded with a reason
-func (h *HealthHandler) MarkDegraded(message string) {
+func (h *DetailedHealthHandler) MarkDegraded(message string) {
 	h.degradedMu.Lock()
 	defer h.degradedMu.Unlock()
 	h.degradedMsg = message
 }
 
 // ClearDegraded clears the degraded status
-func (h *HealthHandler) ClearDegraded() {
+func (h *DetailedHealthHandler) ClearDegraded() {
 	h.degradedMu.Lock()
 	defer h.degradedMu.Unlock()
 	h.degradedMsg = ""
@@ -79,7 +79,7 @@ func (h *HealthHandler) ClearDegraded() {
 // LivenessProbe checks if the application is alive
 // Returns 200 if the app is running, 503 if it should be restarted
 // This is a lightweight check - just confirms the process is responsive
-func (h *HealthHandler) LivenessProbe(w http.ResponseWriter, r *http.Request) {
+func (h *DetailedHealthHandler) LivenessProbe(w http.ResponseWriter, r *http.Request) {
 	// Liveness check is simple - if we can respond, we're alive
 	response := HealthResponse{
 		Status:    "healthy",
@@ -96,7 +96,7 @@ func (h *HealthHandler) LivenessProbe(w http.ResponseWriter, r *http.Request) {
 // ReadinessProbe checks if the application is ready to serve traffic
 // Returns 200 if ready, 503 if not ready (dependencies unavailable)
 // Kubernetes will not route traffic to pods that fail readiness checks
-func (h *HealthHandler) ReadinessProbe(w http.ResponseWriter, r *http.Request) {
+func (h *DetailedHealthHandler) ReadinessProbe(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
@@ -148,7 +148,7 @@ func (h *HealthHandler) ReadinessProbe(w http.ResponseWriter, r *http.Request) {
 
 // HealthCheck provides detailed health information (for monitoring/debugging)
 // This is not used by Kubernetes but useful for ops teams
-func (h *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
+func (h *DetailedHealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
@@ -205,7 +205,7 @@ func (h *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 // checkDatabase verifies database connectivity and performance
-func (h *HealthHandler) checkDatabase(ctx context.Context) CheckResult {
+func (h *DetailedHealthHandler) checkDatabase(ctx context.Context) CheckResult {
 	if h.db == nil {
 		return CheckResult{
 			Status:      "fail",
@@ -263,7 +263,7 @@ func (h *HealthHandler) checkDatabase(ctx context.Context) CheckResult {
 }
 
 // checkRedis verifies Redis connectivity
-func (h *HealthHandler) checkRedis(ctx context.Context) CheckResult {
+func (h *DetailedHealthHandler) checkRedis(ctx context.Context) CheckResult {
 	if h.redis == nil {
 		return CheckResult{
 			Status:      "warn",
@@ -318,7 +318,7 @@ func (h *HealthHandler) checkRedis(ctx context.Context) CheckResult {
 }
 
 // getSystemInfo collects system-level metrics
-func (h *HealthHandler) getSystemInfo() SystemInfo {
+func (h *DetailedHealthHandler) getSystemInfo() SystemInfo {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
@@ -332,7 +332,7 @@ func (h *HealthHandler) getSystemInfo() SystemInfo {
 }
 
 // RegisterRoutes registers all health check routes
-func (h *HealthHandler) RegisterRoutes(mux *http.ServeMux) {
+func (h *DetailedHealthHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health/live", h.LivenessProbe)
 	mux.HandleFunc("/health/ready", h.ReadinessProbe)
 	mux.HandleFunc("/health", h.HealthCheck)
