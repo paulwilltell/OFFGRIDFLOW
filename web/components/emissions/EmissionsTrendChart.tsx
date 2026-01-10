@@ -116,7 +116,7 @@ export default function EmissionsTrendChart({ period = 'year', height = 400 }: E
               color: '#fff'
             }}
             labelFormatter={(value) => new Date(value).toLocaleDateString()}
-            formatter={(value: number) => [`${value.toFixed(2)} tCO2e`, '']}
+            formatter={(value) => [`${(value as number)?.toFixed(2) ?? '0.00'} tCO2e`, '']}
           />
           <Legend 
             wrapperStyle={{ fontSize: '0.9rem' }}
