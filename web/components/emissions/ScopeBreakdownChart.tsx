@@ -132,13 +132,14 @@ export default function ScopeBreakdownChart({ height = 400, startDate, endDate }
               borderRadius: '8px',
               color: '#fff'
             }}
-            formatter={(value: number, name: string, props: any) => {
-              const percentage = props.payload.percentage;
+            formatter={(value, name, props) => {
+              const numValue = (value as number) ?? 0;
+              const percentage = props.payload?.percentage ?? 0;
               return [
                 <>
-                  <div>{value.toFixed(2)} tCO2e</div>
+                  <div>{numValue.toFixed(2)} tCO2e</div>
                   <div style={{ fontSize: '0.85rem', color: '#888' }}>{percentage.toFixed(1)}% of total</div>
-                  <div style={{ fontSize: '0.85rem', color: '#888' }}>{props.payload.activities} activities</div>
+                  <div style={{ fontSize: '0.85rem', color: '#888' }}>{props.payload?.activities ?? 0} activities</div>
                 </>,
                 ''
               ];
