@@ -224,10 +224,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
+const defaultSessionValue: SessionContextValue = {
+  user: null,
+  currentTenantId: null,
+  tenants: [],
+  accessToken: null,
+  refreshToken: null,
+  loading: true,
+  isAuthenticated: false,
+  login: async () => { throw new Error('No SessionProvider'); },
+  logout: async () => {},
+  switchTenant: async () => {},
+  refreshSession: async () => {},
+};
+
 export function useSession(): SessionContextValue {
   const ctx = useContext(SessionContext);
   if (!ctx) {
-    throw new Error('useSession must be used within a SessionProvider');
+    // Return default during SSR/prerender instead of throwing
+    return defaultSessionValue;
   }
   return ctx;
 }
