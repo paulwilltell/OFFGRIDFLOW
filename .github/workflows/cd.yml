@@ -38,7 +38,7 @@ jobs:
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG_DEV }}
       - name: Canary rollout
-        uses: azure/k8s-deploy@v4
+        uses: azure/k8s-deploy@v5
         with:
           namespace: offgridflow-dev
           manifests: |
@@ -69,7 +69,7 @@ jobs:
         env:
           KUBECONFIG: ${{ secrets.KUBECONFIG_STAGING }}
       - name: Blue-green deployment
-        uses: azure/k8s-deploy@v4
+        uses: azure/k8s-deploy@v5
         with:
           namespace: offgridflow-staging
           manifests: |
