@@ -1,28 +1,33 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-role_raw="${OFFGRIDFLOW_SERVICE_ROLE:-${RAILWAY_SERVICE_NAME:-${SERVICE_NAME:-}}}"
-role="$(echo "${role_raw}" | tr '[:upper:]' '[:lower:]')"
+role_raw=${OFFGRIDFLOW_SERVICE_ROLE:-${RAILWAY_SERVICE_NAME:-${SERVICE_NAME:-}}}
+role=$(printf '%s' "$role_raw" | tr '[:upper:]' '[:lower:]')
 
-if [[ -z "${role}" ]]; then
+if [ -z "$role" ]; then
   echo "OFFGRIDFLOW_SERVICE_ROLE not set. Set to 'web' or 'api' in Railway."
   exit 1
 fi
 
-if [[ "${role}" == *"web"* || "${role}" == *"frontend"* ]]; then
-  echo "Railway start: web service"
-  cd web
-  exec npm start
-fi
-
-if [[ "${role}" == *"api"* || "${role}" == *"backend"* ]]; then
-  echo "Railway start: api service"
-  if [[ ! -x bin/offgridflow-api ]]; then
-    echo "Missing bin/offgridflow-api. Ensure the build step completed."
+case "$role" in
+  *web*|*frontend*)
+    echo "Railway start: web service"
+    cd web
+    exec npm start
+    ;;
+  *api*|*backend*)
+    echo "Railway start: api service"
+    if [ -x ./bin/offgridflow-api ]; then
+      exec ./bin/offgridflow-api
+    fi
+    if [ -x /app/offgridflow-api ]; then
+      exec /app/offgridflow-api
+    fi
+    echo "Missing offgridflow-api binary. Ensure the build step completed."
     exit 1
-  fi
-  exec ./bin/offgridflow-api
-fi
-
-echo "Unknown OFFGRIDFLOW_SERVICE_ROLE: ${role_raw}. Use 'web' or 'api'."
-exit 1
+    ;;
+  *)
+    echo "Unknown OFFGRIDFLOW_SERVICE_ROLE: ${role_raw}. Use 'web' or 'api'."
+    exit 1
+    ;;
+esac

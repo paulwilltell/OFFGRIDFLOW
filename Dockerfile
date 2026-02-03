@@ -48,6 +48,7 @@ WORKDIR /app
 # Copy binaries from builder
 COPY --from=builder /build/offgridflow-api /app/offgridflow-api
 COPY --from=builder /build/offgridflow-worker /app/offgridflow-worker
+COPY --from=builder /build/railway-start.sh /app/railway-start.sh
 
 # Copy migrations and configs
 COPY --from=builder /build/infra/db /app/infra/db
