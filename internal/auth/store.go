@@ -207,19 +207,35 @@ func (s *PostgresStore) CreateUser(ctx context.Context, user *User) error {
 		return err
 	}
 
+	rolesCSV := strings.Join(user.Roles, ",")
+	var roleParam any
+	if strings.TrimSpace(user.Role) != "" {
+		roleParam = user.Role
+	}
+	var rolesParam any
+	if strings.TrimSpace(rolesCSV) != "" {
+		rolesParam = rolesCSV
+	}
+
 	query := `
-INSERT INTO users (id, tenant_id, email, name, password_hash, role, roles, is_active, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'viewer'), COALESCE($7, 'viewer'), $8, $9, $10)
+INSERT INTO users (id, tenant_id, email, name, first_name, last_name, job_title, password_hash, role, roles, is_active, email_verified, email_verification_token, email_verification_sent_at, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, 'viewer'), COALESCE($10, 'viewer'), $11, $12, $13, $14, $15, $16)
 `
 	_, err := s.db.ExecContext(ctx, query,
 		user.ID,
 		user.TenantID,
 		user.Email,
 		user.Name,
+		user.FirstName,
+		user.LastName,
+		user.JobTitle,
 		user.PasswordHash,
-		user.Role,
-		user.Roles,
+		roleParam,
+		rolesParam,
 		user.IsActive,
+		user.EmailVerified,
+		user.EmailVerificationToken,
+		user.EmailVerificationSentAt,
 		user.CreatedAt,
 		user.UpdatedAt,
 	)
@@ -232,7 +248,7 @@ VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'viewer'), COALESCE($7, 'viewer'), $8, 
 // GetUser retrieves a user by ID.
 func (s *PostgresStore) GetUser(ctx context.Context, id string) (*User, error) {
 	query := `
-SELECT id, tenant_id, email, name, password_hash, role, roles, is_active, last_login_at, created_at, updated_at
+SELECT id, tenant_id, email, name, first_name, last_name, job_title, password_hash, role, roles, is_active, email_verified, email_verification_token, email_verification_sent_at, last_login_at, created_at, updated_at
 FROM users WHERE id = $1
 `
 	return s.scanUser(s.db.QueryRowContext(ctx, query, id))
@@ -241,7 +257,7 @@ FROM users WHERE id = $1
 // GetUserByEmail retrieves a user by email.
 func (s *PostgresStore) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	query := `
-SELECT id, tenant_id, email, name, password_hash, role, roles, is_active, last_login_at, created_at, updated_at
+SELECT id, tenant_id, email, name, first_name, last_name, job_title, password_hash, role, roles, is_active, email_verified, email_verification_token, email_verification_sent_at, last_login_at, created_at, updated_at
 FROM users WHERE email = $1
 `
 	return s.scanUser(s.db.QueryRowContext(ctx, query, email))
@@ -250,7 +266,7 @@ FROM users WHERE email = $1
 // GetUserByVerificationToken retrieves a user by their email verification token.
 func (s *PostgresStore) GetUserByVerificationToken(ctx context.Context, token string) (*User, error) {
 	query := `
-SELECT id, tenant_id, email, name, password_hash, role, roles, is_active, last_login_at, created_at, updated_at
+SELECT id, tenant_id, email, name, first_name, last_name, job_title, password_hash, role, roles, is_active, email_verified, email_verification_token, email_verification_sent_at, last_login_at, created_at, updated_at
 FROM users WHERE email_verification_token = $1
 `
 	return s.scanUser(s.db.QueryRowContext(ctx, query, token))
@@ -259,7 +275,7 @@ FROM users WHERE email_verification_token = $1
 // ListUsersByTenant retrieves all users for a tenant.
 func (s *PostgresStore) ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error) {
 	query := `
-SELECT id, tenant_id, email, name, password_hash, role, roles, is_active, last_login_at, created_at, updated_at
+SELECT id, tenant_id, email, name, first_name, last_name, job_title, password_hash, role, roles, is_active, email_verified, email_verification_token, email_verification_sent_at, last_login_at, created_at, updated_at
 FROM users WHERE tenant_id = $1 ORDER BY email
 `
 	rows, err := s.db.QueryContext(ctx, query, tenantID)
@@ -273,8 +289,9 @@ FROM users WHERE tenant_id = $1 ORDER BY email
 		var u User
 		var rolesStr sql.NullString
 		if err := rows.Scan(
-			&u.ID, &u.TenantID, &u.Email, &u.Name, &u.PasswordHash,
-			&u.Role, &rolesStr, &u.IsActive, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+			&u.ID, &u.TenantID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.JobTitle, &u.PasswordHash,
+			&u.Role, &rolesStr, &u.IsActive, &u.EmailVerified, &u.EmailVerificationToken, &u.EmailVerificationSentAt,
+			&u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("auth: failed to scan user: %w", err)
 		}
@@ -290,19 +307,35 @@ FROM users WHERE tenant_id = $1 ORDER BY email
 
 // UpdateUser updates an existing user record.
 func (s *PostgresStore) UpdateUser(ctx context.Context, user *User) error {
+	rolesCSV := strings.Join(user.Roles, ",")
+	var roleParam any
+	if strings.TrimSpace(user.Role) != "" {
+		roleParam = user.Role
+	}
+	var rolesParam any
+	if strings.TrimSpace(rolesCSV) != "" {
+		rolesParam = rolesCSV
+	}
+
 	query := `
-UPDATE users SET email = $2, name = $3, password_hash = $4, role = $5, 
-roles = $6, is_active = $7, last_login_at = $8, updated_at = $9
+UPDATE users SET email = $2, name = $3, first_name = $4, last_name = $5, job_title = $6, password_hash = $7, role = COALESCE($8, 'viewer'),
+roles = COALESCE($9, 'viewer'), is_active = $10, email_verified = $11, email_verification_token = $12, email_verification_sent_at = $13, last_login_at = $14, updated_at = $15
 WHERE id = $1
 `
 	result, err := s.db.ExecContext(ctx, query,
 		user.ID,
 		user.Email,
 		user.Name,
+		user.FirstName,
+		user.LastName,
+		user.JobTitle,
 		user.PasswordHash,
-		user.Role,
-		user.Roles,
+		roleParam,
+		rolesParam,
 		user.IsActive,
+		user.EmailVerified,
+		user.EmailVerificationToken,
+		user.EmailVerificationSentAt,
 		user.LastLoginAt,
 		user.UpdatedAt,
 	)
@@ -363,8 +396,9 @@ func (s *PostgresStore) scanUser(row *sql.Row) (*User, error) {
 	var u User
 	var rolesStr sql.NullString
 	err := row.Scan(
-		&u.ID, &u.TenantID, &u.Email, &u.Name, &u.PasswordHash,
-		&u.Role, &rolesStr, &u.IsActive, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.TenantID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.JobTitle, &u.PasswordHash,
+		&u.Role, &rolesStr, &u.IsActive, &u.EmailVerified, &u.EmailVerificationToken, &u.EmailVerificationSentAt,
+		&u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound

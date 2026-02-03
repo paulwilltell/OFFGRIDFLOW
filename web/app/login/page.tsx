@@ -48,6 +48,10 @@ function LoginForm() {
           setLoading(false);
           return;
         }
+        if (err.code === 'email_not_verified') {
+          setError('Email not verified. Check your inbox for the verification link.');
+          return;
+        }
         setError(err.message);
       } else {
         setError('An unexpected error occurred. Please try again.');

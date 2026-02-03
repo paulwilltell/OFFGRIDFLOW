@@ -9,10 +9,14 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/example/offgridflow/internal/auth"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 // =============================================================================
@@ -37,6 +41,13 @@ const (
 
 	// MessageTypeHeartbeat keeps connections alive.
 	MessageTypeHeartbeat MessageType = "heartbeat"
+)
+
+const (
+	defaultWriteWait  = 10 * time.Second
+	defaultPongWait   = 60 * time.Second
+	defaultPingPeriod = (defaultPongWait * 9) / 10
+	maxMessageSize    = 8192
 )
 
 // Message represents a real-time update sent to clients.
@@ -454,34 +465,86 @@ func (h *Hub) closeAllClients() {
 
 // Handler provides HTTP endpoints for real-time connections.
 type Handler struct {
-	hub    *Hub
-	logger *slog.Logger
+	hub            *Hub
+	logger         *slog.Logger
+	allowedOrigins []string
 }
 
 // NewHandler creates a new real-time HTTP handler.
 func NewHandler(hub *Hub, logger *slog.Logger) *Handler {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &Handler{
 		hub:    hub,
 		logger: logger,
 	}
 }
 
+// SetAllowedOrigins configures which origins may establish WebSocket connections.
+func (h *Handler) SetAllowedOrigins(origins []string) {
+	h.allowedOrigins = origins
+}
+
+type clientCommand struct {
+	Type     string   `json:"type"`
+	TenantID string   `json:"tenantId,omitempty"`
+	Types    []string `json:"types,omitempty"`
+}
+
 // ServeHTTP handles WebSocket upgrade requests.
-// Note: Actual WebSocket upgrade requires gorilla/websocket or nhooyr.io/websocket.
-// This is a placeholder showing the integration pattern.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// In production, use:
-	// conn, err := websocket.Accept(w, r, nil)
-	//
-	// For now, return SSE (Server-Sent Events) as fallback
-	h.serveSSE(w, r)
+	if h.hub == nil {
+		http.Error(w, "real-time hub not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	if !websocket.IsWebSocketUpgrade(r) {
+		h.serveSSE(w, r)
+		return
+	}
+
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin:     h.checkOrigin,
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		h.logger.Warn("websocket upgrade failed", "error", err)
+		return
+	}
+	defer conn.Close()
+
+	tenantID, userID := h.resolveTenantUser(r)
+	if tenantID == "" {
+		_ = conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "tenant ID required"),
+			time.Now().Add(defaultWriteWait),
+		)
+		return
+	}
+
+	client := NewClient(tenantID, userID, h.hub)
+	h.hub.Register(client)
+	defer h.hub.Unregister(client)
+
+	conn.SetReadLimit(maxMessageSize)
+	_ = conn.SetReadDeadline(time.Now().Add(defaultPongWait))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(defaultPongWait))
+	})
+
+	go h.writePump(conn, client)
+	h.readPump(conn, client)
+	client.Close()
 }
 
 // serveSSE provides Server-Sent Events as WebSocket fallback.
 func (h *Handler) serveSSE(w http.ResponseWriter, r *http.Request) {
-	// Get tenant from context (set by auth middleware)
-	tenantID := r.Header.Get("X-Tenant-ID")
-	userID := r.Header.Get("X-User-ID")
+	tenantID, userID := h.resolveTenantUser(r)
 	if tenantID == "" {
 		http.Error(w, "tenant ID required", http.StatusUnauthorized)
 		return
@@ -521,6 +584,171 @@ func (h *Handler) serveSSE(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write(msg)
 			_, _ = w.Write([]byte("\n\n"))
 			flusher.Flush()
+		}
+	}
+}
+
+func (h *Handler) resolveTenantUser(r *http.Request) (string, string) {
+	tenantID := ""
+	userID := ""
+
+	if tenant, ok := auth.TenantFromContext(r.Context()); ok && tenant != nil {
+		tenantID = tenant.ID
+	}
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(r.Header.Get("X-Tenant-ID"))
+	}
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+	}
+	if tenantID == "" {
+		tenantID = strings.TrimSpace(r.URL.Query().Get("org_id"))
+	}
+
+	if user, ok := auth.UserFromContext(r.Context()); ok && user != nil {
+		userID = user.ID
+	}
+	if userID == "" {
+		userID = strings.TrimSpace(r.Header.Get("X-User-ID"))
+	}
+
+	return tenantID, userID
+}
+
+func (h *Handler) checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+
+	if sameOrigin(origin, r.Host) {
+		return true
+	}
+
+	allowed := h.allowedOrigins
+	if len(allowed) == 0 {
+		allowed = defaultAllowedOrigins()
+	}
+
+	for _, entry := range allowed {
+		trimmed := strings.TrimSpace(entry)
+		if trimmed == "" {
+			continue
+		}
+		if trimmed == "*" {
+			return true
+		}
+		if strings.HasSuffix(trimmed, "*") {
+			prefix := strings.TrimSuffix(trimmed, "*")
+			if strings.HasPrefix(origin, prefix) {
+				return true
+			}
+			continue
+		}
+		if origin == trimmed {
+			return true
+		}
+	}
+
+	return false
+}
+
+func sameOrigin(origin, host string) bool {
+	if origin == "" || host == "" {
+		return false
+	}
+
+	parsed, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+
+	return strings.EqualFold(parsed.Host, host)
+}
+
+func defaultAllowedOrigins() []string {
+	return []string{
+		"http://localhost:3000",
+		"http://localhost:8080",
+		"http://127.0.0.1:3000",
+		"http://127.0.0.1:8080",
+	}
+}
+
+func (h *Handler) readPump(conn *websocket.Conn, client *Client) {
+	for {
+		_, data, err := conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				h.logger.Warn("websocket closed unexpectedly", "error", err)
+			}
+			return
+		}
+
+		var cmd clientCommand
+		if err := json.Unmarshal(data, &cmd); err != nil {
+			continue
+		}
+
+		h.applyClientCommand(client, cmd)
+	}
+}
+
+func (h *Handler) applyClientCommand(client *Client, cmd clientCommand) {
+	switch strings.ToLower(cmd.Type) {
+	case "subscribe":
+		if len(cmd.Types) == 0 {
+			return
+		}
+		types := normalizeMessageTypes(cmd.Types)
+		if len(types) > 0 {
+			client.Subscribe(types...)
+		}
+	case "unsubscribe":
+		if len(cmd.Types) == 0 {
+			return
+		}
+		types := normalizeMessageTypes(cmd.Types)
+		if len(types) > 0 {
+			client.Unsubscribe(types...)
+		}
+	}
+}
+
+func normalizeMessageTypes(raw []string) []MessageType {
+	out := make([]MessageType, 0, len(raw))
+	for _, t := range raw {
+		mt := MessageType(strings.ToLower(strings.TrimSpace(t)))
+		switch mt {
+		case MessageTypeEmission, MessageTypeActivity, MessageTypeAlert, MessageTypeCompliance, MessageTypeHeartbeat:
+			out = append(out, mt)
+		}
+	}
+	return out
+}
+
+func (h *Handler) writePump(conn *websocket.Conn, client *Client) {
+	ticker := time.NewTicker(defaultPingPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case msg, ok := <-client.Send:
+			_ = conn.SetWriteDeadline(time.Now().Add(defaultWriteWait))
+			if !ok {
+				_ = conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				return
+			}
+		case <-ticker.C:
+			_ = conn.SetWriteDeadline(time.Now().Add(defaultWriteWait))
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		case <-client.done:
+			return
 		}
 	}
 }

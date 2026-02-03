@@ -216,6 +216,9 @@ func (h *BlockchainHandler) HandleListCredit(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	http.Error(w, "Marketplace not implemented", http.StatusNotImplemented)
+	return
+
 	var req ListCreditRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -255,6 +258,9 @@ func (h *BlockchainHandler) HandleUnlistCredit(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	http.Error(w, "Marketplace not implemented", http.StatusNotImplemented)
+	return
+
 	tokenIDStr := r.URL.Query().Get("tokenId")
 	if tokenIDStr == "" {
 		http.Error(w, "Missing tokenId", http.StatusBadRequest)
@@ -283,6 +289,9 @@ func (h *BlockchainHandler) HandleBuyCredit(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	http.Error(w, "Marketplace not implemented", http.StatusNotImplemented)
+	return
+
 	tokenIDStr := r.URL.Query().Get("tokenId")
 	if tokenIDStr == "" {
 		http.Error(w, "Missing tokenId", http.StatusBadRequest)
@@ -310,6 +319,9 @@ func (h *BlockchainHandler) HandleGetMarketplace(w http.ResponseWriter, r *http.
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	http.Error(w, "Marketplace not implemented", http.StatusNotImplemented)
+	return
 
 	// Optional filters
 	projectID := r.URL.Query().Get("projectId")

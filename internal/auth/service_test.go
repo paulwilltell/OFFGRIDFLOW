@@ -72,6 +72,18 @@ func (m *MockStore) GetUserByEmail(ctx context.Context, email string) (*User, er
 	return nil, errors.New("user not found")
 }
 
+func (m *MockStore) GetUserByVerificationToken(ctx context.Context, token string) (*User, error) {
+	if token == "" {
+		return nil, errors.New("user not found")
+	}
+	for _, u := range m.users {
+		if u.EmailVerificationToken == token {
+			return u, nil
+		}
+	}
+	return nil, errors.New("user not found")
+}
+
 func (m *MockStore) CreateUser(ctx context.Context, user *User) error {
 	if user.ID == "" {
 		user.ID = "user_" + user.Email

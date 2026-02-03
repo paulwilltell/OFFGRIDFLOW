@@ -36,6 +36,7 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
   const [checkResults, setCheckResults] = useState<Map<string, ComplianceCheckResult>>(new Map());
 
   const { setComplianceStatus } = useCarbonStore();
+  const useMockFallback = process.env.NODE_ENV === 'development';
 
   const statusScoreMap: Record<ComplianceStatus[keyof ComplianceStatus], number> = {
     complete: 100,
@@ -73,7 +74,11 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
       
       setDeadlines(processedDeadlines);
     } catch (err) {
-      // Use mock data if API fails
+      if (!useMockFallback) {
+        setError(err instanceof Error ? err : new Error('Failed to load compliance deadlines'));
+        return;
+      }
+      // Use mock data in development if API fails
       const mockDeadlines: ComplianceDeadline[] = [
         {
           id: '1',
@@ -141,7 +146,7 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, useMockFallback]);
 
   // Run compliance check
   const checkCompliance = useCallback(async () => {
@@ -167,7 +172,12 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
       });
       setCheckResults(results);
     } catch (err) {
-      // Mock compliance status
+      if (!useMockFallback) {
+        setError(err instanceof Error ? err : new Error('Failed to load compliance status'));
+        setCheckResults(new Map());
+        return;
+      }
+      // Mock compliance status in development
       const mockStatus: ComplianceStatus = {
         csrd: 'in_progress',
         sec: 'in_progress',
@@ -216,7 +226,7 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
 
     // Also refresh deadlines
     await refreshDeadlines();
-  }, [tenantId, setComplianceStatus, refreshDeadlines]);
+  }, [tenantId, setComplianceStatus, refreshDeadlines, useMockFallback]);
 
   // Get status for a specific framework
   const getFrameworkStatus = useCallback(

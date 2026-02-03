@@ -143,6 +143,11 @@ variable "api_desired_count" {
   default     = 2
 }
 
+variable "api_certificate_arn" {
+  description = "ACM certificate ARN for the API HTTPS listener"
+  type        = string
+}
+
 # Redis variables
 variable "redis_node_type" {
   description = "ElastiCache node type"

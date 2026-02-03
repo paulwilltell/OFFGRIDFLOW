@@ -5,12 +5,15 @@ export interface ApiError {
   code: string;
   message: string;
   detail?: string;
+  status?: number;
+  fields?: Record<string, string>;
 }
 
 export class ApiRequestError extends Error {
   code: string;
   status: number;
   detail?: string;
+  fields?: Record<string, string>;
 
   constructor(status: number, error: ApiError) {
     super(error.message);
@@ -18,6 +21,7 @@ export class ApiRequestError extends Error {
     this.code = error.code;
     this.status = status;
     this.detail = error.detail;
+    this.fields = error.fields;
   }
 }
 
@@ -72,8 +76,23 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
       
       try {
         const body = await response.json();
-        if (body.code && body.message) {
-          error = body as ApiError;
+        if (body?.error?.code && body?.error?.message) {
+          error = {
+            code: body.error.code,
+            message: body.error.message,
+            detail: body.error.detail,
+            status: body.error.status ?? response.status,
+            fields: body.error.fields,
+          };
+        } else if (body?.code && body?.message) {
+          error = {
+            ...(body as ApiError),
+            status: body.status ?? response.status,
+          };
+        } else if (typeof body?.error === 'string') {
+          error = { code: 'unknown_error', message: body.error, status: response.status };
+        } else if (typeof body?.message === 'string') {
+          error = { code: 'unknown_error', message: body.message, status: response.status };
         }
       } catch {
         // Response wasn't JSON, use default error
@@ -104,7 +123,9 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
 
     post: async <T>(path: string, body: unknown): Promise<T> => {
       const headers = buildHeaders();
-      await attachCSRFHeader(headers);
+      if (!isCSRFExempt(path)) {
+        await attachCSRFHeader(headers);
+      }
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
         headers,
@@ -116,7 +137,9 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
 
     put: async <T>(path: string, body: unknown): Promise<T> => {
       const headers = buildHeaders();
-      await attachCSRFHeader(headers);
+      if (!isCSRFExempt(path)) {
+        await attachCSRFHeader(headers);
+      }
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'PUT',
         headers,
@@ -128,7 +151,9 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
 
     patch: async <T>(path: string, body: unknown): Promise<T> => {
       const headers = buildHeaders();
-      await attachCSRFHeader(headers);
+      if (!isCSRFExempt(path)) {
+        await attachCSRFHeader(headers);
+      }
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'PATCH',
         headers,
@@ -140,7 +165,9 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
 
     delete: async <T>(path: string): Promise<T> => {
       const headers = buildHeaders();
-      await attachCSRFHeader(headers);
+      if (!isCSRFExempt(path)) {
+        await attachCSRFHeader(headers);
+      }
       const response = await fetch(`${baseUrl}${path}`, {
         method: 'DELETE',
         headers,
@@ -149,6 +176,21 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
       return handleResponse<T>(response, path);
     },
   };
+}
+
+const CSRF_EXEMPT_PATHS = new Set([
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/verify-email',
+  '/api/auth/password/forgot',
+  '/api/auth/password/reset',
+  '/api/auth/csrf-token',
+  '/api/billing/webhook',
+]);
+
+function isCSRFExempt(path: string): boolean {
+  const clean = path.split('?')[0];
+  return CSRF_EXEMPT_PATHS.has(clean);
 }
 
 // Singleton client for convenience

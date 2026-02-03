@@ -3,7 +3,7 @@
  */
 
 import { setupServer } from 'msw/node';
-import { rest } from 'msw';
+import { http, HttpResponse } from 'msw';
 import {
   register,
   login,
@@ -46,14 +46,14 @@ describe('Auth API Client', () => {
       const mockToken = 'jwt-token-123';
 
       server.use(
-        rest.post(`${API_BASE}/api/auth/register`, (req, res, ctx) => {
-          return res(
-            ctx.status(201),
-            ctx.json({
+        http.post(`${API_BASE}/api/auth/register`, async () => {
+          return HttpResponse.json(
+            {
               user: mockUser,
               token: mockToken,
               expiresAt: '2025-01-08T00:00:00Z',
-            })
+            },
+            { status: 201 }
           );
         })
       );
@@ -71,11 +71,8 @@ describe('Auth API Client', () => {
 
     it('should handle registration errors', async () => {
       server.use(
-        rest.post(`${API_BASE}/api/auth/register`, (req, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({ error: 'Email already exists' })
-          );
+        http.post(`${API_BASE}/api/auth/register`, async () => {
+          return HttpResponse.json({ error: 'Email already exists' }, { status: 400 });
         })
       );
 
@@ -94,10 +91,9 @@ describe('Auth API Client', () => {
       const mockToken = 'jwt-login-token';
 
       server.use(
-        rest.post(`${API_BASE}/api/auth/login`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({
+        http.post(`${API_BASE}/api/auth/login`, async () => {
+          return HttpResponse.json(
+            {
               user: {
                 id: '1',
                 email: 'test@example.com',
@@ -108,7 +104,8 @@ describe('Auth API Client', () => {
               },
               token: mockToken,
               expiresAt: '2025-01-08T00:00:00Z',
-            })
+            },
+            { status: 200 }
           );
         })
       );
@@ -124,11 +121,8 @@ describe('Auth API Client', () => {
 
     it('should handle invalid credentials', async () => {
       server.use(
-        rest.post(`${API_BASE}/api/auth/login`, (req, res, ctx) => {
-          return res(
-            ctx.status(401),
-            ctx.json({ error: 'Invalid credentials' })
-          );
+        http.post(`${API_BASE}/api/auth/login`, async () => {
+          return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         })
       );
 
@@ -146,8 +140,8 @@ describe('Auth API Client', () => {
       setAuthToken('some-token');
 
       server.use(
-        rest.post(`${API_BASE}/api/auth/logout`, (req, res, ctx) => {
-          return res(ctx.status(200));
+        http.post(`${API_BASE}/api/auth/logout`, async () => {
+          return new HttpResponse(null, { status: 200 });
         })
       );
 
@@ -160,8 +154,8 @@ describe('Auth API Client', () => {
       setAuthToken('some-token');
 
       server.use(
-        rest.post(`${API_BASE}/api/auth/logout`, (req, res, ctx) => {
-          return res(ctx.status(500));
+        http.post(`${API_BASE}/api/auth/logout`, async () => {
+          return new HttpResponse(null, { status: 500 });
         })
       );
 
@@ -185,13 +179,13 @@ describe('Auth API Client', () => {
       };
 
       server.use(
-        rest.get(`${API_BASE}/api/auth/me`, (req, res, ctx) => {
-          const auth = req.headers.get('Authorization');
+        http.get(`${API_BASE}/api/auth/me`, async ({ request }) => {
+          const auth = request.headers.get('Authorization');
           if (auth !== 'Bearer valid-token') {
-            return res(ctx.status(401), ctx.json({ error: 'Unauthorized' }));
+            return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
           }
 
-          return res(ctx.status(200), ctx.json({ user: mockUser }));
+          return HttpResponse.json({ user: mockUser }, { status: 200 });
         })
       );
 
@@ -204,8 +198,8 @@ describe('Auth API Client', () => {
       setAuthToken('invalid-token');
 
       server.use(
-        rest.get(`${API_BASE}/api/auth/me`, (req, res, ctx) => {
-          return res(ctx.status(401), ctx.json({ error: 'Unauthorized' }));
+        http.get(`${API_BASE}/api/auth/me`, async () => {
+          return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
         })
       );
 
@@ -218,10 +212,10 @@ describe('Auth API Client', () => {
       setAuthToken('valid-token');
 
       server.use(
-        rest.post(`${API_BASE}/api/auth/change-password`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({ message: 'Password changed successfully' })
+        http.post(`${API_BASE}/api/auth/change-password`, async () => {
+          return HttpResponse.json(
+            { message: 'Password changed successfully' },
+            { status: 200 }
           );
         })
       );
@@ -238,10 +232,10 @@ describe('Auth API Client', () => {
       setAuthToken('valid-token');
 
       server.use(
-        rest.post(`${API_BASE}/api/auth/change-password`, (req, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({ error: 'Current password is incorrect' })
+        http.post(`${API_BASE}/api/auth/change-password`, async () => {
+          return HttpResponse.json(
+            { error: 'Current password is incorrect' },
+            { status: 400 }
           );
         })
       );
@@ -258,10 +252,10 @@ describe('Auth API Client', () => {
   describe('forgotPassword', () => {
     it('should send password reset email', async () => {
       server.use(
-        rest.post(`${API_BASE}/api/auth/password/forgot`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({ message: 'Password reset email sent' })
+        http.post(`${API_BASE}/api/auth/password/forgot`, async () => {
+          return HttpResponse.json(
+            { message: 'Password reset email sent' },
+            { status: 200 }
           );
         })
       );
@@ -273,11 +267,11 @@ describe('Auth API Client', () => {
 
     it('should handle non-existent email gracefully', async () => {
       server.use(
-        rest.post(`${API_BASE}/api/auth/password/forgot`, (req, res, ctx) => {
+        http.post(`${API_BASE}/api/auth/password/forgot`, async () => {
           // Security: return success even if email doesn't exist
-          return res(
-            ctx.status(200),
-            ctx.json({ message: 'Password reset email sent' })
+          return HttpResponse.json(
+            { message: 'Password reset email sent' },
+            { status: 200 }
           );
         })
       );
@@ -291,10 +285,10 @@ describe('Auth API Client', () => {
   describe('resetPassword', () => {
     it('should reset password with valid token', async () => {
       server.use(
-        rest.post(`${API_BASE}/api/auth/password/reset`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({ message: 'Password reset successfully' })
+        http.post(`${API_BASE}/api/auth/password/reset`, async () => {
+          return HttpResponse.json(
+            { message: 'Password reset successfully' },
+            { status: 200 }
           );
         })
       );
@@ -309,10 +303,10 @@ describe('Auth API Client', () => {
 
     it('should handle invalid reset token', async () => {
       server.use(
-        rest.post(`${API_BASE}/api/auth/password/reset`, (req, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({ error: 'Invalid or expired reset token' })
+        http.post(`${API_BASE}/api/auth/password/reset`, async () => {
+          return HttpResponse.json(
+            { error: 'Invalid or expired reset token' },
+            { status: 400 }
           );
         })
       );
@@ -341,8 +335,8 @@ describe('Auth API Client', () => {
       };
 
       server.use(
-        rest.post(`${API_BASE}/api/auth/keys`, (req, res, ctx) => {
-          return res(ctx.status(201), ctx.json({ key: mockKey }));
+        http.post(`${API_BASE}/api/auth/keys`, async () => {
+          return HttpResponse.json({ key: mockKey }, { status: 201 });
         })
       );
 
@@ -374,8 +368,8 @@ describe('Auth API Client', () => {
       ];
 
       server.use(
-        rest.get(`${API_BASE}/api/auth/keys`, (req, res, ctx) => {
-          return res(ctx.status(200), ctx.json({ keys: mockKeys }));
+        http.get(`${API_BASE}/api/auth/keys`, async () => {
+          return HttpResponse.json({ keys: mockKeys }, { status: 200 });
         })
       );
 
@@ -387,11 +381,8 @@ describe('Auth API Client', () => {
 
     it('should revoke API key', async () => {
       server.use(
-        rest.delete(`${API_BASE}/api/auth/keys/key-1`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({ message: 'API key revoked' })
-          );
+        http.delete(`${API_BASE}/api/auth/keys/key-1`, async () => {
+          return HttpResponse.json({ message: 'API key revoked' }, { status: 200 });
         })
       );
 
@@ -402,8 +393,8 @@ describe('Auth API Client', () => {
 
     it('should handle revoking non-existent key', async () => {
       server.use(
-        rest.delete(`${API_BASE}/api/auth/keys/invalid`, (req, res, ctx) => {
-          return res(ctx.status(404), ctx.json({ error: 'Key not found' }));
+        http.delete(`${API_BASE}/api/auth/keys/invalid`, async () => {
+          return HttpResponse.json({ error: 'Key not found' }, { status: 404 });
         })
       );
 

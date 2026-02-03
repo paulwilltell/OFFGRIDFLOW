@@ -82,7 +82,11 @@ export default function RegisterPage() {
       }
     } catch (err) {
       if (err instanceof ApiRequestError) {
-        setError(err.message);
+        if (err.fields && Object.keys(err.fields).length > 0) {
+          setError(Object.values(err.fields).join(' '));
+        } else {
+          setError(err.message);
+        }
       } else {
         setError('An unexpected error occurred. Please try again.');
       }

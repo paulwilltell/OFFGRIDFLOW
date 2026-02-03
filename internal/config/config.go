@@ -71,6 +71,11 @@ const (
 	envWriteTimeout   = "OFFGRIDFLOW_WRITE_TIMEOUT"
 	envIdleTimeout    = "OFFGRIDFLOW_IDLE_TIMEOUT"
 	envTrustedProxies = "OFFGRIDFLOW_TRUSTED_PROXIES"
+	envAllowedOrigins = "OFFGRIDFLOW_ALLOWED_ORIGINS"
+	envAllowedOriginsLegacy = "CORS_ORIGINS"
+	envFrontendURL    = "OFFGRIDFLOW_FRONTEND_URL"
+	envFrontendURLLegacy = "FRONTEND_URL"
+	envFrontendURLFallback = "NEXTAUTH_URL"
 
 	// Database configuration
 	envDBDSN             = "OFFGRIDFLOW_DB_DSN"
@@ -81,6 +86,8 @@ const (
 	// Authentication
 	envAPIKey    = "OFFGRIDFLOW_API_KEY"
 	envJWTSecret = "OFFGRIDFLOW_JWT_SECRET"
+	envRequireEmailVerification = "OFFGRIDFLOW_REQUIRE_EMAIL_VERIFICATION"
+	envEmailVerificationTTL     = "OFFGRIDFLOW_EMAIL_VERIFICATION_TTL"
 
 	// OpenAI configuration
 	envOpenAIKey     = "OFFGRIDFLOW_OPENAI_API_KEY"
@@ -140,6 +147,22 @@ const (
 
 	envUtilityIngestEnabled = "OFFGRIDFLOW_UTILITY_INGEST_ENABLED"
 	envUtilityOrgID         = "OFFGRIDFLOW_UTILITY_ORG_ID"
+
+	// Email configuration
+	envSMTPHost     = "OFFGRIDFLOW_SMTP_HOST"
+	envSMTPPort     = "OFFGRIDFLOW_SMTP_PORT"
+	envSMTPUsername = "OFFGRIDFLOW_SMTP_USERNAME"
+	envSMTPPassword = "OFFGRIDFLOW_SMTP_PASSWORD"
+	envSMTPFromEmail = "OFFGRIDFLOW_SMTP_FROM_EMAIL"
+	envSMTPFromName  = "OFFGRIDFLOW_SMTP_FROM_NAME"
+	envSMTPUseTLS    = "OFFGRIDFLOW_SMTP_USE_TLS"
+	envSMTPHostLegacy     = "SMTP_HOST"
+	envSMTPPortLegacy     = "SMTP_PORT"
+	envSMTPUsernameLegacy = "SMTP_USERNAME"
+	envSMTPPasswordLegacy = "SMTP_PASSWORD"
+	envSMTPFromEmailLegacy = "SMTP_FROM_EMAIL"
+	envSMTPFromNameLegacy  = "SMTP_FROM_NAME"
+	envSMTPUseTLSLegacy    = "SMTP_USE_TLS"
 )
 
 // =============================================================================
@@ -157,6 +180,9 @@ type Config struct {
 
 	// Auth holds authentication configuration.
 	Auth AuthConfig
+
+	// Email holds outbound email configuration.
+	Email EmailConfig
 
 	// OpenAI holds OpenAI API configuration.
 	OpenAI OpenAIConfig
@@ -190,6 +216,12 @@ type ServerConfig struct {
 
 	// TrustedProxies is a list of trusted proxy IP addresses/CIDRs.
 	TrustedProxies []string `json:"trusted_proxies,omitempty"`
+
+	// FrontendURL is the public base URL for the web app.
+	FrontendURL string `json:"frontend_url,omitempty"`
+
+	// AllowedOrigins is the list of CORS origins allowed to call the API.
+	AllowedOrigins []string `json:"allowed_origins,omitempty"`
 }
 
 // DatabaseConfig holds PostgreSQL connection settings.
@@ -222,6 +254,24 @@ type AuthConfig struct {
 
 	// HasJWTSecret returns true if a JWT secret is configured.
 	HasJWTSecret bool `json:"has_jwt_secret"`
+
+	// RequireEmailVerification enforces email verification before login.
+	RequireEmailVerification bool `json:"require_email_verification"`
+
+	// EmailVerificationTTL controls verification link expiry.
+	EmailVerificationTTL time.Duration `json:"email_verification_ttl"`
+}
+
+// EmailConfig holds SMTP settings for outbound email.
+type EmailConfig struct {
+	SMTPHost     string `json:"smtp_host,omitempty"`
+	SMTPPort     int    `json:"smtp_port,omitempty"`
+	SMTPUsername string `json:"-"`
+	SMTPPassword string `json:"-"`
+	FromAddress  string `json:"from_address,omitempty"`
+	FromName     string `json:"from_name,omitempty"`
+	UseTLS       bool   `json:"use_tls"`
+	IsConfigured bool   `json:"is_configured"`
 }
 
 // OpenAIConfig holds OpenAI API settings.
@@ -348,10 +398,12 @@ type UtilityIngestConfig struct {
 // Load reads configuration from environment variables and returns a validated Config.
 // Returns an error if required configuration is missing or invalid in production.
 func Load() (Config, error) {
+	server := loadServerConfig()
 	cfg := Config{
-		Server:    loadServerConfig(),
+		Server:    server,
 		Database:  loadDatabaseConfig(),
-		Auth:      loadAuthConfig(),
+		Auth:      loadAuthConfig(server.Env),
+		Email:     loadEmailConfig(),
 		OpenAI:    loadOpenAIConfig(),
 		Stripe:    loadStripeConfig(),
 		Ingestion: loadIngestionConfig(),
@@ -393,6 +445,12 @@ func loadServerConfig() ServerConfig {
 		env = defaultEnv
 	}
 
+	frontendURL := strings.TrimSpace(getEnvWithFallback(envFrontendURL, envFrontendURLLegacy, envFrontendURLFallback))
+	allowedOrigins := getStringSliceEnv(envAllowedOrigins)
+	if len(allowedOrigins) == 0 {
+		allowedOrigins = getStringSliceEnv(envAllowedOriginsLegacy)
+	}
+
 	return ServerConfig{
 		Port:           port,
 		Env:            normalizeEnv(env),
@@ -400,6 +458,8 @@ func loadServerConfig() ServerConfig {
 		WriteTimeout:   getDurationEnv(envWriteTimeout, defaultWriteTimeout),
 		IdleTimeout:    getDurationEnv(envIdleTimeout, defaultIdleTimeout),
 		TrustedProxies: getStringSliceEnv(envTrustedProxies),
+		FrontendURL:    frontendURL,
+		AllowedOrigins: allowedOrigins,
 	}
 }
 
@@ -412,15 +472,20 @@ func loadDatabaseConfig() DatabaseConfig {
 	}
 }
 
-func loadAuthConfig() AuthConfig {
+func loadAuthConfig(serverEnv string) AuthConfig {
 	apiKey := strings.TrimSpace(os.Getenv(envAPIKey))
 	jwtSecret := strings.TrimSpace(os.Getenv(envJWTSecret))
+	defaultRequireVerify := normalizeEnv(serverEnv) == EnvProduction
+	requireVerification := getBoolEnv(envRequireEmailVerification, defaultRequireVerify)
+	verificationTTL := getDurationEnv(envEmailVerificationTTL, 24*time.Hour)
 
 	return AuthConfig{
-		APIKey:       apiKey,
-		JWTSecret:    jwtSecret,
-		HasAPIKey:    apiKey != "",
-		HasJWTSecret: jwtSecret != "",
+		APIKey:                   apiKey,
+		JWTSecret:                jwtSecret,
+		HasAPIKey:                apiKey != "",
+		HasJWTSecret:             jwtSecret != "",
+		RequireEmailVerification: requireVerification,
+		EmailVerificationTTL:     verificationTTL,
 	}
 }
 
@@ -436,6 +501,28 @@ func loadOpenAIConfig() OpenAIConfig {
 		Model:        model,
 		BaseURL:      strings.TrimSpace(os.Getenv(envOpenAIBaseURL)),
 		IsConfigured: apiKey != "",
+	}
+}
+
+func loadEmailConfig() EmailConfig {
+	host := strings.TrimSpace(getEnvWithFallback(envSMTPHost, envSMTPHostLegacy))
+	fromEmail := strings.TrimSpace(getEnvWithFallback(envSMTPFromEmail, envSMTPFromEmailLegacy))
+	port := 587
+	if raw := strings.TrimSpace(getEnvWithFallback(envSMTPPort, envSMTPPortLegacy)); raw != "" {
+		if val, err := strconv.Atoi(raw); err == nil {
+			port = val
+		}
+	}
+	useTLS := parseBool(getEnvWithFallback(envSMTPUseTLS, envSMTPUseTLSLegacy), true)
+	return EmailConfig{
+		SMTPHost:     host,
+		SMTPPort:     port,
+		SMTPUsername: strings.TrimSpace(getEnvWithFallback(envSMTPUsername, envSMTPUsernameLegacy)),
+		SMTPPassword: strings.TrimSpace(getEnvWithFallback(envSMTPPassword, envSMTPPasswordLegacy)),
+		FromAddress:  fromEmail,
+		FromName:     strings.TrimSpace(getEnvWithFallback(envSMTPFromName, envSMTPFromNameLegacy)),
+		UseTLS:       useTLS,
+		IsConfigured: host != "" && fromEmail != "",
 	}
 }
 
@@ -537,6 +624,17 @@ func (c Config) Validate() error {
 		if len(c.Auth.JWTSecret) < 32 {
 			errs = append(errs, errors.New("JWT secret must be at least 32 characters"))
 		}
+		if c.Auth.RequireEmailVerification {
+			if !c.Email.IsConfigured {
+				errs = append(errs, errors.New("email verification enabled but SMTP is not configured"))
+			}
+			if strings.TrimSpace(c.Email.SMTPUsername) == "" || strings.TrimSpace(c.Email.SMTPPassword) == "" {
+				errs = append(errs, errors.New("SMTP credentials required when email verification is enabled"))
+			}
+			if strings.TrimSpace(c.Server.FrontendURL) == "" {
+				errs = append(errs, errors.New("frontend URL required when email verification is enabled"))
+			}
+		}
 	}
 
 	if len(errs) > 0 {
@@ -597,7 +695,11 @@ func getIntEnv(key string, defaultVal int) int {
 // getBoolEnv returns a boolean from an environment variable, or the default.
 // Accepts: true, false, 1, 0, yes, no (case-insensitive).
 func getBoolEnv(key string, defaultVal bool) bool {
-	raw := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	return parseBool(os.Getenv(key), defaultVal)
+}
+
+func parseBool(raw string, defaultVal bool) bool {
+	raw = strings.ToLower(strings.TrimSpace(raw))
 	switch raw {
 	case "true", "1", "yes", "on":
 		return true

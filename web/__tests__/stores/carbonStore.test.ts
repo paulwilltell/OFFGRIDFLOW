@@ -1,10 +1,10 @@
 /**
  * @fileoverview Unit tests for Carbon Store
- * @description Comprehensive test suite for Zustand carbon store with immer middleware
+ * @description Tests for Zustand carbon store with immer middleware
  */
 
 import { act, renderHook } from '@testing-library/react';
-import { 
+import {
   useCarbonStore,
   useEmissions,
   useMetrics,
@@ -13,16 +13,17 @@ import {
   useReductionTargets,
   useCarbonLoading,
   useCarbonError,
-  useLastUpdated
+  useLastUpdated,
 } from '@/stores/carbonStore';
-import { EmissionData, CarbonMetrics, ComplianceStatus, Timeframe } from '@/types/carbon';
+import { EmissionData } from '@/types/carbon';
+
+const mockGetEmissions = jest.fn();
 
 // Mock the CarbonApi
 jest.mock('@/lib/api/carbon', () => ({
   CarbonApi: {
     getInstance: jest.fn(() => ({
-      getEmissions: jest.fn(),
-      getMetrics: jest.fn(),
+      getEmissions: (...args: unknown[]) => mockGetEmissions(...args),
       subscribeToUpdates: jest.fn(() => jest.fn()),
     })),
   },
@@ -30,42 +31,75 @@ jest.mock('@/lib/api/carbon', () => ({
   formatDate: jest.fn((d) => d.toISOString()),
 }));
 
+const mockEmission: EmissionData = {
+  id: 'emit-1',
+  tenantId: 'tenant-1',
+  total: 12450,
+  scope1: 3200,
+  scope2: 5800,
+  scope3: 3450,
+  intensity: 249,
+  timeframe: 'monthly',
+  dataSources: [],
+  updatedAt: new Date('2024-01-15T00:00:00Z'),
+  methodology: 'ghg_protocol',
+  uncertainty: 5,
+  region: 'north_america',
+};
+
 describe('Carbon Store', () => {
   beforeEach(() => {
-    // Reset store state before each test
     const { result } = renderHook(() => useCarbonStore());
     act(() => {
       result.current.reset();
     });
+    mockGetEmissions.mockReset();
   });
 
   describe('Initial State', () => {
     it('should have correct initial values', () => {
       const { result } = renderHook(() => useCarbonStore());
-      
-      expect(result.current.emissions).toEqual([]);
-      expect(result.current.metrics).toBeNull();
-      expect(result.current.complianceStatus).toBeNull();
+
+      expect(result.current.emissions).toBeNull();
+      expect(result.current.metrics).toEqual(
+        expect.objectContaining({
+          totalEmissions: 0,
+          carbonIntensity: 0,
+        })
+      );
+      expect(result.current.complianceStatus).toEqual(
+        expect.objectContaining({
+          csrd: 'pending',
+        })
+      );
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
-      expect(result.current.selectedTimeframe).toBe('monthly');
+      expect(result.current.lastUpdated).toBeNull();
     });
   });
 
   describe('Selector Hooks', () => {
-    it('useEmissions should return emissions array', () => {
+    it('useEmissions should return null initially', () => {
       const { result } = renderHook(() => useEmissions());
-      expect(Array.isArray(result.current)).toBe(true);
+      expect(result.current).toBeNull();
     });
 
-    it('useMetrics should return null initially', () => {
+    it('useMetrics should return metrics object', () => {
       const { result } = renderHook(() => useMetrics());
-      expect(result.current).toBeNull();
+      expect(result.current).toEqual(
+        expect.objectContaining({
+          totalEmissions: 0,
+        })
+      );
     });
 
-    it('useComplianceStatus should return null initially', () => {
+    it('useComplianceStatus should return default compliance status', () => {
       const { result } = renderHook(() => useComplianceStatus());
-      expect(result.current).toBeNull();
+      expect(result.current).toEqual(
+        expect.objectContaining({
+          csrd: 'pending',
+        })
+      );
     });
 
     it('useCarbonLoading should return false initially', () => {
@@ -77,147 +111,160 @@ describe('Carbon Store', () => {
       const { result } = renderHook(() => useCarbonError());
       expect(result.current).toBeNull();
     });
+
+    it('useDataSources should return empty array initially', () => {
+      const { result } = renderHook(() => useDataSources());
+      expect(result.current).toEqual([]);
+    });
+
+    it('useReductionTargets should return empty array initially', () => {
+      const { result } = renderHook(() => useReductionTargets());
+      expect(result.current).toEqual([]);
+    });
+
+    it('useLastUpdated should return null initially', () => {
+      const { result } = renderHook(() => useLastUpdated());
+      expect(result.current).toBeNull();
+    });
   });
 
   describe('Actions', () => {
-    it('setTimeframe should update selectedTimeframe', () => {
+    it('updateMetrics should merge metric updates', () => {
       const { result } = renderHook(() => useCarbonStore());
-      
+
       act(() => {
-        result.current.setTimeframe('yearly');
+        result.current.updateMetrics({ revenue: 1000000, totalEmissions: 500 });
       });
-      
-      expect(result.current.selectedTimeframe).toBe('yearly');
+
+      expect(result.current.metrics.revenue).toBe(1000000);
+      expect(result.current.metrics.totalEmissions).toBe(500);
     });
 
-    it('setLoading should update isLoading state', () => {
+    it('setComplianceStatus should merge status updates', () => {
       const { result } = renderHook(() => useCarbonStore());
-      
+
       act(() => {
-        result.current.setLoading(true);
+        result.current.setComplianceStatus({ csrd: 'complete' });
       });
-      
-      expect(result.current.isLoading).toBe(true);
+
+      expect(result.current.complianceStatus.csrd).toBe('complete');
     });
 
-    it('setError should update error state', () => {
+    it('add/remove data sources should update list', () => {
       const { result } = renderHook(() => useCarbonStore());
-      const testError = 'Test error message';
-      
+      const source = {
+        id: 'src-1',
+        name: 'Utility API',
+        type: 'manual',
+        status: 'active',
+        lastSync: new Date(),
+        emissions: 120,
+        coordinates: { lat: 0, lng: 0 },
+      };
+
       act(() => {
-        result.current.setError(testError);
+        result.current.addDataSource(source);
       });
-      
-      expect(result.current.error).toBe(testError);
+
+      expect(result.current.dataSources).toHaveLength(1);
+
+      act(() => {
+        result.current.removeDataSource('src-1');
+      });
+
+      expect(result.current.dataSources).toHaveLength(0);
     });
 
-    it('clearError should reset error to null', () => {
+    it('updateDataSourceStatus should update existing source', () => {
       const { result } = renderHook(() => useCarbonStore());
-      
+      const source = {
+        id: 'src-1',
+        name: 'Utility API',
+        type: 'manual',
+        status: 'inactive',
+        lastSync: new Date(),
+        emissions: 120,
+        coordinates: { lat: 0, lng: 0 },
+      };
+
       act(() => {
-        result.current.setError('Some error');
-        result.current.clearError();
+        result.current.addDataSource(source);
+        result.current.updateDataSourceStatus('src-1', 'active');
       });
-      
-      expect(result.current.error).toBeNull();
+
+      expect(result.current.dataSources[0].status).toBe('active');
+    });
+
+    it('updateEmission should patch current emissions', () => {
+      const { result } = renderHook(() => useCarbonStore());
+
+      act(() => {
+        useCarbonStore.setState({ emissions: { ...mockEmission } });
+      });
+
+      act(() => {
+        result.current.updateEmission({ total: 13000 });
+      });
+
+      expect(result.current.emissions?.total).toBe(13000);
     });
 
     it('reset should restore initial state', () => {
       const { result } = renderHook(() => useCarbonStore());
-      
+
       act(() => {
-        result.current.setTimeframe('yearly');
-        result.current.setLoading(true);
-        result.current.setError('Error');
+        useCarbonStore.setState({ emissions: { ...mockEmission }, error: 'boom' });
         result.current.reset();
       });
-      
-      expect(result.current.selectedTimeframe).toBe('monthly');
-      expect(result.current.isLoading).toBe(false);
+
+      expect(result.current.emissions).toBeNull();
       expect(result.current.error).toBeNull();
+      expect(result.current.lastUpdated).toBeNull();
     });
   });
 
-  describe('Data Source Management', () => {
-    it('updateDataSourceStatus should update specific data source', () => {
+  describe('fetchEmissions', () => {
+    it('should store emissions and update metrics', async () => {
+      mockGetEmissions.mockResolvedValueOnce({ ...mockEmission });
+
       const { result } = renderHook(() => useCarbonStore());
-      
-      // First add some data sources via mock data
-      act(() => {
-        result.current.updateDataSourceStatus('utility_api', 'connected');
+
+      await act(async () => {
+        await result.current.fetchEmissions('tenant-1', 'monthly');
       });
-      
-      // Verify the action was called (store may have empty dataSources initially)
-      expect(result.current.dataSources).toBeDefined();
+
+      expect(result.current.emissions?.id).toBe('emit-1');
+      expect(result.current.metrics.totalEmissions).toBe(12450);
+      expect(result.current.lastUpdated).not.toBeNull();
     });
   });
 
-  describe('Computed Values', () => {
-    it('calculateIntensity should compute correct value', () => {
+  describe('calculateIntensity', () => {
+    it('should compute intensity based on emissions and revenue', () => {
       const { result } = renderHook(() => useCarbonStore());
-      
-      const intensity = result.current.calculateIntensity(12450, 50);
-      expect(intensity).toBe(249); // 12450 / 50 = 249
-    });
 
-    it('calculateIntensity should handle zero revenue', () => {
-      const { result } = renderHook(() => useCarbonStore());
-      
-      const intensity = result.current.calculateIntensity(12450, 0);
-      expect(intensity).toBe(0);
-    });
-
-    it('calculateIntensity should round to nearest integer', () => {
-      const { result } = renderHook(() => useCarbonStore());
-      
-      const intensity = result.current.calculateIntensity(100, 3);
-      expect(intensity).toBe(33); // 100 / 3 ≈ 33.33 → 33
-    });
-  });
-
-  describe('Timeframe Validation', () => {
-    const validTimeframes: Timeframe[] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
-    
-    validTimeframes.forEach((timeframe) => {
-      it(`should accept valid timeframe: ${timeframe}`, () => {
-        const { result } = renderHook(() => useCarbonStore());
-        
-        act(() => {
-          result.current.setTimeframe(timeframe);
+      act(() => {
+        useCarbonStore.setState({
+          emissions: { ...mockEmission, total: 12450 },
+          metrics: { ...result.current.metrics, revenue: 50 },
         });
-        
-        expect(result.current.selectedTimeframe).toBe(timeframe);
       });
-    });
-  });
 
-  describe('Immutability (Immer)', () => {
-    it('should maintain immutability when updating state', () => {
+      const intensity = result.current.calculateIntensity();
+      expect(intensity).toBe(249000000);
+    });
+
+    it('should return 0 when revenue is missing', () => {
       const { result } = renderHook(() => useCarbonStore());
-      
-      const originalState = result.current;
-      
-      act(() => {
-        result.current.setTimeframe('yearly');
-      });
-      
-      // State reference should change (immutable update)
-      expect(result.current).not.toBe(originalState);
-    });
-  });
-});
 
-describe('Mock Data Generation', () => {
-  it('should generate valid mock emission data', () => {
-    const { result } = renderHook(() => useCarbonStore());
-    
-    // Trigger mock data generation
-    act(() => {
-      result.current.fetchEmissions('monthly');
+      act(() => {
+        useCarbonStore.setState({
+          emissions: { ...mockEmission, total: 12450 },
+          metrics: { ...result.current.metrics, revenue: 0 },
+        });
+      });
+
+      expect(result.current.calculateIntensity()).toBe(0);
     });
-    
-    // Mock data should be generated after fetch
-    // (Actual verification depends on implementation)
-    expect(result.current.isLoading).toBeDefined();
   });
 });

@@ -32,10 +32,18 @@ CREATE TABLE IF NOT EXISTS users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email         TEXT NOT NULL UNIQUE,
     name          TEXT,
+    first_name    TEXT,
+    last_name     TEXT,
+    job_title     TEXT,
     password_hash TEXT NOT NULL,
     tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    role          TEXT NOT NULL DEFAULT 'viewer',
     roles         TEXT NOT NULL DEFAULT 'viewer',
     is_active     BOOLEAN NOT NULL DEFAULT true,
+    email_verified BOOLEAN NOT NULL DEFAULT false,
+    email_verification_token TEXT,
+    email_verification_sent_at TIMESTAMPTZ,
+    last_login_at TIMESTAMPTZ,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -51,6 +59,23 @@ BEGIN
         UPDATE users SET role = split_part(roles, ',', 1) WHERE role IS NULL;
     END IF;
 END$$;
+
+-- Ensure profile fields exist
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title TEXT;
+
+-- Ensure email verification fields exist and backfill existing users as verified
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN;
+DO $$
+BEGIN
+    UPDATE users SET email_verified = true WHERE email_verified IS NULL;
+END$$;
+ALTER TABLE users ALTER COLUMN email_verified SET DEFAULT false;
+ALTER TABLE users ALTER COLUMN email_verified SET NOT NULL;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS api_keys (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -184,6 +209,7 @@ CREATE TABLE IF NOT EXISTS billing_state (
 
 CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_email_verification_token ON users(email_verification_token);
 CREATE INDEX IF NOT EXISTS idx_api_keys_tenant_id ON api_keys(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_key_hash ON api_keys(key_hash);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_tenant_id ON subscriptions(tenant_id);

@@ -87,6 +87,7 @@ module "api" {
   cpu              = var.api_cpu
   memory           = var.api_memory
   desired_count    = var.api_desired_count
+  certificate_arn  = var.api_certificate_arn
   
   db_host          = module.db.endpoint
   db_name          = var.db_name

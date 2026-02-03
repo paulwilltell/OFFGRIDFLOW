@@ -18,6 +18,7 @@ import (
 	"github.com/example/offgridflow/internal/config"
 	"github.com/example/offgridflow/internal/connectors"
 	"github.com/example/offgridflow/internal/db"
+	"github.com/example/offgridflow/internal/email"
 	"github.com/example/offgridflow/internal/emissions"
 	"github.com/example/offgridflow/internal/emissions/factors"
 	"github.com/example/offgridflow/internal/ingestion"
@@ -26,6 +27,7 @@ import (
 	"github.com/example/offgridflow/internal/ingestion/sources/gcp"
 	"github.com/example/offgridflow/internal/ingestion/sources/sap"
 	"github.com/example/offgridflow/internal/offgrid"
+	"github.com/example/offgridflow/internal/realtime"
 	"github.com/example/offgridflow/internal/secrets"
 	"github.com/example/offgridflow/internal/tracing"
 	"github.com/example/offgridflow/internal/workflow"
@@ -65,9 +67,31 @@ func run() (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	realtimeHub := realtime.NewHub(logger)
+	go realtimeHub.Run(ctx)
+
 	secretManager := secrets.NewEnvProvider()
 	resolveSecret := func(explicit, key string) string {
 		return secrets.Resolve(ctx, secretManager, explicit, key)
+	}
+
+	var emailClient *email.Client
+	if cfg.Email.IsConfigured {
+		emailClient, err = email.NewClient(email.Config{
+			SMTPHost:     cfg.Email.SMTPHost,
+			SMTPPort:     cfg.Email.SMTPPort,
+			SMTPUsername: cfg.Email.SMTPUsername,
+			SMTPPassword: cfg.Email.SMTPPassword,
+			FromAddress:  cfg.Email.FromAddress,
+			FromName:     cfg.Email.FromName,
+			UseTLS:       cfg.Email.UseTLS,
+		}, logger)
+		if err != nil {
+			log.Printf("[offgridflow] WARNING: failed to initialize email client: %v", err)
+			emailClient = nil
+		}
+	} else {
+		log.Printf("[offgridflow] email not configured; verification emails disabled")
 	}
 
 	// Initialize tracing
@@ -384,29 +408,37 @@ func run() (err error) {
 	// Determine cookie settings based on environment
 	cookieSecure := cfg.Server.Env == "production"
 	cookieDomain := os.Getenv("OFFGRIDFLOW_COOKIE_DOMAIN") // e.g., ".offgridflow.com"
+	allowDevVerificationToken := cfg.Server.Env != config.EnvProduction
 
 	// 10. Create HTTP router with all dependencies including auth and billing
 	routerDeps := &apihttp.RouterDeps{
-		ModeManager:           modeManager,
-		AIRouter:              aiRouter,
-		ActivityStore:         activityStore,
-		Scope1Calculator:      scope1Calculator,
-		Scope2Calculator:      scope2Calculator,
-		Scope3Calculator:      scope3Calculator,
-		FactorRegistry:        factorRegistry,
-		IngestionLogs:         ingestionLogs,
-		IngestionSvc:          ingestionSvc,
-		ConnectorStore:        connectorStore,
-		IngestionOrchestrator: orchestrator,
-		IngestionScheduler:    scheduler,
-		AuthStore:             authStore,
-		SessionManager:        sessionManager,
-		BillingService:        billingService,
-		DB:                    database,
-		RequireAuth:           requireAuth,
-		CookieDomain:          cookieDomain,
-		CookieSecure:          cookieSecure,
-		WorkflowService:       workflow.NewService(slog.Default(), nil),
+		ModeManager:               modeManager,
+		AIRouter:                  aiRouter,
+		ActivityStore:             activityStore,
+		Scope1Calculator:          scope1Calculator,
+		Scope2Calculator:          scope2Calculator,
+		Scope3Calculator:          scope3Calculator,
+		FactorRegistry:            factorRegistry,
+		IngestionLogs:             ingestionLogs,
+		IngestionSvc:              ingestionSvc,
+		ConnectorStore:            connectorStore,
+		IngestionOrchestrator:     orchestrator,
+		IngestionScheduler:        scheduler,
+		RealTimeHub:               realtimeHub,
+		AuthStore:                 authStore,
+		SessionManager:            sessionManager,
+		BillingService:            billingService,
+		DB:                        database,
+		RequireAuth:               requireAuth,
+		CookieDomain:              cookieDomain,
+		CookieSecure:              cookieSecure,
+		FrontendURL:               cfg.Server.FrontendURL,
+		EmailSender:               emailClient,
+		RequireEmailVerification:  cfg.Auth.RequireEmailVerification,
+		EmailVerificationTTL:      cfg.Auth.EmailVerificationTTL,
+		AllowDevVerificationToken: allowDevVerificationToken,
+		AllowedOrigins:            cfg.Server.AllowedOrigins,
+		WorkflowService:           workflow.NewService(slog.Default(), nil),
 	}
 	router := apihttp.NewRouterWithDeps(routerDeps)
 

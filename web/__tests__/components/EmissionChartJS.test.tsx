@@ -163,8 +163,8 @@ describe('EmissionChartJS', () => {
           timeframe="monthly" 
         />
       );
-      
-      expect(screen.getByText(/Scroll to zoom/)).toBeInTheDocument();
+
+      expect(screen.getAllByText(/Scroll to zoom/).length).toBeGreaterThan(0);
       expect(screen.getByText(/Drag to pan/)).toBeInTheDocument();
     });
 

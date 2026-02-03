@@ -2,10 +2,12 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -60,6 +62,11 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]
 // Auth Handlers
 // -----------------------------------------------------------------------------
 
+// EmailSender defines the email operations required by auth handlers.
+type EmailSender interface {
+	SendEmailVerification(ctx context.Context, to, name, verifyURL string, expiresIn time.Duration) error
+}
+
 // AuthHandlers provides HTTP handlers for authentication endpoints.
 type AuthHandlers struct {
 	authStore      auth.Store
@@ -68,6 +75,11 @@ type AuthHandlers struct {
 	cookieDomain   string
 	cookieSecure   bool
 	lockoutManager *auth.LockoutManager
+	emailSender    EmailSender
+	frontendURL    string
+	verificationTTL time.Duration
+	requireEmailVerification bool
+	allowDevVerificationToken bool
 }
 
 // AuthHandlersConfig holds configuration for auth handlers.
@@ -89,6 +101,21 @@ type AuthHandlersConfig struct {
 
 	// LockoutManager optionally enforces login lockouts.
 	LockoutManager *auth.LockoutManager
+
+	// EmailSender sends verification emails.
+	EmailSender EmailSender
+
+	// FrontendURL is used to build verification links.
+	FrontendURL string
+
+	// VerificationTTL controls how long verification tokens are valid.
+	VerificationTTL time.Duration
+
+	// RequireEmailVerification enforces verification before login.
+	RequireEmailVerification bool
+
+	// AllowDevVerificationToken exposes tokens in responses for non-production use.
+	AllowDevVerificationToken bool
 }
 
 // NewAuthHandlers creates new authentication handlers.
@@ -98,13 +125,23 @@ func NewAuthHandlers(cfg AuthHandlersConfig) *AuthHandlers {
 		logger = slog.Default().With("component", "auth-handlers")
 	}
 
+	verificationTTL := cfg.VerificationTTL
+	if verificationTTL <= 0 {
+		verificationTTL = 24 * time.Hour
+	}
+
 	return &AuthHandlers{
-		authStore:      cfg.AuthStore,
-		sessionManager: cfg.SessionManager,
-		logger:         logger,
-		cookieDomain:   cfg.CookieDomain,
-		cookieSecure:   cfg.CookieSecure,
-		lockoutManager: cfg.LockoutManager,
+		authStore:               cfg.AuthStore,
+		sessionManager:          cfg.SessionManager,
+		logger:                  logger,
+		cookieDomain:            cfg.CookieDomain,
+		cookieSecure:            cfg.CookieSecure,
+		lockoutManager:          cfg.LockoutManager,
+		emailSender:             cfg.EmailSender,
+		frontendURL:             strings.TrimSpace(cfg.FrontendURL),
+		verificationTTL:         verificationTTL,
+		requireEmailVerification: cfg.RequireEmailVerification,
+		allowDevVerificationToken: cfg.AllowDevVerificationToken,
 	}
 }
 
@@ -196,8 +233,10 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	normalizedEmail := normalizeEmail(req.Email)
+
 	// Check if email already exists
-	existing, err := h.authStore.GetUserByEmail(ctx, req.Email)
+	existing, err := h.authStore.GetUserByEmail(ctx, normalizedEmail)
 	if err == nil && existing != nil {
 		responders.Conflict(w, "email_exists", "email already registered")
 		return
@@ -231,8 +270,11 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate email verification token
-	verificationToken := generateVerificationToken()
+	requireVerification := h.requireEmailVerification
+	verificationToken := ""
+	if requireVerification {
+		verificationToken = generateVerificationToken()
+	}
 
 	// Build full name from first/last or use provided name
 	fullName := strings.TrimSpace(req.Name)
@@ -245,16 +287,23 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	user := &auth.User{
 		ID:                     userID,
 		TenantID:               tenantID,
-		Email:                  normalizeEmail(req.Email),
+		Email:                  normalizedEmail,
 		Name:                   fullName,
 		FirstName:              strings.TrimSpace(req.FirstName),
 		LastName:               strings.TrimSpace(req.LastName),
 		JobTitle:               strings.TrimSpace(req.JobTitle),
 		PasswordHash:           passwordHash,
 		Role:                   "admin",
+		Roles:                  []string{"admin"},
 		IsActive:               true,
-		EmailVerified:          false, // Requires verification
+		EmailVerified:          !requireVerification,
 		EmailVerificationToken: verificationToken,
+		EmailVerificationSentAt: func() *time.Time {
+			if requireVerification {
+				return &now
+			}
+			return nil
+		}(),
 		CreatedAt:              now,
 		UpdatedAt:              now,
 	}
@@ -272,18 +321,80 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In production, send verification email here
-	// For now, we'll include the token in the response for development
-	// TODO: Implement email sending service
+	if requireVerification {
+		if h.emailSender != nil && h.frontendURL != "" {
+			verifyURL := h.buildVerificationURL(verificationToken)
+			if err := h.emailSender.SendEmailVerification(ctx, user.Email, user.Name, verifyURL, h.verificationTTL); err != nil {
+				// Rollback tenant (cascades to user)
+				if delErr := h.authStore.DeleteTenant(ctx, tenantID); delErr != nil {
+					h.logger.Error("failed to rollback tenant after email failure",
+						"tenantId", tenantID,
+						"error", delErr.Error(),
+					)
+				}
+				h.logger.Error("failed to send verification email",
+					"userId", user.ID,
+					"email", user.Email,
+					"error", err.Error(),
+				)
+				responders.ServiceUnavailable(w, "email service unavailable, please try again later", 0)
+				return
+			}
+		} else if !h.allowDevVerificationToken {
+			if delErr := h.authStore.DeleteTenant(ctx, tenantID); delErr != nil {
+				h.logger.Error("failed to rollback tenant after missing email config",
+					"tenantId", tenantID,
+					"error", delErr.Error(),
+				)
+			}
+			h.logger.Error("email service not configured for verification",
+				"userId", user.ID,
+				"tenantId", tenant.ID,
+				"email", user.Email,
+			)
+			responders.ServiceUnavailable(w, "email service unavailable, please try again later", 0)
+			return
+		}
 
-	h.logger.Info("user registered - verification required",
+		h.logger.Info("user registered - verification required",
+			"userId", user.ID,
+			"tenantId", tenant.ID,
+			"email", user.Email,
+		)
+
+		responders.Created(w, AuthResponse{
+			User: UserDTO{
+				ID:            user.ID,
+				Email:         user.Email,
+				Name:          user.Name,
+				FirstName:     user.FirstName,
+				LastName:      user.LastName,
+				Role:          user.Role,
+				EmailVerified: user.EmailVerified,
+			},
+			Tenant: TenantDTO{
+				ID:   tenant.ID,
+				Name: tenant.Name,
+				Slug: tenant.Slug,
+				Plan: tenant.Plan,
+			},
+			RequiresVerification: true,
+			VerificationToken: func() string {
+				if h.allowDevVerificationToken {
+					return verificationToken
+				}
+				return ""
+			}(),
+		})
+		return
+	}
+
+	h.logger.Info("user registered",
 		"userId", user.ID,
 		"tenantId", tenant.ID,
 		"email", user.Email,
 	)
 
-	// Return response indicating verification is required
-	// Don't create session until email is verified
 	responders.Created(w, AuthResponse{
 		User: UserDTO{
 			ID:            user.ID,
@@ -300,8 +411,6 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 			Slug: tenant.Slug,
 			Plan: tenant.Plan,
 		},
-		RequiresVerification: true,
-		VerificationToken:    verificationToken, // Only in dev - remove in production
 	})
 }
 
@@ -349,6 +458,11 @@ func (h *AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 	// Check password
 	if !auth.CheckPassword(user.PasswordHash, req.Password) {
 		h.handleLoginFailure(w, email)
+		return
+	}
+
+	if h.requireEmailVerification && !user.EmailVerified {
+		responders.Forbidden(w, "email_not_verified", "email not verified. Please check your inbox for the verification link.")
 		return
 	}
 
@@ -861,6 +975,15 @@ func generateVerificationToken() string {
 	return uuid.New().String()
 }
 
+func (h *AuthHandlers) buildVerificationURL(token string) string {
+	base := strings.TrimSpace(h.frontendURL)
+	if base == "" {
+		base = "http://localhost:3000"
+	}
+	base = strings.TrimRight(base, "/")
+	return fmt.Sprintf("%s/verify-email?token=%s", base, url.QueryEscape(token))
+}
+
 // VerifyEmailRequest represents the email verification request
 type VerifyEmailRequest struct {
 	Token string `json:"token"`
@@ -900,6 +1023,13 @@ func (h *AuthHandlers) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 			"message": "Email already verified. Please login.",
 		})
 		return
+	}
+
+	if h.verificationTTL > 0 && user.EmailVerificationSentAt != nil {
+		if time.Since(*user.EmailVerificationSentAt) > h.verificationTTL {
+			responders.BadRequest(w, "token_expired", "verification link has expired")
+			return
+		}
 	}
 
 	// Update user as verified

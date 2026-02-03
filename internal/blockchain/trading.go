@@ -3,6 +3,7 @@ package blockchain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -138,6 +139,9 @@ type MarketplaceClient struct {
 	logger   *slog.Logger
 }
 
+// ErrMarketplaceNotImplemented indicates the marketplace contract integration is unavailable.
+var ErrMarketplaceNotImplemented = errors.New("marketplace operations are not implemented")
+
 // NewMarketplaceClient creates a marketplace client.
 func NewMarketplaceClient(provider *EthereumProvider, contractAddress string) *MarketplaceClient {
 	return &MarketplaceClient{
@@ -170,71 +174,42 @@ type ListCreditRequest struct {
 
 // ListCredit lists a carbon credit for sale.
 func (mc *MarketplaceClient) ListCredit(ctx context.Context, req ListCreditRequest) error {
-	mc.logger.Info("listing credit for sale",
-		"tokenId", req.TokenID,
-		"price", req.Price)
-
-	// Implementation would call marketplace contract
-	// This is a placeholder for the actual contract interaction
-	mc.logger.Info("credit listed successfully", "tokenId", req.TokenID)
-	return nil
+	return ErrMarketplaceNotImplemented
 }
 
 // UnlistCredit removes a listing.
 func (mc *MarketplaceClient) UnlistCredit(ctx context.Context, tokenID *big.Int) error {
-	mc.logger.Info("unlisting credit", "tokenId", tokenID)
-	// Implementation would call marketplace contract
-	return nil
+	return ErrMarketplaceNotImplemented
 }
 
 // BuyCredit purchases a listed credit.
 func (mc *MarketplaceClient) BuyCredit(ctx context.Context, tokenID *big.Int, price *big.Int) error {
-	mc.logger.Info("buying credit",
-		"tokenId", tokenID,
-		"price", price)
-
-	// Implementation would call marketplace contract
-	mc.logger.Info("credit purchased successfully", "tokenId", tokenID)
-	return nil
+	return ErrMarketplaceNotImplemented
 }
 
 // MakeOffer makes an offer on a credit.
 func (mc *MarketplaceClient) MakeOffer(ctx context.Context, tokenID *big.Int, price *big.Int, expiresAt time.Time) error {
-	mc.logger.Info("making offer",
-		"tokenId", tokenID,
-		"price", price,
-		"expiresAt", expiresAt)
-
-	// Implementation would call marketplace contract
-	return nil
+	return ErrMarketplaceNotImplemented
 }
 
 // AcceptOffer accepts an offer.
 func (mc *MarketplaceClient) AcceptOffer(ctx context.Context, tokenID *big.Int, offerIndex int) error {
-	mc.logger.Info("accepting offer",
-		"tokenId", tokenID,
-		"offerIndex", offerIndex)
-
-	// Implementation would call marketplace contract
-	return nil
+	return ErrMarketplaceNotImplemented
 }
 
 // GetActiveListings retrieves all active listings.
 func (mc *MarketplaceClient) GetActiveListings(ctx context.Context) ([]Listing, error) {
-	// Implementation would call marketplace contract
-	return []Listing{}, nil
+	return nil, ErrMarketplaceNotImplemented
 }
 
 // GetListingsByProject retrieves listings for a specific project.
 func (mc *MarketplaceClient) GetListingsByProject(ctx context.Context, projectID string) ([]Listing, error) {
-	// Implementation would call marketplace contract
-	return []Listing{}, nil
+	return nil, ErrMarketplaceNotImplemented
 }
 
 // GetListingsByVintage retrieves listings for a specific vintage year.
 func (mc *MarketplaceClient) GetListingsByVintage(ctx context.Context, vintage int) ([]Listing, error) {
-	// Implementation would call marketplace contract
-	return []Listing{}, nil
+	return nil, ErrMarketplaceNotImplemented
 }
 
 // =============================================================================
@@ -314,19 +289,7 @@ type MarketStats struct {
 
 // GetMarketStats retrieves marketplace statistics.
 func (mc *MarketplaceClient) GetMarketStats(ctx context.Context) (*MarketStats, error) {
-	mc.logger.Info("fetching market statistics")
-
-	// Implementation would aggregate data from marketplace contract
-	stats := &MarketStats{
-		TotalSales:     0,
-		TotalVolume:    big.NewInt(0),
-		AveragePrice:   big.NewInt(0),
-		ActiveListings: 0,
-		FloorPrice:     big.NewInt(0),
-		CeilingPrice:   big.NewInt(0),
-	}
-
-	return stats, nil
+	return nil, ErrMarketplaceNotImplemented
 }
 
 // PriceHistory represents price history for a project.
@@ -344,15 +307,7 @@ type PricePoint struct {
 
 // GetPriceHistory retrieves price history for a project.
 func (mc *MarketplaceClient) GetPriceHistory(ctx context.Context, projectID string, days int) (*PriceHistory, error) {
-	mc.logger.Info("fetching price history",
-		"project", projectID,
-		"days", days)
-
-	// Implementation would query historical sales data
-	return &PriceHistory{
-		ProjectID: projectID,
-		Prices:    make([]PricePoint, 0),
-	}, nil
+	return nil, ErrMarketplaceNotImplemented
 }
 
 // =============================================================================

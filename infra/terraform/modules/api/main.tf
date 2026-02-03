@@ -139,25 +139,13 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# Listener HTTPS (TODO: requires ACM certificate)
-# resource "aws_lb_listener" "https" {
-#   load_balancer_arn = aws_lb.api.arn
-#   port              = 443
-#   protocol          = "HTTPS"
-#   ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
-#   certificate_arn   = var.certificate_arn
-#
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.api.arn
-#   }
-# }
-
-# For now, forward HTTP directly
-resource "aws_lb_listener" "http_forward" {
+# Listener HTTPS (requires ACM certificate)
+resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.api.arn
-  port              = 80
-  protocol          = "HTTP"
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = var.certificate_arn
 
   default_action {
     type             = "forward"
@@ -300,4 +288,3 @@ resource "aws_ecs_service" "api" {
 
 # Data source for current region
 data "aws_region" "current" {}
-

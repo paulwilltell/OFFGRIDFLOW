@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -32,11 +33,13 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 	router := setupTestRouter(t, testDB)
 
 	var authToken string
+	var regEmail string
 
 	// Step 1: Register new user
 	t.Run("user registration", func(t *testing.T) {
 		email := uniqueEmail("test")
 		name := fmt.Sprintf("Test User %d", time.Now().UnixNano())
+		regEmail = email
 
 		payload := map[string]string{
 			"email":    email,
@@ -51,22 +54,15 @@ func TestFullEmissionsCalculationFlow(t *testing.T) {
 		json.NewDecoder(resp.Body).Decode(&result)
 
 		assert(t, result["user"] != nil, "user should be in response")
-		assert(t, result["token"] != nil, "token should be in response")
-
-		// Use token returned at registration for subsequent steps
-		if tok, ok := result["token"].(string); ok {
-			authToken = tok
-		}
 	})
 
 	// Step 2: Login to get auth token
 	t.Run("user login", func(t *testing.T) {
-		if authToken != "" {
-			t.Skip("login covered by registration token")
+		if regEmail == "" {
+			t.Fatal("registration email missing")
 		}
-
 		payload := map[string]string{
-			"email":    "test@offgridflow.com",
+			"email":    regEmail,
 			"password": "SecurePass123!",
 		}
 
@@ -389,9 +385,10 @@ func TestAuthenticationFlow(t *testing.T) {
 func setupTestDB(t *testing.T) *db.DB {
 	t.Helper()
 
-	// Use local Postgres started via docker-compose for integration tests
-	// Connect to local Postgres (docker-compose) for integration tests
-	dsn := "postgresql://offgridflow:changeme@localhost:5432/offgridflow?sslmode=disable"
+	dsn := strings.TrimSpace(os.Getenv("OFFGRIDFLOW_TEST_DB_DSN"))
+	if dsn == "" {
+		t.Skip("OFFGRIDFLOW_TEST_DB_DSN not set; skipping integration tests that require Postgres")
+	}
 	database, err := db.Connect(context.Background(), db.Config{DSN: dsn})
 	if err != nil {
 		t.Fatalf("failed to setup test database: %v", err)
@@ -430,6 +427,7 @@ func setupTestRouter(t *testing.T, database *db.DB) http.Handler {
 		Scope2Calculator: scope2Calc,
 		FactorRegistry:   factorRegistry,
 		RequireAuth:      true,
+		RequireEmailVerification: false,
 	}
 
 	return apihttp.NewRouterWithConfig(cfg)
@@ -453,6 +451,7 @@ func setupTestRouterNoDB(t *testing.T) http.Handler {
 		Scope2Calculator: scope2Calc,
 		FactorRegistry:   factorRegistry,
 		RequireAuth:      true,
+		RequireEmailVerification: false,
 	}
 
 	return apihttp.NewRouterWithConfig(cfg)

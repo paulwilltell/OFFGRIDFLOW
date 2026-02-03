@@ -32,8 +32,16 @@ export interface PortalResponse {
 }
 
 export async function getPlans(): Promise<BillingPlansResponse> {
-  // Backend does not yet expose a plans catalog; provide static defaults.
-  return Promise.resolve({
+  try {
+    const response = await api.get<BillingPlansResponse>('/api/billing/plans');
+    if (response?.plans?.length) {
+      return response;
+    }
+  } catch {
+    // Fallback to static defaults if the API is unavailable.
+  }
+
+  return {
     plans: [
       {
         id: 'basic',
@@ -60,7 +68,7 @@ export async function getPlans(): Promise<BillingPlansResponse> {
         features: ['Dedicated success', 'Custom SLAs'],
       },
     ],
-  });
+  };
 }
 
 export async function getSubscription(): Promise<SubscriptionResponse> {
@@ -126,6 +134,7 @@ export function formatPeriodEnd(dateString: string | null | undefined): string {
 
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
     year: 'numeric',
     month: 'long',
     day: 'numeric',

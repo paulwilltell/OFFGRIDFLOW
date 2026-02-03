@@ -273,6 +273,33 @@ func (c *Client) SendWelcome(ctx context.Context, to, name string) error {
 	return c.Send(ctx, msg)
 }
 
+// SendEmailVerification sends an email verification link
+func (c *Client) SendEmailVerification(ctx context.Context, to, name, verifyURL string, expiresIn time.Duration) error {
+	data := map[string]interface{}{
+		"Name":        name,
+		"VerifyURL":   verifyURL,
+		"ExpiresIn":   humanizeDuration(expiresIn),
+		"SupportEmail": "support@offgridflow.com",
+	}
+
+	var htmlBuf, textBuf bytes.Buffer
+	if err := c.templates.ExecuteTemplate(&htmlBuf, "email_verification.html", data); err != nil {
+		return fmt.Errorf("failed to execute HTML template: %w", err)
+	}
+	if err := c.templates.ExecuteTemplate(&textBuf, "email_verification.txt", data); err != nil {
+		return fmt.Errorf("failed to execute text template: %w", err)
+	}
+
+	msg := &Message{
+		To:       []string{to},
+		Subject:  "Verify your OffGridFlow email",
+		HTMLBody: htmlBuf.String(),
+		TextBody: textBuf.String(),
+	}
+
+	return c.Send(ctx, msg)
+}
+
 // SendReportReady sends notification that a report is ready
 func (c *Client) SendReportReady(ctx context.Context, to, name, reportType, downloadURL string) error {
 	data := map[string]interface{}{
@@ -298,6 +325,27 @@ func (c *Client) SendReportReady(ctx context.Context, to, name, reportType, down
 	}
 
 	return c.Send(ctx, msg)
+}
+
+func humanizeDuration(d time.Duration) string {
+	if d <= 0 {
+		return "24 hours"
+	}
+	if d%time.Hour == 0 {
+		hours := int(d.Hours())
+		if hours == 1 {
+			return "1 hour"
+		}
+		return fmt.Sprintf("%d hours", hours)
+	}
+	if d%time.Minute == 0 {
+		minutes := int(d.Minutes())
+		if minutes == 1 {
+			return "1 minute"
+		}
+		return fmt.Sprintf("%d minutes", minutes)
+	}
+	return d.String()
 }
 
 // SendTrialEnding sends notification that trial is ending soon
@@ -396,6 +444,46 @@ Click the link below to reset your password:
 This link will expire in {{.ExpiresIn}}.
 
 If you didn't request this password reset, you can safely ignore this email.
+
+Best regards,
+The OffGridFlow Team
+	`))
+
+	// Email verification templates
+	template.Must(tmpl.New("email_verification.html").Parse(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Verify your email</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2>Verify your email</h2>
+        <p>Hi {{.Name}},</p>
+        <p>Thanks for creating your OffGridFlow account. Please verify your email to finish setting up your account.</p>
+        <p style="margin: 30px 0;">
+            <a href="{{.VerifyURL}}" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Verify Email</a>
+        </p>
+        <p>This link will expire in {{.ExpiresIn}}.</p>
+        <p>If you did not create this account, you can ignore this email or contact {{.SupportEmail}}.</p>
+        <p>Best regards,<br>The OffGridFlow Team</p>
+    </div>
+</body>
+</html>
+	`))
+
+	template.Must(tmpl.New("email_verification.txt").Parse(`
+Verify your email
+
+Hi {{.Name}},
+
+Thanks for creating your OffGridFlow account. Please verify your email to finish setting up your account:
+{{.VerifyURL}}
+
+This link will expire in {{.ExpiresIn}}.
+
+If you did not create this account, you can ignore this email or contact {{.SupportEmail}}.
 
 Best regards,
 The OffGridFlow Team

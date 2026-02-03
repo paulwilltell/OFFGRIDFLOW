@@ -3,7 +3,7 @@
  */
 
 import { setupServer } from 'msw/node';
-import { rest } from 'msw';
+import { http, HttpResponse } from 'msw';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
 const server = setupServer();
@@ -151,8 +151,8 @@ describe('Activities API Client', () => {
       ];
 
       server.use(
-        rest.get(`${API_BASE}/api/v1/activities`, (req, res, ctx) => {
-          return res(ctx.status(200), ctx.json({ activities: mockActivities }));
+        http.get(`${API_BASE}/api/v1/activities`, async () => {
+          return HttpResponse.json({ activities: mockActivities }, { status: 200 });
         })
       );
 
@@ -165,8 +165,8 @@ describe('Activities API Client', () => {
 
     it('should handle 401 Unauthorized', async () => {
       server.use(
-        rest.get(`${API_BASE}/api/v1/activities`, (req, res, ctx) => {
-          return res(ctx.status(401), ctx.json({ error: 'Unauthorized' }));
+        http.get(`${API_BASE}/api/v1/activities`, async () => {
+          return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
         })
       );
 
@@ -175,8 +175,8 @@ describe('Activities API Client', () => {
 
     it('should handle network errors', async () => {
       server.use(
-        rest.get(`${API_BASE}/api/v1/activities`, (req, res) => {
-          return res.networkError('Network connection failed');
+        http.get(`${API_BASE}/api/v1/activities`, async () => {
+          return HttpResponse.error();
         })
       );
 
@@ -187,9 +187,9 @@ describe('Activities API Client', () => {
       let capturedHeaders: Headers | undefined;
 
       server.use(
-        rest.get(`${API_BASE}/api/v1/activities`, (req, res, ctx) => {
-          capturedHeaders = req.headers;
-          return res(ctx.status(200), ctx.json({ activities: [] }));
+        http.get(`${API_BASE}/api/v1/activities`, async ({ request }) => {
+          capturedHeaders = request.headers;
+          return HttpResponse.json({ activities: [] }, { status: 200 });
         })
       );
 
@@ -210,13 +210,13 @@ describe('Activities API Client', () => {
 
     it('should handle pagination', async () => {
       server.use(
-        rest.get(`${API_BASE}/api/v1/activities`, (req, res, ctx) => {
-          const page = req.url.searchParams.get('page') || '1';
-          const limit = req.url.searchParams.get('limit') || '10';
+        http.get(`${API_BASE}/api/v1/activities`, async ({ request }) => {
+          const url = new URL(request.url);
+          const page = url.searchParams.get('page') || '1';
+          const limit = url.searchParams.get('limit') || '10';
 
-          return res(
-            ctx.status(200),
-            ctx.json({
+          return HttpResponse.json(
+            {
               activities: [],
               pagination: {
                 page: parseInt(page),
@@ -224,7 +224,8 @@ describe('Activities API Client', () => {
                 total: 100,
                 totalPages: 10,
               },
-            })
+            },
+            { status: 200 }
           );
         })
       );
@@ -253,8 +254,8 @@ describe('Activities API Client', () => {
       };
 
       server.use(
-        rest.post(`${API_BASE}/api/v1/activities`, (req, res, ctx) => {
-          return res(ctx.status(201), ctx.json({ activity: createdActivity }));
+        http.post(`${API_BASE}/api/v1/activities`, async () => {
+          return HttpResponse.json({ activity: createdActivity }, { status: 201 });
         })
       );
 
@@ -266,11 +267,8 @@ describe('Activities API Client', () => {
 
     it('should handle validation errors', async () => {
       server.use(
-        rest.post(`${API_BASE}/api/v1/activities`, (req, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({ error: 'Validation failed' })
-          );
+        http.post(`${API_BASE}/api/v1/activities`, async () => {
+          return HttpResponse.json({ error: 'Validation failed' }, { status: 400 });
         })
       );
 
@@ -299,8 +297,8 @@ describe('Activities API Client', () => {
       };
 
       server.use(
-        rest.put(`${API_BASE}/api/v1/activities/1`, (req, res, ctx) => {
-          return res(ctx.status(200), ctx.json({ activity: updatedActivity }));
+        http.put(`${API_BASE}/api/v1/activities/1`, async () => {
+          return HttpResponse.json({ activity: updatedActivity }, { status: 200 });
         })
       );
 
@@ -311,8 +309,8 @@ describe('Activities API Client', () => {
 
     it('should handle 404 Not Found', async () => {
       server.use(
-        rest.put(`${API_BASE}/api/v1/activities/999`, (req, res, ctx) => {
-          return res(ctx.status(404), ctx.json({ error: 'Activity not found' }));
+        http.put(`${API_BASE}/api/v1/activities/999`, async () => {
+          return HttpResponse.json({ error: 'Activity not found' }, { status: 404 });
         })
       );
 
@@ -323,8 +321,8 @@ describe('Activities API Client', () => {
   describe('deleteActivity', () => {
     it('should delete activity successfully', async () => {
       server.use(
-        rest.delete(`${API_BASE}/api/v1/activities/1`, (req, res, ctx) => {
-          return res(ctx.status(204));
+        http.delete(`${API_BASE}/api/v1/activities/1`, async () => {
+          return new HttpResponse(null, { status: 204 });
         })
       );
 
@@ -333,8 +331,8 @@ describe('Activities API Client', () => {
 
     it('should handle 403 Forbidden', async () => {
       server.use(
-        rest.delete(`${API_BASE}/api/v1/activities/1`, (req, res, ctx) => {
-          return res(ctx.status(403), ctx.json({ error: 'Forbidden' }));
+        http.delete(`${API_BASE}/api/v1/activities/1`, async () => {
+          return HttpResponse.json({ error: 'Forbidden' }, { status: 403 });
         })
       );
 

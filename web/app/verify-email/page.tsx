@@ -34,7 +34,7 @@ function VerifyEmailContent() {
         body: JSON.stringify({ token }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (response.ok && data.success) {
         setStatus('success');
@@ -44,7 +44,8 @@ function VerifyEmailContent() {
         }
       } else {
         setStatus('error');
-        setMessage(data.error || 'Failed to verify email. The link may have expired.');
+        const errorMessage = data?.error?.message || data?.message || data?.error;
+        setMessage(errorMessage || 'Failed to verify email. The link may have expired.');
       }
     } catch (error) {
       setStatus('error');

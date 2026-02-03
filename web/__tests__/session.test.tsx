@@ -159,14 +159,12 @@ describe('Session Module', () => {
   });
 
   describe('useSession', () => {
-    it('should throw error when used outside provider', () => {
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    it('should return default session when used outside provider', () => {
+      render(<TestSessionConsumer />);
 
-      expect(() => {
-        render(<TestSessionConsumer />);
-      }).toThrow('useSession must be used within a SessionProvider');
-
-      consoleError.mockRestore();
+      expect(screen.getByTestId('loading')).toHaveTextContent('true');
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('false');
+      expect(screen.getByTestId('user')).toHaveTextContent('none');
     });
   });
 

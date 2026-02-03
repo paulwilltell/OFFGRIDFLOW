@@ -16,10 +16,18 @@ CREATE TABLE IF NOT EXISTS users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email         TEXT NOT NULL UNIQUE,
     name          TEXT,
+    first_name    TEXT,
+    last_name     TEXT,
+    job_title     TEXT,
     password_hash TEXT NOT NULL,
     tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    role          TEXT NOT NULL DEFAULT 'viewer',
     roles         TEXT NOT NULL DEFAULT 'viewer',
     is_active     BOOLEAN NOT NULL DEFAULT true,
+    email_verified BOOLEAN NOT NULL DEFAULT false,
+    email_verification_token TEXT,
+    email_verification_sent_at TIMESTAMPTZ,
+    last_login_at TIMESTAMPTZ,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );

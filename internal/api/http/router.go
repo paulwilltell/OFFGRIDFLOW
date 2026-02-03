@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/example/offgridflow/internal/ai"
@@ -41,6 +42,7 @@ import (
 	"github.com/example/offgridflow/internal/ingestion/sources/utility_bills"
 	"github.com/example/offgridflow/internal/offgrid"
 	"github.com/example/offgridflow/internal/ratelimit"
+	"github.com/example/offgridflow/internal/realtime"
 	"github.com/example/offgridflow/internal/workflow"
 )
 
@@ -67,13 +69,19 @@ type RouterConfig struct {
 	WorkflowService       *workflow.Service
 	IngestionOrchestrator *ingestion.Orchestrator
 	IngestionScheduler    *ingestion.Scheduler
+	RealTimeHub           *realtime.Hub
 
 	// Auth configuration
-	AuthStore      auth.Store
-	SessionManager *auth.SessionManager
-	RequireAuth    bool
-	CookieDomain   string
-	CookieSecure   bool
+	AuthStore                 auth.Store
+	SessionManager            *auth.SessionManager
+	RequireAuth               bool
+	CookieDomain              string
+	CookieSecure              bool
+	FrontendURL               string
+	EmailSender               handlers.EmailSender
+	RequireEmailVerification  bool
+	EmailVerificationTTL      time.Duration
+	AllowDevVerificationToken bool
 
 	// LockoutManager enforces login throttling for auth handlers.
 	LockoutManager *auth.LockoutManager
@@ -216,6 +224,7 @@ func NewRouterWithConfig(cfg *RouterConfig) http.Handler {
 			ExemptPaths: []string{
 				"/api/auth/login",
 				"/api/auth/register",
+				"/api/auth/verify-email",
 				"/api/auth/password/forgot",
 				"/api/auth/password/reset",
 				"/api/auth/csrf-token",
@@ -274,7 +283,7 @@ func (r *router) build() http.Handler {
 	}
 
 	// Apply CORS middleware for cross-origin requests
-	handler = corsMiddleware(handler)
+	handler = corsMiddleware(handler, r.cfg.AllowedOrigins, r.cfg.AllowedMethods, r.cfg.AllowedHeaders)
 
 	return handler
 }
@@ -292,11 +301,16 @@ func (r *router) registerPublicRoutes(mux *http.ServeMux) {
 	// Public authentication endpoints
 	if r.cfg.AuthStore != nil && r.cfg.SessionManager != nil {
 		authHandlers := handlers.NewAuthHandlers(handlers.AuthHandlersConfig{
-			AuthStore:      r.cfg.AuthStore,
-			SessionManager: r.cfg.SessionManager,
-			CookieDomain:   r.cfg.CookieDomain,
-			CookieSecure:   r.cfg.CookieSecure,
-			LockoutManager: r.cfg.LockoutManager,
+			AuthStore:                 r.cfg.AuthStore,
+			SessionManager:            r.cfg.SessionManager,
+			CookieDomain:              r.cfg.CookieDomain,
+			CookieSecure:              r.cfg.CookieSecure,
+			LockoutManager:            r.cfg.LockoutManager,
+			EmailSender:               r.cfg.EmailSender,
+			FrontendURL:               r.cfg.FrontendURL,
+			VerificationTTL:           r.cfg.EmailVerificationTTL,
+			RequireEmailVerification:  r.cfg.RequireEmailVerification,
+			AllowDevVerificationToken: r.cfg.AllowDevVerificationToken,
 		})
 
 		mux.HandleFunc("/api/auth/register", authHandlers.Register)
@@ -326,11 +340,16 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 	// Auth management endpoints
 	if r.cfg.AuthStore != nil && r.cfg.SessionManager != nil {
 		authHandlers := handlers.NewAuthHandlers(handlers.AuthHandlersConfig{
-			AuthStore:      r.cfg.AuthStore,
-			SessionManager: r.cfg.SessionManager,
-			CookieDomain:   r.cfg.CookieDomain,
-			CookieSecure:   r.cfg.CookieSecure,
-			LockoutManager: r.cfg.LockoutManager,
+			AuthStore:                 r.cfg.AuthStore,
+			SessionManager:            r.cfg.SessionManager,
+			CookieDomain:              r.cfg.CookieDomain,
+			CookieSecure:              r.cfg.CookieSecure,
+			LockoutManager:            r.cfg.LockoutManager,
+			EmailSender:               r.cfg.EmailSender,
+			FrontendURL:               r.cfg.FrontendURL,
+			VerificationTTL:           r.cfg.EmailVerificationTTL,
+			RequireEmailVerification:  r.cfg.RequireEmailVerification,
+			AllowDevVerificationToken: r.cfg.AllowDevVerificationToken,
 		})
 
 		protectedMux.HandleFunc("/api/auth/me", authHandlers.Me)
@@ -442,6 +461,12 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 
 	// Mount protected routes to main mux
 	r.mountProtectedRoutes(mux, protectedHandler)
+
+	if r.cfg != nil && r.cfg.RealTimeHub != nil {
+		realtimeHandler := realtime.NewHandler(r.cfg.RealTimeHub, r.logger)
+		realtimeHandler.SetAllowedOrigins(r.cfg.AllowedOrigins)
+		mux.Handle("/ws/emissions", r.applyProtectedMiddleware(realtimeHandler))
+	}
 }
 
 // applyProtectedMiddleware wraps the protected handler with auth and subscription middleware.
@@ -771,23 +796,49 @@ func Router(handlers map[string]http.Handler) http.Handler {
 }
 
 // corsMiddleware adds CORS headers to all responses and handles preflight requests.
-func corsMiddleware(next http.Handler) http.Handler {
+func corsMiddleware(next http.Handler, allowedOrigins, allowedMethods, allowedHeaders []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
-		// Allow localhost origins for development
-		allowedOrigins := []string{
-			"http://localhost:3000",
-			"http://localhost:8080",
-			"http://127.0.0.1:3000",
-			"http://127.0.0.1:8080",
+		// Allow localhost origins for development if no config provided
+		if len(allowedOrigins) == 0 {
+			allowedOrigins = []string{
+				"http://localhost:3000",
+				"http://localhost:8080",
+				"http://127.0.0.1:3000",
+				"http://127.0.0.1:8080",
+			}
+		}
+		if len(allowedMethods) == 0 {
+			allowedMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+		}
+		if len(allowedHeaders) == 0 {
+			allowedHeaders = []string{"Content-Type", "Authorization", "X-API-Key", "X-Request-ID", "X-CSRF-Token", "X-Tenant-ID"}
 		}
 
 		allowed := false
-		for _, ao := range allowedOrigins {
-			if origin == ao {
-				allowed = true
-				break
+		if origin != "" {
+			for _, ao := range allowedOrigins {
+				trimmed := strings.TrimSpace(ao)
+				if trimmed == "" {
+					continue
+				}
+				if trimmed == "*" {
+					allowed = true
+					break
+				}
+				if strings.HasSuffix(trimmed, "*") {
+					prefix := strings.TrimSuffix(trimmed, "*")
+					if strings.HasPrefix(origin, prefix) {
+						allowed = true
+						break
+					}
+					continue
+				}
+				if origin == trimmed {
+					allowed = true
+					break
+				}
 			}
 		}
 
@@ -795,8 +846,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key, X-Request-ID, X-CSRF-Token, X-Tenant-ID")
+		w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+		w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 

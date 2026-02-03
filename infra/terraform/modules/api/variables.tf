@@ -78,3 +78,8 @@ variable "queue_url" {
   description = "SQS queue URL"
   type        = string
 }
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for HTTPS listener"
+  type        = string
+}

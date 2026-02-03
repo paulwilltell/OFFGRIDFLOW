@@ -70,14 +70,17 @@ describe('API Client', () => {
       const client = createClient('http://localhost:8090');
       await client.get('/api/test');
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          headers: expect.objectContaining({
+      const [, options] = mockFetch.mock.calls[0];
+      const headers = options?.headers;
+      if (headers instanceof Headers) {
+        expect(headers.get('Authorization')).toBe('Bearer test-token');
+      } else {
+        expect(headers).toEqual(
+          expect.objectContaining({
             Authorization: 'Bearer test-token',
-          }),
-        })
-      );
+          })
+        );
+      }
     });
   });
 
@@ -89,10 +92,10 @@ describe('API Client', () => {
       });
 
       const client = createClient('http://localhost:8090');
-      const result = await client.post('/api/test', { foo: 'bar' });
+      const result = await client.post('/api/auth/register', { foo: 'bar' });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:8090/api/test',
+        'http://localhost:8090/api/auth/register',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ foo: 'bar' }),

@@ -50,17 +50,23 @@ describe('Billing Module', () => {
 
   describe('getSubscription', () => {
     it('should fetch subscription status', async () => {
-      const mockSubscription = {
-        plan_id: 'pro',
+      const mockStatus = {
+        subscribed: true,
+        plan: 'pro',
         status: 'active',
-        current_period_end: '2024-12-31T00:00:00Z',
+        currentPeriodEnd: '2024-12-31T00:00:00Z',
       };
-      mockedApi.get.mockResolvedValueOnce(mockSubscription);
+      mockedApi.get.mockResolvedValueOnce(mockStatus);
 
       const result = await getSubscription();
 
-      expect(mockedApi.get).toHaveBeenCalledWith('/api/billing/subscription');
-      expect(result).toEqual(mockSubscription);
+      expect(mockedApi.get).toHaveBeenCalledWith('/api/billing/status');
+      expect(result).toEqual({
+        plan_id: 'pro',
+        status: 'active',
+        current_period_end: '2024-12-31T00:00:00Z',
+        subscribed: true,
+      });
     });
   });
 
