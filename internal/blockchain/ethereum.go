@@ -194,7 +194,7 @@ func (ep *EthereumProvider) createTransactor(ctx context.Context) (*bind.Transac
 		return nil, err
 	}
 
-	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Nonce = new(big.Int).SetUint64(nonce)
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = uint64(300000)
 	auth.GasPrice = gasPrice
@@ -209,16 +209,16 @@ func (ep *EthereumProvider) createTransactor(ctx context.Context) (*bind.Transac
 
 // CarbonCreditToken represents a carbon credit as an NFT.
 type CarbonCreditToken struct {
-	TokenID     *big.Int         `json:"tokenId"`
-	Owner       common.Address   `json:"owner"`
-	CO2e        float64          `json:"co2e"`
-	Vintage     int              `json:"vintage"` // Year
-	ProjectID   string           `json:"projectId"`
-	Standard    string           `json:"standard"` // "VCS", "GoldStandard", etc.
-	Metadata    string           `json:"metadata"`
-	MintedAt    time.Time        `json:"mintedAt"`
-	RetiredAt   *time.Time       `json:"retiredAt,omitempty"`
-	ChainAnchor Hash             `json:"chainAnchor"`
+	TokenID     *big.Int       `json:"tokenId"`
+	Owner       common.Address `json:"owner"`
+	CO2e        float64        `json:"co2e"`
+	Vintage     int            `json:"vintage"` // Year
+	ProjectID   string         `json:"projectId"`
+	Standard    string         `json:"standard"` // "VCS", "GoldStandard", etc.
+	Metadata    string         `json:"metadata"`
+	MintedAt    time.Time      `json:"mintedAt"`
+	RetiredAt   *time.Time     `json:"retiredAt,omitempty"`
+	ChainAnchor Hash           `json:"chainAnchor"`
 }
 
 // TokenManager manages carbon credit NFTs.

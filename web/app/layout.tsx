@@ -1,6 +1,7 @@
 import "../styles/globals.css";
 import type { ReactNode } from "react";
 import { JetBrains_Mono, Space_Grotesk, Syncopate } from "next/font/google";
+import { AppProviders } from "./providers";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -32,7 +33,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${spaceGrotesk.variable} ${jetBrainsMono.variable} ${syncopate.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

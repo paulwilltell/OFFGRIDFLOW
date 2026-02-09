@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ['nodejs_18']
+nixPkgs = ['nodejs_20']
 
 [phases.install]
-cmds = ['npm ci']
+cmds = ['cd .. && npm ci']
 
 [phases.build]
-cmds = ['npm run build']
+cmds = ['cd .. && npm run build --workspace web']
 
 [start]
-cmd = 'npm start'
+cmd = 'cd .. && npm run start --workspace web'

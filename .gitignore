@@ -37,3 +37,5 @@ infra/otel-data/
 # Temp
 temp/
 *.tmp
+web/nul
+output/

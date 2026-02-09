@@ -12,9 +12,8 @@ fi
 case "$role" in
   *web*|*frontend*)
     echo "Railway build: web service"
-    cd web
     npm ci
-    npm run build
+    npm run build --workspace web
     ;;
   *api*|*backend*)
     echo "Railway build: api service"
