@@ -11,13 +11,18 @@
     "start": "npm run start --workspace web"
   },
   "engines": {
-    "node": ">=18.17.0"
+    "node": ">=18.18.0"
   },
   "overrides": {
     "glob": "10.5.0",
     "@next/eslint-plugin-next": {
       "glob": "10.5.0"
-    }
+    },
+    "h3": "1.15.5",
+    "hono": "4.11.9",
+    "lodash": "4.17.23",
+    "unstorage": "1.17.4",
+    "webpack": "5.105.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
