@@ -399,7 +399,7 @@ func run() (err error) {
 			log.Printf("[offgridflow] billing service initialized with Stripe")
 		}
 	} else {
-		log.Printf("[offgridflow] no OFFGRIDFLOW_STRIPE_SECRET_KEY provided, billing disabled")
+		log.Printf("[offgridflow] no STRIPE_SECRET_KEY provided, billing disabled")
 	}
 
 	// Check if auth should be required

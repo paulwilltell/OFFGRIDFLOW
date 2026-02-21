@@ -356,12 +356,27 @@ func (h *WebhookHandler) handleCheckoutCompleted(ctx context.Context, event *str
 		return fmt.Errorf("failed to parse checkout session: %w", err)
 	}
 
+	customerID := ""
+	if session.Customer != nil {
+		customerID = session.Customer.ID
+	}
+	subscriptionID := ""
+	if session.Subscription != nil {
+		subscriptionID = session.Subscription.ID
+	}
+
 	h.logger.Info("Checkout completed",
 		"session_id", session.ID,
-		"customer_id", session.Customer.ID,
-		"subscription_id", session.Subscription.ID)
+		"customer_id", customerID,
+		"subscription_id", subscriptionID)
 
-	// Subscription is already created, just log success
+	// Activate the subscription in our store
+	if customerID != "" {
+		if err := h.service.HandleWebhookEvent(ctx, event); err != nil {
+			h.logger.Warn("Failed to activate subscription from checkout", "error", err)
+		}
+	}
+
 	return nil
 }
 

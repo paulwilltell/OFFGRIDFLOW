@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -32,28 +33,50 @@ func NewService(stripeClient *StripeClient, store Store) *Service {
 
 // StartSubscription initiates checkout and returns the Stripe-hosted URL.
 func (s *Service) StartSubscription(ctx context.Context, tenantID, tenantName, email, plan, successURL, cancelURL string) (string, error) {
-	// Check if subscription already exists (and hence customer)
-	sub, _ := s.store.GetByTenantID(ctx, tenantID)
+	if s == nil || s.stripe == nil || s.store == nil {
+		return "", errors.New("billing: service not configured")
+	}
+
+	// Check if subscription already exists (and hence customer).
+	sub, err := s.store.GetByTenantID(ctx, tenantID)
+	if err != nil {
+		return "", err
+	}
+
 	var customerID string
 	if sub != nil && sub.StripeCustomerID != "" {
 		customerID = sub.StripeCustomerID
 	} else {
-		var err error
-		customerID, err = s.stripe.CreateCustomer(email, tenantName, tenantID)
-		if err != nil {
+		var createErr error
+		customerID, createErr = s.stripe.CreateCustomer(email, tenantName, tenantID)
+		if createErr != nil {
+			return "", createErr
+		}
+		// Persist customer link. A checkout session is not an active subscription yet.
+		now := time.Now()
+		if sub == nil {
+			sub = &Subscription{
+				ID:        uuid.NewString(),
+				TenantID:  tenantID,
+				CreatedAt: now,
+			}
+		}
+		sub.StripeCustomerID = customerID
+		sub.Status = StatusUnpaid
+		sub.Plan = plan
+		sub.UpdatedAt = now
+		if err := s.store.Upsert(ctx, sub); err != nil {
 			return "", err
 		}
-		// Persist customer link
-		newSub := &Subscription{
-			ID:               uuid.NewString(),
-			TenantID:         tenantID,
-			StripeCustomerID: customerID,
-			Status:           StatusTrialing,
-			Plan:             plan,
-			CreatedAt:        time.Now(),
-			UpdatedAt:        time.Now(),
-		}
-		if err := s.store.Upsert(ctx, newSub); err != nil {
+	}
+
+	// Keep selected plan persisted for non-active subscriptions so webhook activation
+	// completes with the customer's chosen tier.
+	if sub != nil && !sub.IsActive() && sub.Plan != plan {
+		sub.Plan = plan
+		sub.Status = StatusUnpaid
+		sub.UpdatedAt = time.Now()
+		if err := s.store.Upsert(ctx, sub); err != nil {
 			return "", err
 		}
 	}
@@ -63,18 +86,35 @@ func (s *Service) StartSubscription(ctx context.Context, tenantID, tenantName, e
 
 // HandleWebhookEvent processes Stripe webhook events.
 func (s *Service) HandleWebhookEvent(ctx context.Context, event *stripe.Event) error {
+	if s == nil || s.store == nil {
+		return errors.New("billing: service not configured")
+	}
+	if event == nil {
+		return errors.New("billing: webhook event is nil")
+	}
+
 	switch event.Type {
 	case "checkout.session.completed":
 		var session stripe.CheckoutSession
 		if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
 			return err
 		}
-		return s.activateSubscription(ctx, session.Customer.ID, session.Subscription.ID)
+		if session.Customer == nil || session.Customer.ID == "" {
+			return errors.New("billing: checkout session missing customer id")
+		}
+		subscriptionID := ""
+		if session.Subscription != nil {
+			subscriptionID = session.Subscription.ID
+		}
+		return s.activateSubscription(ctx, session.Customer.ID, subscriptionID)
 
 	case "customer.subscription.updated", "customer.subscription.deleted":
 		var sub stripe.Subscription
 		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
 			return err
+		}
+		if sub.Customer == nil || sub.Customer.ID == "" {
+			return errors.New("billing: subscription event missing customer id")
 		}
 		return s.syncSubscription(ctx, sub.Customer.ID, &sub)
 	case "invoice.payment_failed":
@@ -89,7 +129,11 @@ func (s *Service) HandleWebhookEvent(ctx context.Context, event *stripe.Event) e
 		if err != nil {
 			return err
 		}
+		if sub == nil {
+			return fmt.Errorf("billing: no subscription found for customer %s", inv.Customer.ID)
+		}
 		sub.Status = StatusPastDue
+		sub.UpdatedAt = time.Now()
 		return s.store.Upsert(ctx, sub)
 	}
 	return nil
@@ -102,11 +146,18 @@ func (s *Service) GetSubscription(ctx context.Context, tenantID string) (*Subscr
 
 // ParseWebhook parses and validates a Stripe webhook request.
 func (s *Service) ParseWebhook(r *http.Request) (*stripe.Event, error) {
+	if s == nil || s.stripe == nil {
+		return nil, errors.New("billing: stripe client not configured")
+	}
 	return s.stripe.ParseWebhook(r)
 }
 
 // CreateBillingPortalSession creates a Stripe billing portal session for managing subscriptions.
 func (s *Service) CreateBillingPortalSession(ctx context.Context, tenantID, returnURL string) (string, error) {
+	if s == nil || s.stripe == nil || s.store == nil {
+		return "", errors.New("billing: service not configured")
+	}
+
 	sub, err := s.store.GetByTenantID(ctx, tenantID)
 	if err != nil {
 		return "", err
@@ -119,6 +170,10 @@ func (s *Service) CreateBillingPortalSession(ctx context.Context, tenantID, retu
 
 // HasActiveSubscription checks if a tenant has an active subscription.
 func (s *Service) HasActiveSubscription(ctx context.Context, tenantID string) (bool, error) {
+	if s == nil || s.store == nil {
+		return false, errors.New("billing: service not configured")
+	}
+
 	sub, err := s.store.GetByTenantID(ctx, tenantID)
 	if err != nil {
 		return false, err
@@ -134,6 +189,9 @@ func (s *Service) activateSubscription(ctx context.Context, customerID, stripeSu
 	if err != nil {
 		return err
 	}
+	if sub == nil {
+		return fmt.Errorf("billing: no subscription found for customer %s", customerID)
+	}
 	sub.StripeSubscriptionID = stripeSubID
 	sub.Status = StatusActive
 	sub.UpdatedAt = time.Now()
@@ -145,6 +203,9 @@ func (s *Service) syncSubscription(ctx context.Context, customerID string, strip
 	if err != nil {
 		return err
 	}
+	if sub == nil {
+		return fmt.Errorf("billing: no subscription found for customer %s", customerID)
+	}
 	if stripeSub.Status != "" {
 		sub.Status = SubscriptionStatus(stripeSub.Status)
 	}
@@ -155,6 +216,11 @@ func (s *Service) syncSubscription(ctx context.Context, customerID string, strip
 		if item.CurrentPeriodEnd != 0 {
 			t := time.Unix(item.CurrentPeriodEnd, 0)
 			sub.CurrentPeriodEnd = &t
+		}
+		if item.Price != nil && item.Price.ID != "" && s.stripe != nil {
+			if plan, ok := s.stripe.PlanFromPriceID(item.Price.ID); ok && plan != "" {
+				sub.Plan = string(plan)
+			}
 		}
 	}
 	sub.UpdatedAt = time.Now()
@@ -262,6 +328,7 @@ func (s *PostgresStore) GetByTenantID(ctx context.Context, tenantID string) (*Su
 }
 
 // GetByStripeCustomer returns the subscription with the given Stripe customer ID.
+// Returns nil, nil if no subscription is found (not an error).
 func (s *PostgresStore) GetByStripeCustomer(ctx context.Context, customerID string) (*Subscription, error) {
 	sub := &Subscription{}
 	var periodEnd sql.NullTime
@@ -270,7 +337,7 @@ func (s *PostgresStore) GetByStripeCustomer(ctx context.Context, customerID stri
         FROM subscriptions WHERE stripe_customer_id = $1
     `, customerID).Scan(&sub.ID, &sub.TenantID, &sub.StripeCustomerID, &sub.StripeSubscriptionID, &sub.Status, &sub.Plan, &periodEnd, &sub.CreatedAt, &sub.UpdatedAt)
 	if err == sql.ErrNoRows {
-		return nil, errors.New("billing: subscription not found")
+		return nil, nil
 	}
 	if err != nil {
 		return nil, err

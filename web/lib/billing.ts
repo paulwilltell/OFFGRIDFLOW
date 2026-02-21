@@ -24,11 +24,13 @@ export interface SubscriptionResponse {
 }
 
 export interface CheckoutResponse {
-  checkout_url: string;
+  checkout_url?: string;
+  url?: string;
 }
 
 export interface PortalResponse {
-  portal_url: string;
+  portal_url?: string;
+  url?: string;
 }
 
 export async function getPlans(): Promise<BillingPlansResponse> {
@@ -43,29 +45,99 @@ export async function getPlans(): Promise<BillingPlansResponse> {
 
   return {
     plans: [
+      // Carbon Starter — Monthly
       {
-        id: 'basic',
-        price_id: 'price_basic',
-        name: 'Basic',
-        amount_cents: 1900,
+        id: 'basic_monthly',
+        price_id: 'price_basic_monthly',
+        name: 'Carbon Starter',
+        amount_cents: 208300,
         interval: 'month',
-        features: ['Scope 2 tracking', 'Email support'],
+        features: [
+          'Up to 5 users',
+          'Scope 1 & 2 emissions tracking',
+          'CSV data import',
+          'Basic GHG reports',
+          'Annual methodology review',
+          'Email support',
+          '$1,000/site/year for additional sites',
+        ],
       },
+      // Carbon Starter — Annual
       {
-        id: 'pro',
-        price_id: 'price_pro',
-        name: 'Pro',
-        amount_cents: 4900,
-        interval: 'month',
-        features: ['All compliance frameworks', 'Priority support'],
+        id: 'basic_annual',
+        price_id: 'price_basic_annual',
+        name: 'Carbon Starter',
+        amount_cents: 2500000,
+        interval: 'year',
+        features: [
+          'Up to 5 users',
+          'Scope 1 & 2 emissions tracking',
+          'CSV data import',
+          'Basic GHG reports',
+          'Annual methodology review',
+          'Email support',
+          '$1,000/site/year for additional sites',
+          '2 months free vs monthly',
+        ],
       },
+      // Carbon Command — Monthly
+      {
+        id: 'pro_monthly',
+        price_id: 'price_pro_monthly',
+        name: 'Carbon Command',
+        amount_cents: 375000,
+        interval: 'month',
+        features: [
+          'Unlimited users',
+          'Scope 1, 2 & 3 emissions tracking',
+          'Cloud API connectors — AWS, Azure, GCP, SAP, Utilities',
+          'CSRD, SEC & SB 253 compliance reports',
+          'Live emissions dashboard',
+          'Advanced analytics & forecasting',
+          'Dedicated account manager',
+          'Quarterly business reviews',
+          '$800/site/year for additional sites',
+        ],
+      },
+      // Carbon Command — Annual
+      {
+        id: 'pro_annual',
+        price_id: 'price_pro_annual',
+        name: 'Carbon Command',
+        amount_cents: 4500000,
+        interval: 'year',
+        features: [
+          'Unlimited users',
+          'Scope 1, 2 & 3 emissions tracking',
+          'Cloud API connectors — AWS, Azure, GCP, SAP, Utilities',
+          'CSRD, SEC & SB 253 compliance reports',
+          'Live emissions dashboard',
+          'Advanced analytics & forecasting',
+          'Dedicated account manager',
+          'Quarterly business reviews',
+          '$800/site/year for additional sites',
+          '2 months free vs monthly',
+        ],
+      },
+      // Carbon Command Elite — Contact Us
       {
         id: 'enterprise',
         price_id: 'price_enterprise',
-        name: 'Enterprise',
-        amount_cents: 9900,
-        interval: 'month',
-        features: ['Dedicated success', 'Custom SLAs'],
+        name: 'Carbon Command Elite',
+        amount_cents: 0,
+        interval: 'year',
+        features: [
+          'Everything in Carbon Command',
+          'All global frameworks — CSRD, SEC, CBAM, IFRS S2, GRI, CDP, CA SB 253',
+          'Multi-region compliance (EU, UK, CA & more)',
+          'Custom calculation methodologies',
+          'On-site implementation support',
+          'White-label branding & SSO',
+          'Executive dashboard & board reporting',
+          'Dedicated customer success manager',
+          '99.9% SLA guarantee',
+          'Custom pricing — contact us',
+        ],
       },
     ],
   };
@@ -89,18 +161,29 @@ export async function getSubscription(): Promise<SubscriptionResponse> {
 
 export async function createCheckoutSession(planId: string, successUrl: string, cancelUrl: string): Promise<string> {
   const response = await api.post<CheckoutResponse>('/api/billing/checkout', {
+    plan: planId,
     plan_id: planId,
     success_url: successUrl,
     cancel_url: cancelUrl,
   });
-  return response.checkout_url;
+
+  const checkoutUrl = response.checkout_url ?? response.url;
+  if (!checkoutUrl) {
+    throw new Error('Checkout URL missing from billing API response');
+  }
+  return checkoutUrl;
 }
 
 export async function createPortalSession(returnUrl: string): Promise<string> {
   const response = await api.post<PortalResponse>('/api/billing/portal', {
     return_url: returnUrl,
   });
-  return response.portal_url;
+
+  const portalUrl = response.portal_url ?? response.url;
+  if (!portalUrl) {
+    throw new Error('Portal URL missing from billing API response');
+  }
+  return portalUrl;
 }
 
 export async function hasActiveSubscription(): Promise<boolean> {
@@ -142,5 +225,10 @@ export function formatPeriodEnd(dateString: string | null | undefined): string {
 }
 
 export function formatPrice(amountCents: number, interval: 'month' | 'year'): string {
-  return `$${(amountCents / 100).toFixed(2)}/${interval}`;
+  if (amountCents === 0) return 'Contact Us';
+  const dollars = amountCents / 100;
+  const formatted = dollars % 1 === 0
+    ? `${dollars.toLocaleString('en-US')}`
+    : `${dollars.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  return `${formatted}/${interval}`;
 }

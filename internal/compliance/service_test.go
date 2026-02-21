@@ -88,3 +88,9 @@ func TestGenerateCSRDReportIncludesEnergyData(t *testing.T) {
 		require.NotEmpty(t, breakdown)
 	}
 }
+
+func TestConvertToMWhSupportsMMBtu(t *testing.T) {
+	got := convertToMWh(45000, ingestion.Unit("MMBTU"))
+	want := 13188.195
+	require.InDelta(t, want, got, 0.001)
+}

@@ -73,6 +73,7 @@ const (
 	UnitMWh   Unit = "MWh"   // Megawatt-hours
 	UnitGJ    Unit = "GJ"    // Gigajoules
 	UnitTherm Unit = "therm" // Therms (natural gas)
+	UnitMMBtu Unit = "MMBtu" // Million British thermal units
 
 	// Volume units
 	UnitLiter  Unit = "L"      // Liters
@@ -100,8 +101,12 @@ func (u Unit) String() string {
 
 // IsEnergyUnit returns true if the unit is an energy unit.
 func (u Unit) IsEnergyUnit() bool {
-	switch u {
-	case UnitKWh, UnitMWh, UnitGJ, UnitTherm:
+	switch strings.ToLower(strings.TrimSpace(string(u))) {
+	case strings.ToLower(string(UnitKWh)),
+		strings.ToLower(string(UnitMWh)),
+		strings.ToLower(string(UnitGJ)),
+		strings.ToLower(string(UnitTherm)),
+		strings.ToLower(string(UnitMMBtu)):
 		return true
 	default:
 		return false

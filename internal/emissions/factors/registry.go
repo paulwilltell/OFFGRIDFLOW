@@ -227,6 +227,7 @@ func (r *InMemoryRegistry) specificity(factor emissions.EmissionFactor, query em
 // seedDefaults populates the registry with standard emission factors.
 func (r *InMemoryRegistry) seedDefaults() {
 	now := time.Now().UTC()
+	steamFactorKgCO2ePerKWh := 14.7 / 293.071
 
 	// Scope 2: Electricity Grid Emission Factors
 	// Source: IEA, EPA eGRID 2023, EEA 2023
@@ -456,6 +457,17 @@ func (r *InMemoryRegistry) seedDefaults() {
 			ValueKgCO2ePerUnit: 0.075,
 			Method:             emissions.MethodLocationBased,
 			DataSource:         "IEA 2023 (Brazil - mostly hydro)",
+			CreatedAt:          now,
+		},
+		{
+			ID:                 "thermal-steam-global",
+			Scope:              emissions.Scope2,
+			Region:             "GLOBAL",
+			Source:             "steam",
+			Unit:               "kWh",
+			ValueKgCO2ePerUnit: steamFactorKgCO2ePerKWh,
+			Method:             emissions.MethodLocationBased,
+			DataSource:         "Default district steam intensity (14.7 kgCO2e/MMBtu)",
 			CreatedAt:          now,
 		},
 	}

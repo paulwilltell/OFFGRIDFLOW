@@ -46,7 +46,7 @@ Required variables:
 - `OFFGRIDFLOW_DB_DSN` - PostgreSQL connection string
 - `OFFGRIDFLOW_JWT_SECRET` - Secret for JWT tokens
 - `OFFGRIDFLOW_OPENAI_API_KEY` - OpenAI API key (optional)
-- `OFFGRIDFLOW_STRIPE_SECRET_KEY` - Stripe secret key (optional)
+- `STRIPE_SECRET_KEY` - Stripe secret key (optional)
 
 ## Docker Images
 

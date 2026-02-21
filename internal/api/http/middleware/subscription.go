@@ -52,6 +52,7 @@ func NewSubscriptionMiddleware(cfg SubscriptionMiddlewareConfig) *SubscriptionMi
 	}
 
 	// Always allow core billing endpoints on free tier
+	freePaths["/api/billing/plans"] = true
 	freePaths["/api/billing/checkout"] = true
 	freePaths["/api/billing/status"] = true
 	freePaths["/api/billing/portal"] = true

@@ -17,35 +17,38 @@ type TestDataset struct {
 		Name      string `json:"name"`
 		Sector    string `json:"sector"`
 		Employees int    `json:"employees"`
-		Locations []struct {
-			City    string `json:"city"`
-			Country string `json:"country"`
-		} `json:"locations"`
+		Locations []string `json:"locations"`
 	} `json:"organization"`
 	ReportingPeriod struct {
-		Year  int    `json:"year"`
-		Start string `json:"start"`
-		End   string `json:"end"`
+		Year      int    `json:"year"`
+		StartDate string `json:"start_date"`
+		EndDate   string `json:"end_date"`
 	} `json:"reporting_period"`
 	Activities []struct {
-		ID          string  `json:"id"`
-		Name        string  `json:"name"`
-		Scope       string  `json:"scope"`
-		Category    string  `json:"category"`
-		Amount      float64 `json:"amount"`
-		Unit        string  `json:"unit"`
-		Emissions   float64 `json:"emissions_tco2e"`
-		Location    string  `json:"location"`
-		DataQuality string  `json:"data_quality"`
+		ID             string  `json:"id"`
+		Name           string  `json:"name"`
+		Scope          string  `json:"scope"`
+		Category       string  `json:"category"`
+		Quantity       float64 `json:"quantity"`
+		Unit           string  `json:"unit"`
+		EmissionFactor float64 `json:"emission_factor"`
+		EmissionsTonnes float64 `json:"emissions_tonnes"`
+		Location       string  `json:"location"`
+		Period         string  `json:"period"`
 	} `json:"activities"`
-	Summary struct {
-		Scope1      float64 `json:"scope1_tco2e"`
-		Scope2      float64 `json:"scope2_tco2e"`
-		Scope3      float64 `json:"scope3_tco2e"`
-		Total       float64 `json:"total_tco2e"`
-		Quality     float64 `json:"data_quality_score"`
-		Completeness float64 `json:"completeness_percentage"`
-	} `json:"summary"`
+	EmissionsSummary struct {
+		Scope1Tonnes float64 `json:"scope1_tonnes"`
+		Scope2Tonnes float64 `json:"scope2_tonnes"`
+		Scope3Tonnes float64 `json:"scope3_tonnes"`
+		TotalTonnes  float64 `json:"total_tonnes"`
+	} `json:"emissions_summary"`
+	DataQuality struct {
+		CompletenessPercentage float64        `json:"completeness_percentage"`
+		TotalActivities        int            `json:"total_activities"`
+		CompleteActivities     int            `json:"complete_activities"`
+		MissingFields          map[string]int `json:"missing_fields"`
+		DataQualityScore       float64        `json:"data_quality_score"`
+	} `json:"data_quality"`
 }
 
 func main() {

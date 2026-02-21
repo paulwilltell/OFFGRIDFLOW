@@ -506,17 +506,20 @@ func (s *Service) aggregateEnergyBreakdown(activities []ingestion.Activity) ener
 }
 
 func convertToMWh(quantity float64, unit ingestion.Unit) float64 {
-	switch unit {
-	case ingestion.UnitMWh:
+	switch strings.ToLower(strings.TrimSpace(string(unit))) {
+	case strings.ToLower(string(ingestion.UnitMWh)):
 		return quantity
-	case ingestion.UnitKWh:
+	case strings.ToLower(string(ingestion.UnitKWh)):
 		return quantity / 1000
-	case ingestion.UnitGJ:
+	case strings.ToLower(string(ingestion.UnitGJ)):
 		// 1 GJ ≈ 0.277778 MWh
 		return quantity * 0.277778
-	case ingestion.UnitTherm:
+	case strings.ToLower(string(ingestion.UnitTherm)):
 		// 1 therm ≈ 0.0293071 MWh
 		return quantity * 0.0293071
+	case strings.ToLower(string(ingestion.UnitMMBtu)):
+		// 1 MMBtu ≈ 0.293071 MWh
+		return quantity * 0.293071
 	default:
 		return 0
 	}

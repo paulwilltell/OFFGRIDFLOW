@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -213,6 +215,70 @@ func NewConnectorsHandler(cfg ConnectorsHandlerConfig) http.Handler {
 		})
 	})
 
+	// POST /api/connectors/configure - save credentials for a connector
+	mux.HandleFunc("/api/connectors/configure", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			responders.MethodNotAllowed(w, http.MethodPost)
+			return
+		}
+		orgID := resolveOrgID(r)
+		if orgID == "" {
+			responders.Unauthorized(w, "missing_org", "tenant context required")
+			return
+		}
+		if cfg.ConnectorStore == nil {
+			responders.Error(w, http.StatusServiceUnavailable, "store_unavailable", "connector store not configured")
+			return
+		}
+		body, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+		if err != nil {
+			responders.BadRequest(w, "read_error", "could not read request body")
+			return
+		}
+		var payload struct {
+			Name   string          `json:"name"`
+			Config json.RawMessage `json:"config"`
+		}
+		if err := json.Unmarshal(body, &payload); err != nil || payload.Name == "" {
+			responders.BadRequest(w, "invalid_payload", "name and config are required")
+			return
+		}
+		if err := cfg.ConnectorStore.SaveConfig(r.Context(), strings.ToLower(payload.Name), orgID, payload.Config); err != nil {
+			responders.InternalError(w, "failed to save connector configuration")
+			return
+		}
+		responders.JSON(w, http.StatusOK, map[string]string{"status": "saved", "name": payload.Name})
+	})
+
+	// GET /api/connectors/config?name=aws - retrieve connector config (keys masked)
+	mux.HandleFunc("/api/connectors/config", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			responders.MethodNotAllowed(w, http.MethodGet)
+			return
+		}
+		orgID := resolveOrgID(r)
+		if orgID == "" {
+			responders.Unauthorized(w, "missing_org", "tenant context required")
+			return
+		}
+		if cfg.ConnectorStore == nil {
+			responders.Error(w, http.StatusServiceUnavailable, "store_unavailable", "connector store not configured")
+			return
+		}
+		name := strings.ToLower(r.URL.Query().Get("name"))
+		if name == "" {
+			responders.BadRequest(w, "missing_name", "name query parameter required")
+			return
+		}
+		rawCfg, err := cfg.ConnectorStore.GetConfig(r.Context(), name, orgID)
+		if err != nil {
+			// Not configured yet — return empty object
+			responders.JSON(w, http.StatusOK, map[string]interface{}{"name": name, "configured": false})
+			return
+		}
+		responders.JSON(w, http.StatusOK, map[string]interface{}{"name": name, "configured": len(rawCfg) > 2, "config": maskSecrets(rawCfg)})
+	})
+
 	mux.HandleFunc("/api/connectors/schedule", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			responders.MethodNotAllowed(w, http.MethodGet)
@@ -230,8 +296,8 @@ func NewConnectorsHandler(cfg ConnectorsHandlerConfig) http.Handler {
 }
 
 func deriveConnectors(svc *ingestion.Service) []Connector {
-	// Default list
-	defaults := []string{"aws", "azure", "gcp"}
+	// Default list — keep in sync with UI connector names
+	defaults := []string{"aws", "azure", "gcp", "sap", "utility"}
 	status := make(map[string]string)
 	for _, name := range defaults {
 		status[name] = "disconnected"
@@ -261,7 +327,7 @@ func deriveConnectors(svc *ingestion.Service) []Connector {
 
 // ensureDefaults adds default connectors if missing from store list.
 func ensureDefaults(list []Connector) []Connector {
-	defaults := []string{"AWS", "AZURE", "GCP"}
+	defaults := []string{"AWS", "AZURE", "GCP", "SAP", "UTILITY"}
 	seen := make(map[string]bool, len(list))
 	for _, c := range list {
 		seen[strings.ToUpper(c.Name)] = true
@@ -272,6 +338,27 @@ func ensureDefaults(list []Connector) []Connector {
 		}
 	}
 	return list
+}
+
+// maskSecrets replaces secret-looking values in a JSON config with "***" so
+// credentials are never echoed back to the browser.
+func maskSecrets(raw json.RawMessage) map[string]interface{} {
+	var m map[string]interface{}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	sensitiveKeys := []string{"secret", "key", "password", "token", "credential", "private"}
+	for k, v := range m {
+		for _, sensitive := range sensitiveKeys {
+			if strings.Contains(strings.ToLower(k), sensitive) {
+				if s, ok := v.(string); ok && len(s) > 0 {
+					m[k] = "***"
+				}
+				break
+			}
+		}
+	}
+	return m
 }
 
 // mapStored converts connectors.Connector to handler Connector.

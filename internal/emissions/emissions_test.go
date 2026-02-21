@@ -48,3 +48,22 @@ func TestScope_IsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestFactorQueryMatchesUnitCaseInsensitive(t *testing.T) {
+	query := FactorQuery{
+		Scope: Scope2,
+		Unit:  "MMBTU",
+	}
+	factor := EmissionFactor{
+		ID:                 "steam-test",
+		Scope:              Scope2,
+		Region:             "GLOBAL",
+		Source:             "steam",
+		Unit:               "MMBtu",
+		ValueKgCO2ePerUnit: 14.7,
+	}
+
+	if !query.Matches(factor) {
+		t.Fatalf("expected factor query unit matching to be case-insensitive")
+	}
+}

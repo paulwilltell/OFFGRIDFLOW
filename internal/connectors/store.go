@@ -26,6 +26,8 @@ type Store interface {
 	List(ctx context.Context, orgID string) ([]Connector, error)
 	SetStatus(ctx context.Context, name, orgID, status, lastError string, runAt *time.Time) error
 	LastError(ctx context.Context, name, orgID string, err error) error
+	SaveConfig(ctx context.Context, name, orgID string, config json.RawMessage) error
+	GetConfig(ctx context.Context, name, orgID string) (json.RawMessage, error)
 }
 
 // PostgresStore implements Store.
@@ -103,4 +105,36 @@ func nullableString(s string) interface{} {
 		return nil
 	}
 	return s
+}
+
+// SaveConfig persists encrypted connector credentials for a tenant's connector.
+func (s *PostgresStore) SaveConfig(ctx context.Context, name, orgID string, config json.RawMessage) error {
+	now := time.Now()
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO connectors (name, org_id, config, status, created_at, updated_at)
+		VALUES ($1,$2,$3,'disconnected',$4,$4)
+		ON CONFLICT (name, org_id) DO UPDATE SET
+			config = EXCLUDED.config,
+			updated_at = EXCLUDED.updated_at
+	`, name, orgID, config, now)
+	if err != nil {
+		return fmt.Errorf("save connector config: %w", err)
+	}
+	return nil
+}
+
+// GetConfig retrieves the stored configuration for a connector.
+// Returns nil, nil when no configuration has been saved yet (not an error).
+func (s *PostgresStore) GetConfig(ctx context.Context, name, orgID string) (json.RawMessage, error) {
+	var cfg json.RawMessage
+	err := s.db.QueryRowContext(ctx, `
+		SELECT config FROM connectors WHERE name = $1 AND org_id = $2::uuid
+	`, name, orgID).Scan(&cfg)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get connector config: %w", err)
+	}
+	return cfg, nil
 }

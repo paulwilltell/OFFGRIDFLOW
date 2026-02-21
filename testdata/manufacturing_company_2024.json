@@ -105,8 +105,8 @@
       "unit": "MMBTU",
       "location": "Detroit, MI",
       "period": "2024-01-01 to 2024-12-31",
-      "emission_factor": 0.0531,
-      "emissions_tonnes": 2.39
+      "emission_factor": 14.7,
+      "emissions_tonnes": 661.50
     },
     {
       "id": "act-009",
@@ -195,9 +195,9 @@
   ],
   "emissions_summary": {
     "scope1_tonnes": 550.53,
-    "scope2_tonnes": 1779.44,
+    "scope2_tonnes": 2438.55,
     "scope3_tonnes": 5173.81,
-    "total_tonnes": 7503.78
+    "total_tonnes": 8162.89
   },
   "data_quality": {
     "completeness_percentage": 96.7,

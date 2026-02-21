@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
 
 CREATE TABLE IF NOT EXISTS subscriptions (
     id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id              UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id              UUID NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
     stripe_customer_id     TEXT,
     stripe_subscription_id TEXT,
     status                 TEXT NOT NULL DEFAULT 'trialing',
@@ -102,6 +102,17 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Ensure unique constraint exists on existing DBs (idempotent)
+DO $ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'subscriptions'::regclass
+        AND contype = 'u'
+        AND conname = 'subscriptions_tenant_id_key'
+    ) THEN
+        ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_tenant_id_key UNIQUE (tenant_id);
+    END IF;
+END $;
 
 CREATE TABLE IF NOT EXISTS activities (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),

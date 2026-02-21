@@ -77,12 +77,20 @@ func (c *StripeClient) CreateCustomer(email, name, tenantID string) (string, err
 // CreateCheckoutSession redirects a tenant to Stripe-hosted checkout.
 // Returns the session URL or an error.
 func (c *StripeClient) CreateCheckoutSession(customerID, plan, successURL, cancelURL string) (string, error) {
-	priceID := c.priceBasic
-	if plan == "pro" {
+	normalizedPlan := strings.ToLower(strings.TrimSpace(plan))
+	var priceID string
+	switch normalizedPlan {
+	case "basic":
+		priceID = c.priceBasic
+	case "pro", "professional":
 		priceID = c.pricePro
+	case "enterprise":
+		priceID = c.priceEnterprise
+	default:
+		return "", errors.New("billing: unsupported checkout plan " + plan)
 	}
 	if priceID == "" {
-		return "", errors.New("billing: price ID not configured for plan " + plan)
+		return "", errors.New("billing: price ID not configured for plan " + normalizedPlan)
 	}
 
 	params := &stripe.CheckoutSessionParams{
@@ -119,6 +127,10 @@ func (c *StripeClient) CreateBillingPortalSession(customerID, returnURL string) 
 
 // ParseWebhook verifies the signature and parses the event payload.
 func (c *StripeClient) ParseWebhook(r *http.Request) (*stripe.Event, error) {
+	if strings.TrimSpace(c.webhookSecret) == "" {
+		return nil, errors.New("billing: stripe webhook secret is not configured")
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
@@ -499,12 +511,30 @@ func (c *StripeClient) GetPriceForPlan(plan PlanTier) (string, error) {
 	switch plan {
 	case PlanFree:
 		return c.priceFree, nil
+	case PlanBasic:
+		return c.priceBasic, nil
 	case PlanPro:
 		return c.pricePro, nil
 	case PlanEnterprise:
 		return c.priceEnterprise, nil
 	default:
 		return "", fmt.Errorf("unknown plan tier: %s", plan)
+	}
+}
+
+// PlanFromPriceID maps a configured Stripe price ID back to an OffGridFlow plan tier.
+func (c *StripeClient) PlanFromPriceID(priceID string) (PlanTier, bool) {
+	switch priceID {
+	case c.priceBasic:
+		return PlanBasic, true
+	case c.pricePro:
+		return PlanPro, true
+	case c.priceEnterprise:
+		return PlanEnterprise, true
+	case c.priceFree:
+		return PlanFree, true
+	default:
+		return "", false
 	}
 }
 

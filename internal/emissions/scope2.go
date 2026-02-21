@@ -24,10 +24,19 @@ import (
 // Scope 2 Default Factors
 // =============================================================================
 
-// DefaultScope2Factor is the fallback emission factor for electricity
-// when region-specific data is unavailable.
-// Value: 0.4 kg CO2e per kWh (approximate global average)
-const DefaultScope2Factor = 0.4
+const (
+	// DefaultScope2Factor is the fallback emission factor for electricity
+	// when region-specific data is unavailable.
+	// Value: 0.4 kg CO2e per kWh (approximate global average)
+	DefaultScope2Factor = 0.4
+
+	// DefaultSteamFactorKgCO2ePerMMBtu is a fallback district steam intensity.
+	// Value: 14.7 kg CO2e per MMBtu.
+	DefaultSteamFactorKgCO2ePerMMBtu = 14.7
+
+	// kWhPerMMBtu is the conversion from MMBtu to kWh.
+	kWhPerMMBtu = 293.071
+)
 
 // RegionalGridFactors contains location-based emission factors for major regions.
 // Values are in kg CO2e per kWh for purchased electricity.
@@ -154,20 +163,17 @@ func NewScope2Calculator(cfg Scope2Config) *Scope2Calculator {
 
 // Supports returns true if this calculator can handle the activity.
 func (c *Scope2Calculator) Supports(activity Activity) bool {
-	source := activity.GetSource()
-	unit := activity.GetUnit()
-
-	// Check if it's an energy-related source
-	switch source {
-	case "utility_bill", "electricity", "steam", "heating", "cooling":
-		// Check unit is energy-based
-		switch unit {
-		case "kWh", "MWh", "GJ", "therm", "MMBtu":
-			return true
-		}
+	energySource := normalizeScope2Source(activity.GetSource(), activity.GetCategory())
+	if energySource == "" {
+		return false
 	}
 
-	return false
+	switch energySource {
+	case "electricity", "steam", "heating", "cooling":
+		return normalizeEnergyUnit(activity.GetUnit()) != ""
+	default:
+		return false
+	}
 }
 
 // Calculate computes Scope 2 emissions for the given activity.
@@ -193,7 +199,8 @@ func (c *Scope2Calculator) Calculate(ctx context.Context, activity Activity) (Em
 	)
 
 	// Normalize quantity to kWh
-	quantityKWh := c.normalizeToKWh(activity.GetQuantity(), activity.GetUnit())
+	normalizedUnit := normalizeEnergyUnit(activity.GetUnit())
+	quantityKWh := c.normalizeToKWh(activity.GetQuantity(), normalizedUnit)
 
 	// Find the appropriate emission factor
 	factor, method, err := c.findFactor(ctx, activity)
@@ -262,29 +269,71 @@ func (c *Scope2Calculator) CalculateBatch(ctx context.Context, activities []Acti
 func (c *Scope2Calculator) findFactor(ctx context.Context, activity Activity) (EmissionFactor, CalculationMethod, error) {
 	location := activity.GetLocation()
 	method := c.config.DefaultMethod
+	energySource := normalizeScope2Source(activity.GetSource(), activity.GetCategory())
+	if energySource == "" {
+		energySource = "electricity"
+	}
+
+	now := time.Now()
+	queries := []FactorQuery{
+		{
+			Scope:    Scope2,
+			Region:   location,
+			Source:   energySource,
+			Category: activity.GetCategory(),
+			Unit:     "kWh",
+			ValidAt:  now,
+		},
+		{
+			Scope:   Scope2,
+			Region:  location,
+			Source:  energySource,
+			Unit:    "kWh",
+			ValidAt: now,
+		},
+	}
+
+	// For thermal energy, try generic/global factors as fallback.
+	if energySource == "steam" || energySource == "heating" || energySource == "cooling" {
+		queries = append(queries,
+			FactorQuery{
+				Scope:   Scope2,
+				Region:  "GLOBAL",
+				Source:  energySource,
+				Unit:    "kWh",
+				ValidAt: now,
+			},
+			FactorQuery{
+				Scope:   Scope2,
+				Source:  energySource,
+				Unit:    "kWh",
+				ValidAt: now,
+			},
+		)
+	}
 
 	// First try the registry for exact match
 	if c.registry != nil {
-		query := FactorQuery{
-			Scope:   Scope2,
-			Region:  location,
-			Source:  activity.GetSource(),
-			Unit:    "kWh",
-			ValidAt: time.Now(),
-		}
-
 		// Try market-based first if preferred
 		if c.config.PreferMarketBased {
-			factor, err := c.registry.FindFactor(ctx, query)
-			if err == nil && factor.Method == MethodMarketBased {
-				return factor, MethodMarketBased, nil
+			for _, query := range queries {
+				factor, err := c.registry.FindFactor(ctx, query)
+				if err == nil && factor.Method == MethodMarketBased {
+					return factor, MethodMarketBased, nil
+				}
 			}
 		}
 
-		factor, err := c.registry.FindFactor(ctx, query)
-		if err == nil {
-			return factor, factor.Method, nil
+		for _, query := range queries {
+			factor, err := c.registry.FindFactor(ctx, query)
+			if err == nil {
+				return factor, factor.Method, nil
+			}
 		}
+	}
+
+	if energySource == "steam" {
+		return c.defaultSteamFactor(), MethodLocationBased, nil
 	}
 
 	// Fall back to regional grid factors
@@ -312,6 +361,63 @@ func (c *Scope2Calculator) findFactor(ctx context.Context, activity Activity) (E
 	}
 
 	return factor, MethodLocationBased, nil
+}
+
+func normalizeEnergyUnit(unit string) string {
+	switch strings.ToLower(strings.TrimSpace(unit)) {
+	case "kwh":
+		return "kWh"
+	case "mwh":
+		return "MWh"
+	case "gj":
+		return "GJ"
+	case "therm", "therms":
+		return "therm"
+	case "mmbtu":
+		return "MMBtu"
+	default:
+		return ""
+	}
+}
+
+func normalizeScope2Source(source, category string) string {
+	s := strings.ToLower(strings.TrimSpace(source))
+	cat := strings.ToLower(strings.TrimSpace(category))
+
+	switch {
+	case strings.Contains(cat, "steam"), strings.Contains(cat, "district heat"), strings.Contains(cat, "district_heating"), strings.Contains(cat, "purchased heat"):
+		return "steam"
+	case strings.Contains(cat, "cool"):
+		return "cooling"
+	case strings.Contains(cat, "heat"):
+		return "heating"
+	case strings.Contains(cat, "electric"), strings.Contains(cat, "power"):
+		return "electricity"
+	}
+
+	switch s {
+	case "electricity", "steam", "heating", "cooling":
+		return s
+	case "utility_bill", "":
+		return "electricity"
+	default:
+		return s
+	}
+}
+
+func (c *Scope2Calculator) defaultSteamFactor() EmissionFactor {
+	return EmissionFactor{
+		ID:                 "default-scope2-steam",
+		Scope:              Scope2,
+		Region:             "GLOBAL",
+		Source:             "steam",
+		Unit:               "kWh",
+		ValueKgCO2ePerUnit: DefaultSteamFactorKgCO2ePerMMBtu / kWhPerMMBtu,
+		Method:             MethodLocationBased,
+		DataSource:         "Default district steam intensity (14.7 kgCO2e/MMBtu)",
+		Notes:              "Fallback steam factor applied due missing region-specific thermal factor",
+		CreatedAt:          time.Now().UTC(),
+	}
 }
 
 // getRegionalFactor looks up the built-in regional grid factor.
@@ -388,7 +494,7 @@ func (c *Scope2Calculator) getRegionalFactor(location string) (EmissionFactor, e
 
 // normalizeToKWh converts various energy units to kWh.
 func (c *Scope2Calculator) normalizeToKWh(quantity float64, unit string) float64 {
-	switch unit {
+	switch normalizeEnergyUnit(unit) {
 	case "kWh":
 		return quantity
 	case "MWh":
@@ -398,7 +504,7 @@ func (c *Scope2Calculator) normalizeToKWh(quantity float64, unit string) float64
 	case "therm":
 		return quantity * 29.3071 // 1 therm = 29.3 kWh
 	case "MMBtu":
-		return quantity * 293.071 // 1 MMBtu = 293 kWh
+		return quantity * kWhPerMMBtu
 	default:
 		c.logger.Warn("unknown energy unit, treating as kWh",
 			"unit", unit,
@@ -459,10 +565,17 @@ func SummarizeScope2(records []EmissionRecord) Scope2Summary {
 		}
 
 		// Accumulate kWh (normalize if needed)
-		if r.InputUnit == "kWh" {
+		switch normalizeEnergyUnit(r.InputUnit) {
+		case "kWh":
 			summary.TotalKWh += r.InputQuantity
-		} else if r.InputUnit == "MWh" {
+		case "MWh":
 			summary.TotalKWh += r.InputQuantity * 1000
+		case "GJ":
+			summary.TotalKWh += r.InputQuantity * 277.778
+		case "therm":
+			summary.TotalKWh += r.InputQuantity * 29.3071
+		case "MMBtu":
+			summary.TotalKWh += r.InputQuantity * kWhPerMMBtu
 		}
 	}
 

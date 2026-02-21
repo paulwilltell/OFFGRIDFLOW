@@ -65,7 +65,7 @@ spec:
                 secretKeyRef:
                   name: offgridflow-secrets
                   key: jwt-secret
-            - name: OFFGRIDFLOW_STRIPE_SECRET_KEY
+            - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: offgridflow-secrets

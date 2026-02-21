@@ -440,8 +440,8 @@ func (q FactorQuery) Matches(f EmissionFactor) bool {
 		return false
 	}
 
-	// Check unit if specified
-	if q.Unit != "" && f.Unit != q.Unit {
+	// Check unit if specified (case-insensitive)
+	if q.Unit != "" && !strings.EqualFold(f.Unit, q.Unit) {
 		return false
 	}
 

@@ -328,8 +328,9 @@ func (r *router) registerPublicRoutes(mux *http.ServeMux) {
 
 	// Billing webhook (receives Stripe webhooks)
 	if r.cfg.BillingService != nil {
-		billingHandlers := NewBillingHandlers(r.cfg.BillingService)
-		mux.HandleFunc("/api/billing/webhook", billingHandlers.HandleWebhook)
+		if billingHandlers := r.newBillingHandlers(); billingHandlers != nil {
+			mux.HandleFunc("/api/billing/webhook", billingHandlers.HandleWebhook)
+		}
 	}
 }
 
@@ -362,10 +363,12 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 
 	// Billing management endpoints
 	if r.cfg.BillingService != nil {
-		billingHandlers := NewBillingHandlers(r.cfg.BillingService)
-		protectedMux.HandleFunc("/api/billing/checkout", billingHandlers.CreateCheckoutSession)
-		protectedMux.HandleFunc("/api/billing/status", billingHandlers.GetStatus)
-		protectedMux.HandleFunc("/api/billing/portal", billingHandlers.CreatePortalSession)
+		if billingHandlers := r.newBillingHandlers(); billingHandlers != nil {
+			protectedMux.HandleFunc("/api/billing/plans", billingHandlers.GetPlans)
+			protectedMux.HandleFunc("/api/billing/checkout", billingHandlers.CreateCheckoutSession)
+			protectedMux.HandleFunc("/api/billing/status", billingHandlers.GetStatus)
+			protectedMux.HandleFunc("/api/billing/portal", billingHandlers.CreatePortalSession)
+		}
 	}
 
 	// AI chat endpoint (subscription required)
@@ -486,6 +489,7 @@ func (r *router) applyProtectedMiddleware(handler http.Handler) http.Handler {
 				"/api/auth/me",
 				"/api/auth/change-password",
 				"/api/auth/keys",
+				"/api/billing/plans",
 				"/api/billing/checkout",
 				"/api/billing/status",
 				"/api/billing/portal",
@@ -531,6 +535,26 @@ func (r *router) buildObservabilityMiddleware() func(http.Handler) http.Handler 
 // mountProtectedRoutes registers protected routes on the main mux.
 func (r *router) mountProtectedRoutes(mux *http.ServeMux, handler http.Handler) {
 	mux.Handle("/api/", handler)
+}
+
+func (r *router) newBillingHandlers() *BillingHandlers {
+	if r == nil || r.cfg == nil || r.cfg.BillingService == nil {
+		return nil
+	}
+
+	frontendBaseURL := strings.TrimSpace(r.cfg.FrontendURL)
+	if frontendBaseURL == "" {
+		frontendBaseURL = "http://localhost:3000"
+	}
+	frontendBaseURL = strings.TrimRight(frontendBaseURL, "/")
+
+	return NewBillingHandlersWithConfig(BillingHandlersConfig{
+		Service:    r.cfg.BillingService,
+		SuccessURL: frontendBaseURL + "/settings/billing?success=true",
+		CancelURL:  frontendBaseURL + "/settings/billing?canceled=true",
+		PortalURL:  frontendBaseURL + "/settings/billing",
+		Logger:     r.logger,
+	})
 }
 
 // -----------------------------------------------------------------------------

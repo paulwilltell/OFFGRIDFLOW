@@ -4,13 +4,17 @@
 //   - POST /api/billing/checkout  - Create a Stripe checkout session
 //   - POST /api/billing/webhook   - Handle Stripe webhook events
 //   - GET  /api/billing/status    - Get current subscription status
+//   - GET  /api/billing/plans     - List available subscription plans
 //   - POST /api/billing/portal    - Create Stripe customer portal session
 package http
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -25,13 +29,17 @@ import (
 
 // CheckoutRequest represents a request to create a checkout session.
 type CheckoutRequest struct {
-	Plan string `json:"plan"` // Subscription plan: "basic", "professional", "enterprise"
+	Plan       string `json:"plan"`                  // Canonical plan field
+	PlanID     string `json:"plan_id"`               // Backward-compatible alias
+	SuccessURL string `json:"success_url,omitempty"` // Absolute URL after successful checkout
+	CancelURL  string `json:"cancel_url,omitempty"`  // Absolute URL when checkout is canceled
 }
 
 // CheckoutResponse represents the response from checkout session creation.
 type CheckoutResponse struct {
-	URL       string `json:"url"`                 // Stripe checkout URL
-	SessionID string `json:"sessionId,omitempty"` // Stripe session ID
+	URL         string `json:"url"`                    // Canonical checkout URL
+	CheckoutURL string `json:"checkout_url,omitempty"` // Backward-compatible alias
+	SessionID   string `json:"sessionId,omitempty"`    // Stripe session ID (if available)
 }
 
 // SubscriptionStatusResponse represents the current subscription status.
@@ -44,7 +52,28 @@ type SubscriptionStatusResponse struct {
 
 // PortalResponse represents the response from portal session creation.
 type PortalResponse struct {
-	URL string `json:"url"` // Stripe customer portal URL
+	URL       string `json:"url"`                  // Canonical portal URL
+	PortalURL string `json:"portal_url,omitempty"` // Backward-compatible alias
+}
+
+// PortalRequest contains an optional return URL for billing portal.
+type PortalRequest struct {
+	ReturnURL string `json:"return_url,omitempty"`
+}
+
+// BillingPlan represents a purchasable subscription plan.
+type BillingPlan struct {
+	ID          string   `json:"id"`
+	PriceID     string   `json:"price_id"`
+	Name        string   `json:"name"`
+	AmountCents int64    `json:"amount_cents"`
+	Interval    string   `json:"interval"`
+	Features    []string `json:"features"`
+}
+
+// BillingPlansResponse returns the available plan catalog.
+type BillingPlansResponse struct {
+	Plans []BillingPlan `json:"plans"`
 }
 
 // -----------------------------------------------------------------------------
@@ -72,8 +101,106 @@ type BillingHandlers struct {
 // Supported subscription plans.
 var validPlans = map[string]bool{
 	"basic":        true,
-	"professional": true,
+	"pro":          true,
+	"professional": true, // accepted alias, normalized to "pro"
 	"enterprise":   true,
+}
+
+var defaultPlanCatalog = []BillingPlan{
+	// ── Carbon Starter — Monthly ──────────────────────────────────────────────
+	{
+		ID:          "basic_monthly",
+		PriceID:     "price_basic_monthly",
+		Name:        "Carbon Starter",
+		AmountCents: 208300,
+		Interval:    "month",
+		Features: []string{
+			"Up to 5 users",
+			"Scope 1 & 2 emissions tracking",
+			"CSV data import",
+			"Basic GHG reports",
+			"Annual methodology review",
+			"Email support",
+			"$1,000/site/year for additional sites",
+		},
+	},
+	// ── Carbon Starter — Annual ───────────────────────────────────────────────
+	{
+		ID:          "basic_annual",
+		PriceID:     "price_basic_annual",
+		Name:        "Carbon Starter",
+		AmountCents: 2500000,
+		Interval:    "year",
+		Features: []string{
+			"Up to 5 users",
+			"Scope 1 & 2 emissions tracking",
+			"CSV data import",
+			"Basic GHG reports",
+			"Annual methodology review",
+			"Email support",
+			"$1,000/site/year for additional sites",
+			"2 months free vs monthly",
+		},
+	},
+	// ── Carbon Command — Monthly ──────────────────────────────────────────────
+	{
+		ID:          "pro_monthly",
+		PriceID:     "price_pro_monthly",
+		Name:        "Carbon Command",
+		AmountCents: 375000,
+		Interval:    "month",
+		Features: []string{
+			"Unlimited users",
+			"Scope 1, 2 & 3 emissions tracking",
+			"Cloud API connectors — AWS, Azure, GCP, SAP, Utilities",
+			"CSRD, SEC & SB 253 compliance reports",
+			"Live emissions dashboard",
+			"Advanced analytics & forecasting",
+			"Dedicated account manager",
+			"Quarterly business reviews",
+			"$800/site/year for additional sites",
+		},
+	},
+	// ── Carbon Command — Annual ───────────────────────────────────────────────
+	{
+		ID:          "pro_annual",
+		PriceID:     "price_pro_annual",
+		Name:        "Carbon Command",
+		AmountCents: 4500000,
+		Interval:    "year",
+		Features: []string{
+			"Unlimited users",
+			"Scope 1, 2 & 3 emissions tracking",
+			"Cloud API connectors — AWS, Azure, GCP, SAP, Utilities",
+			"CSRD, SEC & SB 253 compliance reports",
+			"Live emissions dashboard",
+			"Advanced analytics & forecasting",
+			"Dedicated account manager",
+			"Quarterly business reviews",
+			"$800/site/year for additional sites",
+			"2 months free vs monthly",
+		},
+	},
+	// ── Carbon Command Elite — Contact Us (both intervals) ───────────────────
+	{
+		ID:          "enterprise",
+		PriceID:     "price_enterprise",
+		Name:        "Carbon Command Elite",
+		AmountCents: 0,
+		Interval:    "year",
+		Features: []string{
+			"Everything in Carbon Command",
+			"All global frameworks — CSRD, SEC, CBAM, IFRS S2, GRI, CDP, CA SB 253",
+			"Multi-region compliance (EU, UK, CA & more)",
+			"Custom calculation methodologies",
+			"On-site implementation support",
+			"White-label branding & SSO",
+			"Executive dashboard & board reporting",
+			"Dedicated customer success manager",
+			"99.9% SLA guarantee",
+			"Custom pricing — contact us",
+		},
+	},
 }
 
 // -----------------------------------------------------------------------------
@@ -84,9 +211,9 @@ var validPlans = map[string]bool{
 func NewBillingHandlers(svc *billing.Service) *BillingHandlers {
 	return NewBillingHandlersWithConfig(BillingHandlersConfig{
 		Service:    svc,
-		SuccessURL: "/settings/billing?success=true",
-		CancelURL:  "/settings/billing?canceled=true",
-		PortalURL:  "/settings/billing",
+		SuccessURL: "http://localhost:3000/settings/billing?success=true",
+		CancelURL:  "http://localhost:3000/settings/billing?canceled=true",
+		PortalURL:  "http://localhost:3000/settings/billing",
 	})
 }
 
@@ -99,9 +226,9 @@ func NewBillingHandlersWithConfig(cfg BillingHandlersConfig) *BillingHandlers {
 
 	return &BillingHandlers{
 		service:    cfg.Service,
-		successURL: cfg.SuccessURL,
-		cancelURL:  cfg.CancelURL,
-		portalURL:  cfg.PortalURL,
+		successURL: normalizeDefaultURL(cfg.SuccessURL, "http://localhost:3000/settings/billing?success=true"),
+		cancelURL:  normalizeDefaultURL(cfg.CancelURL, "http://localhost:3000/settings/billing?canceled=true"),
+		portalURL:  normalizeDefaultURL(cfg.PortalURL, "http://localhost:3000/settings/billing"),
 		logger:     logger,
 	}
 }
@@ -113,6 +240,11 @@ func NewBillingHandlersWithConfig(cfg BillingHandlersConfig) *BillingHandlers {
 // CreateCheckoutSession handles POST /api/billing/checkout.
 // Creates a Stripe checkout session for subscription purchase.
 func (h *BillingHandlers) CreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
+	if h.service == nil {
+		responders.Error(w, http.StatusServiceUnavailable, "billing_disabled", "billing is not configured")
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		responders.MethodNotAllowed(w, http.MethodPost)
 		return
@@ -133,25 +265,35 @@ func (h *BillingHandlers) CreateCheckoutSession(w http.ResponseWriter, r *http.R
 
 	// Parse request body
 	var req CheckoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSONBody(r, &req); err != nil {
 		responders.BadRequest(w, "invalid_request", "invalid JSON payload")
 		return
 	}
 
 	// Validate and normalize plan
-	plan := strings.ToLower(strings.TrimSpace(req.Plan))
+	plan := strings.TrimSpace(req.Plan)
+	if plan == "" {
+		plan = strings.TrimSpace(req.PlanID)
+	}
 	if plan == "" {
 		plan = "basic"
 	}
+	plan = strings.ToLower(plan)
 
 	if !validPlans[plan] {
-		responders.BadRequest(w, "invalid_plan", "plan must be one of: basic, professional, enterprise")
+		responders.BadRequest(w, "invalid_plan", "plan must be one of: basic, pro, enterprise")
 		return
 	}
+	if plan == "professional" {
+		plan = "pro"
+	}
+
+	successURL := resolveRedirectURL(req.SuccessURL, h.successURL)
+	cancelURL := resolveRedirectURL(req.CancelURL, h.cancelURL)
 
 	// Create Stripe checkout session
 	ctx := r.Context()
-	url, err := h.service.StartSubscription(ctx, tenant.ID, tenant.Name, user.Email, plan, h.successURL, h.cancelURL)
+	url, err := h.service.StartSubscription(ctx, tenant.ID, tenant.Name, user.Email, plan, successURL, cancelURL)
 	if err != nil {
 		h.logger.Error("failed to create checkout session",
 			"tenantId", tenant.ID,
@@ -166,14 +308,24 @@ func (h *BillingHandlers) CreateCheckoutSession(w http.ResponseWriter, r *http.R
 		"tenantId", tenant.ID,
 		"userId", user.ID,
 		"plan", plan,
+		"successUrl", successURL,
+		"cancelUrl", cancelURL,
 	)
 
-	responders.JSON(w, http.StatusOK, CheckoutResponse{URL: url})
+	responders.JSON(w, http.StatusOK, CheckoutResponse{
+		URL:         url,
+		CheckoutURL: url,
+	})
 }
 
 // HandleWebhook handles POST /api/billing/webhook.
 // Processes Stripe webhook events for subscription lifecycle management.
 func (h *BillingHandlers) HandleWebhook(w http.ResponseWriter, r *http.Request) {
+	if h.service == nil {
+		responders.Error(w, http.StatusServiceUnavailable, "billing_disabled", "billing is not configured")
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		responders.MethodNotAllowed(w, http.MethodPost)
 		return
@@ -209,9 +361,29 @@ func (h *BillingHandlers) HandleWebhook(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
+// GetPlans handles GET /api/billing/plans.
+// Returns the available subscription plans for checkout.
+func (h *BillingHandlers) GetPlans(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		responders.MethodNotAllowed(w, http.MethodGet)
+		return
+	}
+
+	plans := make([]BillingPlan, 0, len(defaultPlanCatalog))
+	plans = append(plans, defaultPlanCatalog...)
+
+	responders.SetCacheControl(w, 5*time.Minute, true)
+	responders.JSON(w, http.StatusOK, BillingPlansResponse{Plans: plans})
+}
+
 // GetStatus handles GET /api/billing/status.
 // Returns the current subscription status for the authenticated tenant.
 func (h *BillingHandlers) GetStatus(w http.ResponseWriter, r *http.Request) {
+	if h.service == nil {
+		responders.Error(w, http.StatusServiceUnavailable, "billing_disabled", "billing is not configured")
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		responders.MethodNotAllowed(w, http.MethodGet)
 		return
@@ -243,20 +415,25 @@ func (h *BillingHandlers) GetStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Format timestamps
-	var periodEnd string
+	// Format timestamp only when available.
+	var periodEnd *string
 	if sub.CurrentPeriodEnd != nil {
-		periodEnd = sub.CurrentPeriodEnd.Format(time.RFC3339)
+		formatted := sub.CurrentPeriodEnd.Format(time.RFC3339)
+		periodEnd = &formatted
 	}
 
 	// Convert status to string
 	status := string(sub.Status)
+	var planPtr *string
+	if sub.Plan != "" {
+		planPtr = &sub.Plan
+	}
 
 	response := SubscriptionStatusResponse{
-		Subscribed:       true,
-		Plan:             &sub.Plan,
+		Subscribed:       sub.IsActive(),
+		Plan:             planPtr,
 		Status:           &status,
-		CurrentPeriodEnd: &periodEnd,
+		CurrentPeriodEnd: periodEnd,
 	}
 
 	// Cache subscription status briefly
@@ -267,6 +444,11 @@ func (h *BillingHandlers) GetStatus(w http.ResponseWriter, r *http.Request) {
 // CreatePortalSession handles POST /api/billing/portal.
 // Creates a Stripe customer portal session for subscription management.
 func (h *BillingHandlers) CreatePortalSession(w http.ResponseWriter, r *http.Request) {
+	if h.service == nil {
+		responders.Error(w, http.StatusServiceUnavailable, "billing_disabled", "billing is not configured")
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		responders.MethodNotAllowed(w, http.MethodPost)
 		return
@@ -278,9 +460,16 @@ func (h *BillingHandlers) CreatePortalSession(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Create portal session
+	var req PortalRequest
+	if err := decodeJSONBody(r, &req); err != nil {
+		responders.BadRequest(w, "invalid_request", "invalid JSON payload")
+		return
+	}
+	returnURL := resolveRedirectURL(req.ReturnURL, h.portalURL)
+
+	// Create portal session.
 	ctx := r.Context()
-	url, err := h.service.CreateBillingPortalSession(ctx, tenant.ID, h.portalURL)
+	url, err := h.service.CreateBillingPortalSession(ctx, tenant.ID, returnURL)
 	if err != nil {
 		h.logger.Error("failed to create portal session",
 			"tenantId", tenant.ID,
@@ -292,7 +481,57 @@ func (h *BillingHandlers) CreatePortalSession(w http.ResponseWriter, r *http.Req
 
 	h.logger.Info("portal session created",
 		"tenantId", tenant.ID,
+		"returnUrl", returnURL,
 	)
 
-	responders.JSON(w, http.StatusOK, PortalResponse{URL: url})
+	responders.JSON(w, http.StatusOK, PortalResponse{
+		URL:       url,
+		PortalURL: url,
+	})
+}
+
+func decodeJSONBody(r *http.Request, out interface{}) error {
+	if r == nil || r.Body == nil {
+		return nil
+	}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(out); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func normalizeDefaultURL(raw, fallback string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		value = fallback
+	}
+	if parsed, err := url.Parse(value); err == nil && parsed.IsAbs() && isHTTPURL(parsed) {
+		return parsed.String()
+	}
+
+	// If an invalid or relative URL is provided in config, fall back safely.
+	return fallback
+}
+
+func resolveRedirectURL(candidate, fallback string) string {
+	value := strings.TrimSpace(candidate)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || !parsed.IsAbs() || !isHTTPURL(parsed) {
+		return fallback
+	}
+	return parsed.String()
+}
+
+func isHTTPURL(u *url.URL) bool {
+	if u == nil {
+		return false
+	}
+	return u.Scheme == "http" || u.Scheme == "https"
 }
