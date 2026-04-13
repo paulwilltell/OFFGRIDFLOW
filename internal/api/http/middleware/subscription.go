@@ -115,6 +115,12 @@ func (m *SubscriptionMiddleware) Wrap(next http.Handler) http.Handler {
 			return
 		}
 
+		// Platform admin bypass — founder/admin accounts skip subscription checks
+		if user, uOk := auth.UserFromContext(r.Context()); uOk && user != nil && user.Role == "admin" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Check subscription status
 		sub, err := m.billingSvc.GetSubscription(r.Context(), tenant.ID)
 		if err != nil {
