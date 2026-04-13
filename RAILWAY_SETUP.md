@@ -57,3 +57,4 @@ setting up SendGrid or another email provider.
 curl https://<api-domain>/health
 ```
 Should return: `{"status":"ok","timestamp":"...","service":"offgridflow-api"}`
+# trigger rebuild
