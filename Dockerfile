@@ -1,4 +1,4 @@
-# OffGridFlow API Dockerfile
+# OffGridFlow Dockerfile
 # Multi-stage build for production
 
 # Stage 1: Build
@@ -32,69 +32,44 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -o offgridflow-worker \
     ./cmd/worker
 
-# Stage 2: Runtime
-FROM alpine:3.18
+# Stage 2: Worker runtime (named target — use with --target worker)
+FROM alpine:3.18 AS worker
 
-# Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata curl
-
-# Create non-root user
 RUN addgroup -g 1000 offgridflow && \
     adduser -D -u 1000 -G offgridflow offgridflow
 
-# Set working directory
+WORKDIR /app
+COPY --from=builder /build/offgridflow-worker /app/offgridflow-worker
+COPY --from=builder /build/infra/db /app/infra/db
+RUN chown -R offgridflow:offgridflow /app
+USER offgridflow
+ENTRYPOINT ["/app/offgridflow-worker"]
+CMD []
+
+# Stage 3: API runtime (default — last stage, used by Railway)
+FROM alpine:3.18
+
+RUN apk add --no-cache ca-certificates tzdata curl
+RUN addgroup -g 1000 offgridflow && \
+    adduser -D -u 1000 -G offgridflow offgridflow
+
 WORKDIR /app
 
-# Copy binaries from builder
 COPY --from=builder /build/offgridflow-api /app/offgridflow-api
 COPY --from=builder /build/offgridflow-worker /app/offgridflow-worker
 COPY --from=builder /build/railway-start.sh /app/railway-start.sh
-
-# Copy migrations and configs
 COPY --from=builder /build/infra/db /app/infra/db
 
-# Set ownership
-RUN chown -R offgridflow:offgridflow /app
+RUN chmod +x /app/railway-start.sh && \
+    chown -R offgridflow:offgridflow /app
 
-# Switch to non-root user
 USER offgridflow
 
-# Port — overridden by OFFGRIDFLOW_HTTP_PORT env var at runtime
-EXPOSE 8080
+EXPOSE 8090
 
-# Health check — uses the PORT env var if set, else 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:${OFFGRIDFLOW_HTTP_PORT:-8080}/health || exit 1
+    CMD curl -f http://localhost:${OFFGRIDFLOW_HTTP_PORT:-8090}/health || exit 1
 
-# Run the application
 ENTRYPOINT ["/app/offgridflow-api"]
-CMD []
-
-# Stage 3: Worker runtime
-FROM alpine:3.18 AS worker
-
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata curl
-
-# Create non-root user
-RUN addgroup -g 1000 offgridflow && \
-    adduser -D -u 1000 -G offgridflow offgridflow
-
-# Set working directory
-WORKDIR /app
-
-# Copy worker binary from builder
-COPY --from=builder /build/offgridflow-worker /app/offgridflow-worker
-
-# Copy migrations and configs
-COPY --from=builder /build/infra/db /app/infra/db
-
-# Set ownership
-RUN chown -R offgridflow:offgridflow /app
-
-# Switch to non-root user
-USER offgridflow
-
-# Run the worker
-ENTRYPOINT ["/app/offgridflow-worker"]
 CMD []
