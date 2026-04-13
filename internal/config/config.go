@@ -18,7 +18,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -625,21 +624,8 @@ func (c *Config) Validate() error {
 		if len(c.Auth.JWTSecret) < 32 {
 			errs = append(errs, errors.New("JWT secret must be at least 32 characters"))
 		}
-		if c.Auth.RequireEmailVerification {
-			if !c.Email.IsConfigured {
-				// Downgrade to warning: allow startup, disable verification at runtime
-				log.Printf("[offgridflow] WARNING: email verification enabled but SMTP not configured — disabling verification")
-				c.Auth.RequireEmailVerification = false
-			}
-			if c.Auth.RequireEmailVerification && (strings.TrimSpace(c.Email.SMTPUsername) == "" || strings.TrimSpace(c.Email.SMTPPassword) == "") {
-				log.Printf("[offgridflow] WARNING: SMTP credentials missing — disabling email verification")
-				c.Auth.RequireEmailVerification = false
-			}
-			if c.Auth.RequireEmailVerification && strings.TrimSpace(c.Server.FrontendURL) == "" {
-				log.Printf("[offgridflow] WARNING: frontend URL missing — disabling email verification")
-				c.Auth.RequireEmailVerification = false
-			}
-		}
+		// Email verification is enforced at runtime by the auth handler,
+		// not at config validation time. Missing SMTP gracefully disables verification.
 	}
 
 	if len(errs) > 0 {
