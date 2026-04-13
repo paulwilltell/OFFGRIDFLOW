@@ -103,6 +103,16 @@ func (m *MockStore) UpdateUser(ctx context.Context, user *User) error {
 	return nil
 }
 
+func (m *MockStore) CountUsersByTenant(ctx context.Context, tenantID string) (int, error) {
+	count := 0
+	for _, u := range m.users {
+		if u.TenantID == tenantID && u.IsActive {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (m *MockStore) ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error) {
 	var users []*User
 	for _, u := range m.users {
