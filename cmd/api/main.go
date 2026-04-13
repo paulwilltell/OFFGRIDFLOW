@@ -61,7 +61,7 @@ func run() (err error) {
 	if err != nil {
 		return fmt.Errorf("config load: %w", err)
 	}
-	log.Printf("[offgridflow] booting api (env=%s port=%d)", cfg.Server.Env, cfg.Server.Port)
+	log.Printf("[offgridflow] booting api v2 (env=%s port=%d)", cfg.Server.Env, cfg.Server.Port)
 
 	// Create background context for the process
 	ctx, cancel := context.WithCancel(context.Background())
