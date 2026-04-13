@@ -51,15 +51,17 @@ func NewSubscriptionMiddleware(cfg SubscriptionMiddlewareConfig) *SubscriptionMi
 		}
 	}
 
-	// Always allow core billing endpoints on free tier
+	// Always allow core billing endpoints on free tier (users need these to upgrade)
 	freePaths["/api/billing/plans"] = true
 	freePaths["/api/billing/checkout"] = true
 	freePaths["/api/billing/status"] = true
 	freePaths["/api/billing/portal"] = true
 	freePaths["/api/billing/webhook"] = true
-	// Allow basic emissions endpoints by default
-	freePrefix = append(freePrefix, "/api/emissions/")
+	// Auth endpoints are already public (not behind subscription middleware)
+	// Compliance summary is a lightweight status check, not actual report data
 	freePaths["/api/compliance/summary"] = true
+	// NOTE: /api/emissions/ and /api/compliance/* are NOT free-tier.
+	// Paid subscription required for all emissions data and compliance reports.
 
 	logger := cfg.Logger
 	if logger == nil {
@@ -120,9 +122,9 @@ func (m *SubscriptionMiddleware) Wrap(next http.Handler) http.Handler {
 				"tenantId", tenant.ID,
 				"error", err.Error(),
 			)
-			// On billing service error, allow request through (fail open)
-			// This prevents billing issues from blocking all API access
-			next.ServeHTTP(w, r)
+			// Fail closed: deny access when billing service is unavailable.
+			// Premium features should not be accessible for free during outages.
+			responders.ServiceUnavailable(w, "subscription verification temporarily unavailable — please try again", 30)
 			return
 		}
 
@@ -178,8 +180,7 @@ func (m *SubscriptionMiddleware) RequirePlan(minPlan string) func(http.Handler) 
 
 			sub, err := m.billingSvc.GetSubscription(r.Context(), tenant.ID)
 			if err != nil {
-				// Fail open on billing errors
-				next.ServeHTTP(w, r)
+				responders.ServiceUnavailable(w, "subscription verification temporarily unavailable", 30)
 				return
 			}
 
@@ -264,8 +265,7 @@ func (m *SubscriptionMiddleware) RequireFeature(feature string) func(http.Handle
 
 			sub, err := m.billingSvc.GetSubscription(r.Context(), tenant.ID)
 			if err != nil {
-				// Fail open on billing errors
-				next.ServeHTTP(w, r)
+				responders.ServiceUnavailable(w, "subscription verification temporarily unavailable", 30)
 				return
 			}
 

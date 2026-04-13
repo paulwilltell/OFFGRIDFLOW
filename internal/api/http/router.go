@@ -748,7 +748,8 @@ func (r *router) buildCSVIngestionHandler() http.HandlerFunc {
 		return nil
 	}
 	return handlers.NewCSVIngestionHandler(handlers.CSVIngestionHandlerConfig{
-		Store: r.cfg.ActivityStore,
+		Store:         r.cfg.ActivityStore,
+		MaxUploadSize: 50 << 20, // 50MB max upload
 	})
 }
 

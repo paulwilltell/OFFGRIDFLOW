@@ -12,16 +12,12 @@ import (
 func RateLimitMiddleware(limiter *ratelimit.MultiTierLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Only rate limit read-only requests.
-			// This keeps write-heavy ingestion flows (e.g. concurrent activity creation) from being blocked,
-			// while still protecting list/report endpoints from abuse.
-			switch r.Method {
-			case http.MethodGet, http.MethodHead, http.MethodOptions:
-				// continue
-			default:
+			// Skip rate limiting only for preflight requests
+			if r.Method == http.MethodOptions {
 				next.ServeHTTP(w, r)
 				return
 			}
+			// All other methods (GET, POST, PUT, DELETE) are rate limited
 
 			ctx := r.Context()
 
