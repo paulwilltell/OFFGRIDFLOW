@@ -606,7 +606,7 @@ func loadIngestionConfig() IngestionConfig {
 
 // Validate checks that the configuration is valid.
 // In production, this enforces stricter requirements.
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
 	var errs []error
 
 	// Port validation
