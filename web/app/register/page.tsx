@@ -78,7 +78,7 @@ export default function RegisterPage() {
       } else {
         // Legacy flow - auto login if verification not required
         await login({ email, password });
-        router.push('/');
+        router.push('/dashboard/carbon');
       }
     } catch (err) {
       if (err instanceof ApiRequestError) {

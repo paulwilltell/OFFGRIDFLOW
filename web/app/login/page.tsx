@@ -9,7 +9,7 @@ import { useSession } from '@/lib/session';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/';
+  const returnTo = searchParams.get('returnTo') || '/dashboard/carbon';
   const { login } = useSession();
   
   const [email, setEmail] = useState('');
