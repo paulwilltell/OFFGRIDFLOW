@@ -19,8 +19,8 @@ RUN go mod verify
 
 # Copy source code
 COPY . .
-# Force Go rebuild by touching a source file
-RUN touch cmd/api/main.go
+# Force rebuild: inject build ID into source to invalidate Go cache
+RUN echo "// build $(date +%s)" >> cmd/api/main.go
 
 # Build the application
 # CGO_ENABLED=0 for static binary
