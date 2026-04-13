@@ -17,7 +17,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 RUN go mod verify
 
-# Copy source code — cache bust 20260413
+# Invalidate cache for source copy
+ARG CACHEBUST=1
 COPY . .
 
 # Build the application
