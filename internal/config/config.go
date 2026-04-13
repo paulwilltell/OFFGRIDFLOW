@@ -18,6 +18,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -626,13 +627,17 @@ func (c Config) Validate() error {
 		}
 		if c.Auth.RequireEmailVerification {
 			if !c.Email.IsConfigured {
-				errs = append(errs, errors.New("email verification enabled but SMTP is not configured"))
+				// Downgrade to warning: allow startup, disable verification at runtime
+				log.Printf("[offgridflow] WARNING: email verification enabled but SMTP not configured — disabling verification")
+				c.Auth.RequireEmailVerification = false
 			}
-			if strings.TrimSpace(c.Email.SMTPUsername) == "" || strings.TrimSpace(c.Email.SMTPPassword) == "" {
-				errs = append(errs, errors.New("SMTP credentials required when email verification is enabled"))
+			if c.Auth.RequireEmailVerification && (strings.TrimSpace(c.Email.SMTPUsername) == "" || strings.TrimSpace(c.Email.SMTPPassword) == "") {
+				log.Printf("[offgridflow] WARNING: SMTP credentials missing — disabling email verification")
+				c.Auth.RequireEmailVerification = false
 			}
-			if strings.TrimSpace(c.Server.FrontendURL) == "" {
-				errs = append(errs, errors.New("frontend URL required when email verification is enabled"))
+			if c.Auth.RequireEmailVerification && strings.TrimSpace(c.Server.FrontendURL) == "" {
+				log.Printf("[offgridflow] WARNING: frontend URL missing — disabling email verification")
+				c.Auth.RequireEmailVerification = false
 			}
 		}
 	}
