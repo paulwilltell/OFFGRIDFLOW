@@ -383,7 +383,15 @@ func (s *Service) GetUserByEmail(ctx context.Context, email string) (*User, erro
 	return s.store.GetUserByEmail(ctx, email)
 }
 
-// CreateUser creates a new user within a tenant.
+// PlanUserLimits defines the maximum number of users per subscription plan.
+var PlanUserLimits = map[string]int{
+	"free":       2,
+	"basic":      5,
+	"pro":        25,
+	"enterprise": 250,
+}
+
+// CreateUser creates a new user within a tenant, enforcing plan-based user limits.
 func (s *Service) CreateUser(ctx context.Context, user *User) error {
 	if user == nil {
 		return errors.New("auth: user is required")
@@ -391,6 +399,22 @@ func (s *Service) CreateUser(ctx context.Context, user *User) error {
 	if err := user.Validate(); err != nil {
 		return err
 	}
+
+	// Enforce user limit based on tenant plan
+	if user.TenantID != "" {
+		tenant, err := s.store.GetTenant(ctx, user.TenantID)
+		if err == nil && tenant != nil {
+			limit, ok := PlanUserLimits[tenant.Plan]
+			if !ok {
+				limit = PlanUserLimits["free"]
+			}
+			count, err := s.store.CountUsersByTenant(ctx, user.TenantID)
+			if err == nil && count >= limit {
+				return fmt.Errorf("auth: user limit reached for %s plan (%d/%d) — upgrade at /settings/billing", tenant.Plan, count, limit)
+			}
+		}
+	}
+
 	return s.store.CreateUser(ctx, user)
 }
 

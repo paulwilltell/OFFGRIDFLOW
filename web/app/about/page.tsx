@@ -55,7 +55,7 @@ export default function AboutPage() {
             <h2 className="mt-12 text-2xl font-semibold text-white">Technical Foundation</h2>
 
             <ul className="list-inside list-disc space-y-2 text-gray-400">
-              <li>GHG Protocol-compliant Scope 1, 2, 3 calculation engine with 10,000+ emission factors</li>
+              <li>GHG Protocol-compliant Scope 1, 2, 3 calculation engine with EPA eGRID, DEFRA, IEA, and IPCC emission factors</li>
               <li>Automated cloud connectors: AWS CUR, Azure Carbon API, GCP Carbon Footprint API</li>
               <li>Enterprise SAP &amp; utility bill integration</li>
               <li>Multi-framework reporting: CSRD/ESRS, SEC, SB 253, CBAM, IFRS S2</li>

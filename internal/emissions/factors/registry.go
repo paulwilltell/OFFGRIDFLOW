@@ -558,9 +558,13 @@ func (r *InMemoryRegistry) seedDefaults() {
 		r.factors[factor.ID] = factor
 	}
 
+	// Seed comprehensive real-world factors (EPA eGRID, DEFRA, IPCC, IEA)
+	comprehensiveCount := SeedComprehensiveFactors(r)
+
 	r.logger.Info("seeded default emission factors",
 		"scope1_count", len(scope1Factors),
 		"scope2_count", len(scope2Factors),
+		"comprehensive_count", comprehensiveCount,
 		"total_count", len(r.factors),
 	)
 }

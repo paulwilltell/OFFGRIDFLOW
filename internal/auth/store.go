@@ -32,6 +32,7 @@ type Store interface {
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByVerificationToken(ctx context.Context, token string) (*User, error)
 	ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error)
+	CountUsersByTenant(ctx context.Context, tenantID string) (int, error)
 	UpdateUser(ctx context.Context, user *User) error
 	UpdateUserLastLogin(ctx context.Context, id string) error
 	UpdateUserPassword(ctx context.Context, id, passwordHash string) error
@@ -270,6 +271,16 @@ SELECT id, tenant_id, email, name, first_name, last_name, job_title, password_ha
 FROM users WHERE email_verification_token = $1
 `
 	return s.scanUser(s.db.QueryRowContext(ctx, query, token))
+}
+
+// CountUsersByTenant returns the number of active users in a tenant.
+func (s *PostgresStore) CountUsersByTenant(ctx context.Context, tenantID string) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE tenant_id = $1 AND is_active = true`, tenantID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("auth: failed to count users: %w", err)
+	}
+	return count, nil
 }
 
 // ListUsersByTenant retrieves all users for a tenant.
@@ -710,6 +721,18 @@ func (s *InMemoryStore) GetUserByVerificationToken(_ context.Context, token stri
 		}
 	}
 	return nil, ErrUserNotFound
+}
+
+func (s *InMemoryStore) CountUsersByTenant(_ context.Context, tenantID string) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	count := 0
+	for _, u := range s.users {
+		if u.TenantID == tenantID && u.IsActive {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (s *InMemoryStore) ListUsersByTenant(_ context.Context, tenantID string) ([]*User, error) {

@@ -33,7 +33,7 @@ const tiers = [
       'Cloud connectors (AWS, Azure, GCP)',
       'All compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)',
       'XBRL & iXBRL regulatory exports',
-      'Supplier data portal',
+      'All compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)',
       'Real-time emissions dashboard',
       'Priority support & onboarding',
       'Up to 25 users',

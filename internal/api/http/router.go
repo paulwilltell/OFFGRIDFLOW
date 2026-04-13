@@ -437,12 +437,14 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 	}
 
 	// Compliance endpoints
+	// CSRD is available on all paid plans (Starter's "single framework").
+	// SEC, California, CBAM, IFRS require Enterprise (pro) plan.
 	if complianceDeps := r.buildComplianceHandlerDeps(); complianceDeps != nil {
 		protectedMux.HandleFunc("/api/compliance/csrd", handlers.NewCSRDComplianceHandler(complianceDeps))
-		protectedMux.HandleFunc("/api/compliance/sec", handlers.NewSECComplianceHandler(complianceDeps))
-		protectedMux.HandleFunc("/api/compliance/california", handlers.NewCaliforniaComplianceHandler(complianceDeps))
-		protectedMux.HandleFunc("/api/compliance/cbam", handlers.NewCBAMComplianceHandler(complianceDeps))
-		protectedMux.HandleFunc("/api/compliance/ifrs", handlers.NewIFRSComplianceHandler(complianceDeps))
+		protectedMux.Handle("/api/compliance/sec", requireProPlan(handlers.NewSECComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/california", requireProPlan(handlers.NewCaliforniaComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/cbam", requireProPlan(handlers.NewCBAMComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/ifrs", requireProPlan(handlers.NewIFRSComplianceHandler(complianceDeps)))
 		protectedMux.HandleFunc("/api/compliance/summary", handlers.NewComplianceSummaryHandler(complianceDeps))
 		protectedMux.HandleFunc("/api/compliance/export", handlers.NewComplianceExportHandler(complianceDeps))
 	}
@@ -812,6 +814,25 @@ func (r *router) buildComplianceHandlerDeps() *handlers.ComplianceHandlerDeps {
 // -----------------------------------------------------------------------------
 
 // Router builds HTTP mux for the API server (legacy version - kept for compatibility).
+// requireProPlan wraps a handler to require at least the "pro" plan.
+// Starter ("basic") users get a 402 Payment Required response.
+func requireProPlan(next http.HandlerFunc) http.Handler {
+	planLevel := map[string]int{"free": 0, "basic": 1, "pro": 2, "enterprise": 3}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tenant, ok := auth.TenantFromContext(r.Context())
+		if !ok || tenant == nil {
+			responders.Unauthorized(w, "unauthorized", "authentication required")
+			return
+		}
+		level := planLevel[tenant.Plan]
+		if level < planLevel["pro"] {
+			responders.PaymentRequired(w, "this compliance framework requires the Enterprise plan — upgrade at /settings/billing")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func Router(handlers map[string]http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	for path, handler := range handlers {

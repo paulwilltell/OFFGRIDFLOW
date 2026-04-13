@@ -34,7 +34,7 @@ const steps = [
     step: '02',
     title: 'Calculate Emissions',
     description:
-      'GHG Protocol-compliant calculation engine processes Scope 1, 2, and 3 emissions using 10,000+ verified emission factors.',
+      'GHG Protocol-compliant calculation engine processes Scope 1, 2, and 3 emissions using verified emission factors from EPA eGRID, DEFRA, and IEA.',
   },
   {
     step: '03',
@@ -91,8 +91,8 @@ const pricingTiers = [
     features: [
       'Scope 1, 2, & 3 emissions tracking',
       'Cloud connectors (AWS, Azure, GCP)',
+      'All compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)',
       'XBRL & iXBRL regulatory exports',
-      'Supplier data portal',
       'Priority support & onboarding',
       'Up to 25 users',
     ],
