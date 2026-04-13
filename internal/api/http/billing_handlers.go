@@ -107,82 +107,67 @@ var validPlans = map[string]bool{
 }
 
 var defaultPlanCatalog = []BillingPlan{
-	// ── Starter — Monthly ($400/mo) ──────────────────────────────────────────
-	{
-		ID:          "basic",
-		PriceID:     "basic_monthly",
-		Name:        "Starter",
-		AmountCents: 40000,
-		Interval:    "month",
-		Features: []string{
-			"Up to 5 users",
-			"Scope 1 & 2 emissions tracking",
-			"CSV data import",
-			"Monthly PDF compliance reports",
-			"Single compliance framework",
-			"Email support",
-		},
-	},
-	// ── Starter — Annual ($4,800/yr) ─────────────────────────────────────────
+	// ── Audit Prep — $6,500/yr ───────────────────────────────────────────────
 	{
 		ID:          "basic",
 		PriceID:     "basic_annual",
-		Name:        "Starter",
-		AmountCents: 480000,
+		Name:        "Audit Prep",
+		AmountCents: 650000,
 		Interval:    "year",
 		Features: []string{
-			"Up to 5 users",
 			"Scope 1 & 2 emissions tracking",
-			"CSV data import",
-			"Monthly PDF compliance reports",
-			"Single compliance framework",
+			"CSV & utility bill import",
+			"Single compliance framework (CSRD or SB 253)",
+			"PDF compliance reports",
+			"EPA eGRID emission factors",
+			"Up to 5 users",
 			"Email support",
 		},
 	},
-	// ── Enterprise — Monthly ($1,250/mo) ─────────────────────────────────────
-	{
-		ID:          "pro",
-		PriceID:     "pro_monthly",
-		Name:        "Enterprise",
-		AmountCents: 125000,
-		Interval:    "month",
-		Features: []string{
-			"Up to 25 users",
-			"Scope 1, 2 & 3 emissions tracking",
-			"Cloud connectors (AWS, Azure, GCP)",
-			"All compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)",
-			"XBRL & iXBRL regulatory exports",
-			"All compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)",
-			"Priority support & onboarding",
-		},
-	},
-	// ── Enterprise — Annual ($15,000/yr) ─────────────────────────────────────
+	// ── Compliance Pro — $10,800/yr ──────────────────────────────────────────
 	{
 		ID:          "pro",
 		PriceID:     "pro_annual",
+		Name:        "Compliance Pro",
+		AmountCents: 1080000,
+		Interval:    "year",
+		Features: []string{
+			"Scope 1, 2 & basic Scope 3 tracking",
+			"CSRD + SEC compliance frameworks",
+			"Cloud connectors (AWS, Azure, GCP)",
+			"PDF + XBRL exports",
+			"EPA eGRID + DEFRA + IEA factors",
+			"Up to 15 users",
+			"Priority email support",
+		},
+	},
+	// ── Enterprise — $15,000/yr ──────────────────────────────────────────────
+	{
+		ID:          "enterprise",
+		PriceID:     "enterprise_annual",
 		Name:        "Enterprise",
 		AmountCents: 1500000,
 		Interval:    "year",
 		Features: []string{
+			"Full Scope 1, 2 & 3 tracking",
+			"All 5 compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)",
+			"Cloud connectors + SAP integration",
+			"PDF + XBRL/iXBRL exports",
+			"Advanced analytics & forecasting",
 			"Up to 25 users",
-			"Scope 1, 2 & 3 emissions tracking",
-			"Cloud connectors (AWS, Azure, GCP)",
-			"All compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)",
-			"XBRL & iXBRL regulatory exports",
-			"All compliance frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)",
-			"Priority support & onboarding",
+			"Dedicated account manager",
 		},
 	},
-	// ── Carbon Command Elite — Contact Us (both intervals) ───────────────────
+	// ── Global — Custom pricing ──────────────────────────────────────────────
 	{
-		ID:          "enterprise",
-		PriceID:     "price_enterprise",
-		Name:        "Carbon Command Elite",
+		ID:          "global",
+		PriceID:     "",
+		Name:        "Global",
 		AmountCents: 0,
 		Interval:    "year",
 		Features: []string{
-			"Everything in Carbon Command",
-			"All global frameworks — CSRD, SEC, CBAM, IFRS S2, GRI, CDP, CA SB 253",
+			"Everything in Enterprise",
+			"All global frameworks including GRI and CDP",
 			"Multi-region compliance (EU, UK, CA & more)",
 			"Custom calculation methodologies",
 			"On-site implementation support",

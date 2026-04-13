@@ -47,7 +47,7 @@ export default function HomePage() {
           <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-gray-400">
             Big 4 firms charge $50,000&ndash;$200,000 for carbon audits. OffGridFlow delivers
             the same GHG Protocol-compliant calculations and audit-ready reports&mdash;starting
-            at <strong className="text-white">$4,800/year</strong>.
+            at <strong className="text-white">$6,500/year</strong>.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -254,14 +254,14 @@ export default function HomePage() {
                 <div className="text-xs text-gray-600">per year</div>
               </div>
               <div className="text-center">
-                <div className="text-xs text-primary-400">OffGridFlow Starter</div>
-                <div className="mt-1 text-2xl font-bold text-white">$4,800</div>
+                <div className="text-xs text-primary-400">OffGridFlow Audit Prep</div>
+                <div className="mt-1 text-2xl font-bold text-white">$6,500</div>
                 <div className="text-xs text-gray-500">per year</div>
               </div>
               <div className="text-center">
                 <div className="text-xs text-gray-500">Your Savings</div>
-                <div className="mt-1 text-2xl font-bold text-primary-400">$70,200</div>
-                <div className="text-xs text-primary-400/60">94% cost reduction</div>
+                <div className="mt-1 text-2xl font-bold text-primary-400">$68,500</div>
+                <div className="text-xs text-primary-400/60">91% cost reduction</div>
               </div>
             </div>
             <div className="mt-8 text-center">
@@ -284,34 +284,48 @@ export default function HomePage() {
           <h2 className="mb-4 text-center text-3xl font-bold text-white">Transparent pricing</h2>
           <p className="mb-16 text-center text-gray-400">No hidden fees. No per-seat surprises.</p>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-4">
             {[
               {
-                name: 'Starter',
-                price: '$4,800',
+                name: 'Audit Prep',
+                price: '$6,500',
                 period: '/year',
-                desc: 'For companies starting their compliance journey',
-                features: ['Scope 1 & 2 tracking', 'CSV & utility bill import', 'CSRD compliance reports', 'PDF exports', 'Email support', 'Up to 5 users'],
+                monthly: '$540/mo equivalent',
+                desc: 'Scope 1 & 2 for your first audit',
+                features: ['Scope 1 & 2 tracking', 'CSV & utility bill import', 'Single framework (CSRD or SB 253)', 'PDF reports', 'Email support', 'Up to 5 users'],
                 cta: 'Get Started',
-                href: '/register?plan=starter',
+                href: '/register?plan=basic',
                 highlight: false,
+              },
+              {
+                name: 'Compliance Pro',
+                price: '$10,800',
+                period: '/year',
+                monthly: '$900/mo equivalent',
+                desc: 'CSRD + SEC readiness with Scope 3',
+                features: ['Scope 1, 2 & basic Scope 3', 'CSRD + SEC frameworks', 'Cloud connectors (AWS, Azure, GCP)', 'PDF + XBRL exports', 'Priority support', 'Up to 15 users'],
+                cta: 'Get Started',
+                href: '/register?plan=pro',
+                highlight: true,
               },
               {
                 name: 'Enterprise',
                 price: '$15,000',
                 period: '/year',
-                desc: 'Full-scope compliance for growing organizations',
-                features: ['Scope 1, 2, & 3 tracking', 'Cloud connectors (AWS, Azure, GCP)', 'All 5 compliance frameworks', 'PDF + XBRL exports', 'Priority support', 'Up to 25 users'],
+                monthly: '$1,250/mo equivalent',
+                desc: 'Full compliance for growing orgs',
+                features: ['Full Scope 1, 2 & 3', 'All 5 frameworks', 'Cloud + SAP connectors', 'XBRL/iXBRL exports', 'Account manager', 'Up to 25 users'],
                 cta: 'Get Started',
                 href: '/register?plan=enterprise',
-                highlight: true,
+                highlight: false,
               },
               {
                 name: 'Global',
                 price: 'Custom',
                 period: '',
-                desc: 'Multi-site, multi-jurisdiction enterprises',
-                features: ['Everything in Enterprise', 'SAP & ERP integration', 'Custom connectors', 'Dedicated account manager', 'SLA & audit support', 'Unlimited users'],
+                monthly: '',
+                desc: 'Multi-site, multi-jurisdiction',
+                features: ['Everything in Enterprise', 'Custom integrations', 'Multi-region compliance', 'On-site implementation', 'SLA guarantee', 'Unlimited users'],
                 cta: 'Contact Sales',
                 href: '/demo',
                 highlight: false,
@@ -331,6 +345,7 @@ export default function HomePage() {
                   <span className="text-3xl font-bold text-white">{tier.price}</span>
                   {tier.period && <span className="text-sm text-gray-500">{tier.period}</span>}
                 </div>
+                {tier.monthly && <div className="mt-1 text-xs text-gray-600">{tier.monthly}</div>}
                 <p className="mt-2 text-sm text-gray-500">{tier.desc}</p>
                 <ul className="mt-5 space-y-2.5">
                   {tier.features.map((f) => (
