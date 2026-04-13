@@ -173,7 +173,7 @@ func SeedComprehensiveFactors(r *InMemoryRegistry) int {
 		r.factors[f.id] = emissions.EmissionFactor{
 			ID: f.id, Scope: emissions.Scope1, Region: "GLOBAL",
 			Source: f.source, Unit: f.unit, ValueKgCO2ePerUnit: f.value,
-			Method: emissions.MethodDefault, DataSource: "UK DEFRA 2024 / EPA AP-42",
+			Method: emissions.MethodActivityBased, DataSource: "UK DEFRA 2024 / EPA AP-42",
 			CreatedAt: now,
 		}
 		count++
@@ -202,7 +202,7 @@ func SeedComprehensiveFactors(r *InMemoryRegistry) int {
 		r.factors[f.id] = emissions.EmissionFactor{
 			ID: f.id, Scope: emissions.Scope1, Region: "GLOBAL",
 			Source: f.source, Unit: f.unit, ValueKgCO2ePerUnit: f.value,
-			Method: emissions.MethodDefault, DataSource: "UK DEFRA 2024",
+			Method: emissions.MethodActivityBased, DataSource: "UK DEFRA 2024",
 			CreatedAt: now,
 		}
 		count++
@@ -229,7 +229,7 @@ func SeedComprehensiveFactors(r *InMemoryRegistry) int {
 		r.factors[f.id] = emissions.EmissionFactor{
 			ID: f.id, Scope: emissions.Scope1, Region: "GLOBAL",
 			Source: f.source, Unit: "kg", ValueKgCO2ePerUnit: f.gwp,
-			Method: emissions.MethodDefault, DataSource: "IPCC AR6 GWP-100",
+			Method: emissions.MethodActivityBased, DataSource: "IPCC AR6 GWP-100",
 			CreatedAt: now,
 		}
 		count++
@@ -289,7 +289,7 @@ func SeedComprehensiveFactors(r *InMemoryRegistry) int {
 		r.factors[f.id] = emissions.EmissionFactor{
 			ID: f.id, Scope: emissions.Scope3, Region: "GLOBAL",
 			Source: f.source, Unit: f.unit, ValueKgCO2ePerUnit: f.value,
-			Method: emissions.MethodDefault, DataSource: "UK DEFRA 2024 / GHG Protocol",
+			Method: emissions.MethodActivityBased, DataSource: "UK DEFRA 2024 / GHG Protocol",
 			CreatedAt: now,
 		}
 		count++
