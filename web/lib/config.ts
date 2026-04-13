@@ -9,5 +9,5 @@ export const config = {
    * Set NEXT_PUBLIC_OFFGRIDFLOW_API_URL in your environment for production.
    * Defaults to http://localhost:8090 for local development.
    */
-  apiBaseUrl: process.env.NEXT_PUBLIC_OFFGRIDFLOW_API_URL || 'https://offgridflow-api-production.up.railway.app',
+  apiBaseUrl: process.env.NEXT_PUBLIC_OFFGRIDFLOW_API_URL || 'https://offgridflow-api-v2-production.up.railway.app',
 };
