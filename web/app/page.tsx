@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SiteNav } from './components/SiteNav';
+import { FadeIn } from './components/FadeIn';
+import { DashboardPreview } from './components/DashboardPreview';
 
 export const metadata: Metadata = {
   title: 'OffGridFlow | Carbon Compliance Without the Big 4 Price Tag',
@@ -65,6 +67,11 @@ export default function HomePage() {
             </Link>
           </div>
 
+          {/* Product Preview */}
+          <FadeIn delay={0.3}>
+            <DashboardPreview />
+          </FadeIn>
+
           {/* Trust bar */}
           <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-gray-500">
             <span className="flex items-center gap-1.5">
@@ -91,7 +98,7 @@ export default function HomePage() {
       {/* CASE STUDY — Social proof (the #1 gap)                             */}
       {/* ================================================================== */}
       <section className="border-t border-gray-800/50 px-6 py-20">
-        <div className="mx-auto max-w-4xl">
+        <FadeIn><div className="mx-auto max-w-4xl">
           <div className="rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-800/50 to-gray-900/50 p-8 sm:p-12">
             <div className="mb-6 text-xs font-medium uppercase tracking-widest text-primary-400">
               Case Study
@@ -127,7 +134,7 @@ export default function HomePage() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </Link>
           </div>
-        </div>
+        </div></FadeIn>
       </section>
 
       {/* ================================================================== */}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -95,13 +96,36 @@ func extractCSVReader(r *http.Request) (io.Reader, func(), error) {
 		if err := r.ParseMultipartForm(32 << 20); err != nil { // 32MB default buffer
 			return nil, nil, err
 		}
-		file, _, err := r.FormFile("file")
+		file, header, err := r.FormFile("file")
 		if err != nil {
 			return nil, nil, err
 		}
 		cleanup := func() {
 			_ = file.Close()
 		}
+
+		// Validate file extension
+		name := strings.ToLower(header.Filename)
+		if !strings.HasSuffix(name, ".csv") && !strings.HasSuffix(name, ".txt") {
+			cleanup()
+			return nil, nil, fmt.Errorf("invalid file type: expected .csv, got %q", header.Filename)
+		}
+
+		// Validate MIME type by reading first 512 bytes
+		buf := make([]byte, 512)
+		n, _ := file.Read(buf)
+		if n > 0 {
+			detected := http.DetectContentType(buf[:n])
+			if !strings.HasPrefix(detected, "text/") && detected != "application/octet-stream" {
+				cleanup()
+				return nil, nil, fmt.Errorf("invalid content type: expected text/csv, detected %s", detected)
+			}
+		}
+		// Reset reader position
+		if seeker, ok := file.(io.Seeker); ok {
+			_, _ = seeker.Seek(0, io.SeekStart)
+		}
+
 		return file, cleanup, nil
 	}
 

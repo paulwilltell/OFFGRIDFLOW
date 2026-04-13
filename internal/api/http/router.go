@@ -869,18 +869,7 @@ func corsMiddleware(next http.Handler, allowedOrigins, allowedMethods, allowedHe
 				if trimmed == "" {
 					continue
 				}
-				if trimmed == "*" {
-					allowed = true
-					break
-				}
-				if strings.HasSuffix(trimmed, "*") {
-					prefix := strings.TrimSuffix(trimmed, "*")
-					if strings.HasPrefix(origin, prefix) {
-						allowed = true
-						break
-					}
-					continue
-				}
+				// No wildcard CORS — explicit origins only
 				if origin == trimmed {
 					allowed = true
 					break
@@ -896,6 +885,13 @@ func corsMiddleware(next http.Handler, allowedOrigins, allowedMethods, allowedHe
 		w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		// Security headers on every response
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
 		// Handle preflight requests
 		if r.Method == http.MethodOptions {
