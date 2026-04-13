@@ -1,25 +1,18 @@
 import "../styles/globals.css";
 import type { ReactNode } from "react";
-import { JetBrains_Mono, Space_Grotesk, Syncopate } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { AppProviders } from "./providers";
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-body",
+  variable: "--font-sans",
 });
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-mono",
-});
-
-const syncopate = Syncopate({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-  variable: "--font-display",
 });
 
 export const metadata = {
@@ -31,9 +24,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${jetBrainsMono.variable} ${syncopate.variable}`}
+      className={`${inter.variable} ${jetBrainsMono.variable}`}
     >
-      <body>
+      <body className="font-sans antialiased">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

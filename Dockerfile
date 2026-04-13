@@ -59,12 +59,12 @@ RUN chown -R offgridflow:offgridflow /app
 # Switch to non-root user
 USER offgridflow
 
-# Expose port
+# Port — overridden by OFFGRIDFLOW_HTTP_PORT env var at runtime
 EXPOSE 8080
 
-# Health check
+# Health check — uses the PORT env var if set, else 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost:${OFFGRIDFLOW_HTTP_PORT:-8080}/health || exit 1
 
 # Run the application
 ENTRYPOINT ["/app/offgridflow-api"]
