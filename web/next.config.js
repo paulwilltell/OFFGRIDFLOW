@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Build cache buster: env vars must be baked at build time
 const nextConfig = {
   reactStrictMode: true,
   // Disable Turbopack for builds — server-external-packages.jsonc missing in 15.5.x
