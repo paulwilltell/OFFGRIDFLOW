@@ -17,9 +17,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 RUN go mod verify
 
-# Invalidate cache for source copy
-ARG CACHEBUST=1
+# Copy source code
 COPY . .
+# Force Go rebuild by touching a source file
+RUN touch cmd/api/main.go
 
 # Build the application
 # CGO_ENABLED=0 for static binary
