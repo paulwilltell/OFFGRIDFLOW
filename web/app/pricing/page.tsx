@@ -141,7 +141,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <Link
-                  href="/demo"
+                  href={tier.name === 'Global Enterprise' ? '/demo' : `/register?plan=${tier.name.toLowerCase()}`}
                   className={`mt-8 block rounded-lg py-2.5 text-center text-sm font-medium transition ${
                     tier.highlight
                       ? 'bg-primary-600 text-white hover:bg-primary-500'

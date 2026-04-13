@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRequireAuth } from '../../lib/session';
-import ErrorBoundary from '../../components/ErrorBoundary';
+import { useRequireAuth } from '@/lib/session';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function BlockchainDashboard() {
   const session = useRequireAuth();

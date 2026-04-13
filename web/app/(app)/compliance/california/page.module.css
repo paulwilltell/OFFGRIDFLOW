@@ -1,0 +1,138 @@
+.container {
+  padding: 2rem;
+  max-width: 960px;
+  margin: 0 auto;
+  color: #e5e7eb;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0 0 0.25rem 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.muted {
+  color: #94a3b8;
+  margin: 0.15rem 0 0 0;
+  font-size: 0.95rem;
+}
+
+.navLink {
+  padding: 0.5rem 1rem;
+  background: #111827;
+  color: #8aa9ff;
+  border-radius: 6px;
+  text-decoration: none;
+  border: 1px solid #1f2937;
+}
+
+.statusCard {
+  padding: 1.25rem;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.label {
+  color: #8aa9ff;
+  font-weight: 600;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statusText {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.statusBadge {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.checkItem {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.checkDone {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.checkTodo {
+  color: #facc15;
+  font-weight: 700;
+}
+
+.checkTitle {
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.section {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sectionTitle {
+  margin: 0 0 0.5rem 0;
+}
+
+.actionList {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #cbd5e1;
+}
+
+.error {
+  color: #f87171;
+  background: #1f2937;
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: #8aa9ff;
+  text-decoration: none;
+}

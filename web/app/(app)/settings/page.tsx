@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRequireAuth } from '../../lib/session';
-import { getSubscription, SubscriptionResponse, formatSubscriptionStatus, formatPeriodEnd } from '../../lib/billing';
+import { useRequireAuth } from '@/lib/session';
+import { getSubscription, SubscriptionResponse, formatSubscriptionStatus, formatPeriodEnd } from '@/lib/billing';
 
 export default function SettingsPage() {
   const session = useRequireAuth();

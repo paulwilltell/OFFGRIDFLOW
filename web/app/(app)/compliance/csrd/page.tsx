@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { api } from '../../../lib/api';
-import type { CSRDComplianceResponse, ValidationInfo } from '../../../lib/types';
-import { useRequireAuth } from '../../../lib/session';
+import { api } from '@/lib/api';
+import type { CSRDComplianceResponse, ValidationInfo } from '@/lib/types';
+import { useRequireAuth } from '@/lib/session';
 
 const severityColors: Record<string, { bg: string; text: string }> = {
   error: { bg: '#7f1d1d', text: '#fecaca' },

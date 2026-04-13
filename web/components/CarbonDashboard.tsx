@@ -471,6 +471,57 @@ const DashboardContent = memo(function DashboardContent({
     );
   }
 
+  // Onboarding: show getting-started state when no emissions data exists
+  const hasData = emissions && (emissions.scope1 > 0 || emissions.scope2 > 0 || emissions.scope3 > 0);
+  if (!hasData) {
+    return (
+      <div className="min-h-screen bg-gray-900 p-6">
+        <div className="max-w-3xl mx-auto mt-12">
+          <h1 className="text-2xl font-bold text-white mb-2">Welcome to OffGridFlow</h1>
+          <p className="text-gray-400 mb-8">Get started by importing your emissions data. Here&apos;s how:</p>
+
+          <div className="space-y-4">
+            <a href="/emissions" className="block rounded-xl border border-gray-700/50 bg-gray-800/50 p-6 transition hover:border-primary-600/50 hover:bg-gray-800">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600/10 text-lg">1</div>
+                <div>
+                  <h3 className="text-base font-semibold text-white">Upload Emissions Data</h3>
+                  <p className="mt-1 text-sm text-gray-400">Upload a CSV file with your utility or energy data (meter_id, location, period_start, period_end, kwh).</p>
+                </div>
+              </div>
+            </a>
+
+            <a href="/settings/data-sources" className="block rounded-xl border border-gray-700/50 bg-gray-800/50 p-6 transition hover:border-primary-600/50 hover:bg-gray-800">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600/10 text-lg">2</div>
+                <div>
+                  <h3 className="text-base font-semibold text-white">Connect Cloud Sources</h3>
+                  <p className="mt-1 text-sm text-gray-400">Set up automated data pipelines from AWS, Azure, GCP, SAP, or utility providers.</p>
+                </div>
+              </div>
+            </a>
+
+            <a href="/compliance/csrd" className="block rounded-xl border border-gray-700/50 bg-gray-800/50 p-6 transition hover:border-primary-600/50 hover:bg-gray-800">
+              <div className="flex items-start gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-700/50 text-lg text-gray-500">3</div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-500">Generate Compliance Reports</h3>
+                  <p className="mt-1 text-sm text-gray-600">After importing data, generate audit-ready reports for CSRD, SEC, SB 253, and CBAM.</p>
+                </div>
+              </div>
+            </a>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-gray-800 bg-gray-800/30 p-4">
+            <p className="text-xs text-gray-500">
+              Need help? Email <a href="mailto:paul@off-gridflow.com" className="text-primary-400 hover:underline">paul@off-gridflow.com</a> and we&apos;ll walk you through setup.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="carbon-dashboard min-h-screen bg-gray-900">
       <div className="max-w-7xl mx-auto p-6">

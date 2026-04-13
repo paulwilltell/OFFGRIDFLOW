@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { api } from '../../lib/api';
-import type { Scope2Emission, Scope2Summary, PaginatedResponse, PageInfo } from '../../lib/types';
-import { useRequireAuth } from '../../lib/session';
-import { EmissionsTrendChart, ScopeBreakdownChart, EmissionsHeatmap } from '../../components/emissions';
-import ErrorBoundary from '../../components/ErrorBoundary';
+import { api } from '@/lib/api';
+import type { Scope2Emission, Scope2Summary, PaginatedResponse, PageInfo } from '@/lib/types';
+import { useRequireAuth } from '@/lib/session';
+import { EmissionsTrendChart, ScopeBreakdownChart, EmissionsHeatmap } from '@/components/emissions';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function EmissionsPage() {
   const session = useRequireAuth();
@@ -505,6 +505,46 @@ function SkeletonTable({ rows }: { rows: number }) {
 }
 
 function EmptyState() {
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{ status: string; activitiesSaved: number } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError(null);
+    setUploadResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = localStorage.getItem('offgridflow_access_token');
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_OFFGRIDFLOW_API_URL || 'https://offgridflow-api-production.up.railway.app'}/api/ingestion/upload/csv`,
+        {
+          method: 'POST',
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: formData,
+        }
+      );
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error?.message || `Upload failed (${res.status})`);
+      }
+
+      const result = await res.json();
+      setUploadResult(result);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -515,59 +555,88 @@ function EmptyState() {
         border: '2px dashed #1d2937',
       }}
     >
-      <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>??</div>
-      <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', color: '#fff' }}>No Emissions Data Available</h3>
-      <p
-        style={{
-          color: '#888',
-          marginBottom: '1.5rem',
-          maxWidth: '500px',
-          margin: '0 auto 1.5rem',
-        }}
-      >
-        Connect a cloud connector or upload your utility bills to begin tracking energy usage. Once ingestion runs,
-        emissions totals automatically surface on this dashboard.
-      </p>
-      <div
-        style={{
-          display: 'flex',
-          gap: '1rem',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <button
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: '#8aa9ff',
-            color: '#0a0f1e',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '0.95rem',
-            fontWeight: 600,
-            cursor: 'not-allowed',
-            opacity: 0.6,
-          }}
-          disabled
-        >
-          ?? Upload Data (Coming Soon)
-        </button>
-        <button
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: 'transparent',
-            color: '#8aa9ff',
-            border: '1px solid #1d2937',
-            borderRadius: '8px',
-            fontSize: '0.95rem',
-            cursor: 'not-allowed',
-            opacity: 0.6,
-          }}
-          disabled
-        >
-          ?? View Documentation (Coming Soon)
-        </button>
-      </div>
+      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>&#128202;</div>
+      <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', color: '#fff' }}>
+        {uploadResult ? `${uploadResult.activitiesSaved} Activities Imported` : 'Get Started: Import Emissions Data'}
+      </h3>
+
+      {uploadResult ? (
+        <div style={{ color: '#4ade80', marginBottom: '1.5rem' }}>
+          Upload successful. Refresh the page to see your data.
+          <br />
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '1rem',
+              padding: '0.75rem 1.5rem',
+              background: '#16a34a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Refresh Page
+          </button>
+        </div>
+      ) : (
+        <>
+          <p style={{ color: '#888', marginBottom: '1.5rem', maxWidth: '500px', margin: '0 auto 1.5rem' }}>
+            Upload a CSV file with your utility or energy data. Expected columns:
+            <br />
+            <code style={{ color: '#8aa9ff', fontSize: '0.8rem' }}>
+              meter_id, location, period_start, period_end, kwh
+            </code>
+          </p>
+
+          {uploadError && (
+            <div style={{ color: '#ff6b6b', marginBottom: '1rem', fontSize: '0.9rem' }}>
+              {uploadError}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <label
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#16a34a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                cursor: uploading ? 'wait' : 'pointer',
+                opacity: uploading ? 0.6 : 1,
+              }}
+            >
+              {uploading ? 'Uploading...' : 'Upload CSV File'}
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <Link
+              href="/settings/data-sources"
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: 'transparent',
+                color: '#8aa9ff',
+                border: '1px solid #1d2937',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                textDecoration: 'none',
+              }}
+            >
+              Configure Cloud Connectors
+            </Link>
+          </div>
+        </>
+      )}
     </div>
   );
 }
