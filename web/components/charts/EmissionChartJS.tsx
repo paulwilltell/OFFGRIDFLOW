@@ -7,7 +7,9 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  LineController,
   BarElement,
+  BarController,
   Title,
   Tooltip,
   Legend,
@@ -20,13 +22,15 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 import { EmissionData, Timeframe } from '@/types/carbon';
 import { formatNumber, formatDate } from '@/lib/api/carbon';
 
-// Register ChartJS components
+// Register ChartJS components (controllers required in Chart.js v4)
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  LineController,
   BarElement,
+  BarController,
   Title,
   Tooltip,
   Legend,
