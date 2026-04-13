@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/example/offgridflow/internal/ai"
+	"github.com/example/offgridflow/internal/audit"
 	"github.com/example/offgridflow/internal/api/http/handlers"
 	"github.com/example/offgridflow/internal/api/http/middleware"
 	"github.com/example/offgridflow/internal/api/http/responders"
@@ -447,6 +448,25 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 		protectedMux.Handle("/api/compliance/ifrs", requireProPlan(handlers.NewIFRSComplianceHandler(complianceDeps)))
 		protectedMux.HandleFunc("/api/compliance/summary", handlers.NewComplianceSummaryHandler(complianceDeps))
 		protectedMux.HandleFunc("/api/compliance/export", handlers.NewComplianceExportHandler(complianceDeps))
+	}
+
+	// Audit endpoints (calculation ledger, approval workflow, change log)
+	if r.cfg.DB != nil {
+		auditStore := audit.NewStore(r.cfg.DB.DB)
+		auditHandlers := audit.NewHandlers(auditStore)
+		protectedMux.HandleFunc("/api/audit/ledger", auditHandlers.GetCalculationLedger)
+		protectedMux.HandleFunc("/api/audit/approvals", func(w http.ResponseWriter, req *http.Request) {
+			switch req.Method {
+			case http.MethodGet:
+				auditHandlers.GetApprovals(w, req)
+			case http.MethodPost:
+				auditHandlers.CreateApprovalRequest(w, req)
+			default:
+				responders.MethodNotAllowed(w, "GET, POST")
+			}
+		})
+		protectedMux.HandleFunc("/api/audit/approvals/", auditHandlers.UpdateApproval)
+		protectedMux.HandleFunc("/api/audit/changelog", auditHandlers.GetChangeLog)
 	}
 
 	// GraphQL endpoint
