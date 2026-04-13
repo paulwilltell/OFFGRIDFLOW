@@ -352,23 +352,13 @@ const DashboardContent = memo(function DashboardContent({
   const [error, setError] = useState<Error | null>(null);
   
   // Zustand store for global state
-  const { 
-    emissions, 
-    complianceStatus, 
-    metrics,
-    reductionTargets,
-    dataSources,
-    fetchEmissions,
-    updateMetrics 
-  } = useCarbonStore((state) => ({
-    emissions: state.emissions,
-    complianceStatus: state.complianceStatus,
-    metrics: state.metrics,
-    reductionTargets: state.reductionTargets,
-    dataSources: state.dataSources,
-    fetchEmissions: state.fetchEmissions,
-    updateMetrics: state.updateMetrics
-  }));
+  const emissions = useCarbonStore((state) => state.emissions);
+  const complianceStatus = useCarbonStore((state) => state.complianceStatus);
+  const metrics = useCarbonStore((state) => state.metrics);
+  const reductionTargets = useCarbonStore((state) => state.reductionTargets);
+  const dataSources = useCarbonStore((state) => state.dataSources);
+  const fetchEmissions = useCarbonStore((state) => state.fetchEmissions);
+  const updateMetrics = useCarbonStore((state) => state.updateMetrics);
 
   // Custom hooks for business logic
   const { deadlines, checkCompliance } = useCompliance(tenantId);

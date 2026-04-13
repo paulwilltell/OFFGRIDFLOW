@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useCallback, useMemo } from 'react';
 import { EmissionData } from '@/stores/carbonStore';
 
 type UpdateCallback = (data: Partial<EmissionData>) => void;
@@ -204,10 +204,13 @@ export function RealTimeProvider({ children, tenantId, onUpdate, baseUrl }: Real
     };
   }, [tenantId, baseUrl]);
 
-  const contextValue: RealTimeContextValue = {
-    subscribe: RealTimeDataProvider.subscribe,
-    isConnected: RealTimeDataProvider.isConnected(),
-  };
+  const contextValue = useMemo<RealTimeContextValue>(
+    () => ({
+      subscribe: RealTimeDataProvider.subscribe,
+      isConnected: RealTimeDataProvider.isConnected(),
+    }),
+    []
+  );
 
   return (
     <RealTimeContext.Provider value={contextValue}>
