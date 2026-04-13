@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from './components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'OffGridFlow | Carbon Accounting & Compliance Platform',
@@ -119,47 +120,7 @@ const pricingTiers = [
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-white">
-              OffGridFlow
-            </span>
-            <span className="hidden text-xs text-gray-500 sm:inline">
-              Carbon Accounting
-            </span>
-          </Link>
-          <div className="hidden items-center gap-8 text-sm text-gray-400 md:flex">
-            <a href="#how-it-works" className="transition hover:text-white">
-              How It Works
-            </a>
-            <a href="#capabilities" className="transition hover:text-white">
-              Capabilities
-            </a>
-            <a href="#pricing" className="transition hover:text-white">
-              Pricing
-            </a>
-            <Link href="/about" className="transition hover:text-white">
-              About
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm text-gray-400 transition hover:text-white"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/demo"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
-            >
-              Start Demo
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* Hero */}
       <section className="relative overflow-hidden px-6 pb-20 pt-24 sm:pt-32">
