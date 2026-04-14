@@ -65,7 +65,7 @@ export default function EliteInquiryModal({
     setError(null);
 
     const payload = {
-      to: 'paul@offgridflow.com',
+      to: 'contact@off-grid-flow.com',
       from: fromEmail,
       contact_name: contactName,
       company_name: company,
@@ -88,7 +88,7 @@ export default function EliteInquiryModal({
       if (!res.ok) throw new Error('Failed to send');
       setSubmitted(true);
     } catch {
-      setError('Failed to send your inquiry. Please email paul@offgridflow.com directly.');
+      setError('Failed to send your inquiry. Please email contact@off-grid-flow.com directly.');
     } finally {
       setSubmitting(false);
     }
@@ -155,7 +155,7 @@ export default function EliteInquiryModal({
               <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 space-y-3 text-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-gray-500 dark:text-gray-400 w-8 shrink-0">To:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">paul@offgridflow.com</span>
+                  <span className="font-medium text-gray-900 dark:text-white">contact@off-grid-flow.com</span>
                   <span className="ml-auto text-xs text-gray-400">OffGridFlow Customer Success</span>
                 </div>
                 <div className="flex items-center gap-3">

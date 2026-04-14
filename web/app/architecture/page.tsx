@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from '../components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'Architecture | OffGridFlow',
@@ -72,16 +73,7 @@ const traceabilityChain = [
 export default function ArchitecturePage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      <header className="border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">OffGridFlow</Link>
-          <div className="flex items-center gap-4 text-sm text-gray-400">
-            <Link href="/methodology" className="hover:text-white">Methodology</Link>
-            <Link href="/trust" className="hover:text-white">Trust Center</Link>
-            <Link href="/security" className="hover:text-white">Security</Link>
-          </div>
-        </div>
-      </header>
+      <SiteNav />
 
       <main className="mx-auto max-w-5xl px-6 py-16">
         <h1 className="text-3xl font-bold text-white">Data Architecture</h1>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from '../components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | OffGridFlow',
@@ -9,12 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      <nav className="border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">OffGridFlow</Link>
-          <Link href="/" className="text-sm text-gray-400 hover:text-white">Back to Home</Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       <section className="px-6 py-24">
         <div className="mx-auto max-w-3xl">

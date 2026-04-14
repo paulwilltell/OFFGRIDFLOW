@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from '../components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'Terms of Service | OffGridFlow',
@@ -9,12 +10,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      <nav className="border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">OffGridFlow</Link>
-          <Link href="/" className="text-sm text-gray-400 hover:text-white">Back to Home</Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       <section className="px-6 py-24">
         <div className="mx-auto max-w-3xl">
@@ -70,7 +66,7 @@ export default function TermsPage() {
             <section>
               <h2 className="mb-3 text-xl font-semibold text-white">6. Accuracy Disclaimer</h2>
               <p>
-                OffGridFlow uses GHG Protocol-compliant calculation methodologies and verified
+                OffGridFlow uses the calculation methods documented in its public methodology library and verified
                 emission factors. However, the accuracy of outputs depends on the accuracy of
                 input data you provide. OffGridFlow is a calculation and reporting tool, not a
                 substitute for professional audit or legal advice. You are responsible for

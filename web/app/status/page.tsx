@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { SiteNav } from '../components/SiteNav';
 
 interface ServiceStatus {
   name: string;
@@ -54,12 +55,7 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      <nav className="border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">OffGridFlow</Link>
-          <span className="text-xs text-gray-500">System Status</span>
-        </div>
-      </nav>
+      <SiteNav />
 
       <div className="mx-auto max-w-3xl px-6 py-16">
         {/* Overall status */}

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from '../components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'Demo | OffGridFlow',
@@ -64,28 +65,7 @@ const factorSources = [
 export default function DemoPage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">
-            OffGridFlow
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-gray-400 hover:text-white">
-              Home
-            </Link>
-            <Link href="/login" className="text-sm text-gray-400 hover:text-white">
-              Log In
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500"
-            >
-              Start Free Trial
-            </Link>
-          </div>
-        </div>
-      </header>
+      <SiteNav />
 
       <main className="mx-auto max-w-5xl px-6 py-16">
         {/* Hero */}
@@ -221,9 +201,9 @@ export default function DemoPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
-              <h3 className="text-sm font-semibold text-white">GHG Protocol Compliant</h3>
+              <h3 className="text-sm font-semibold text-white">GHG Protocol methodology documented</h3>
               <p className="mt-1 text-xs text-gray-500">
-                Scope 1, 2 (location + market-based), and all 15 Scope 3 categories aligned with GHG Protocol Corporate Standard.
+                Scope 1, 2 (location + market-based), and all 15 Scope 3 categories follow the methods documented in our public methodology library.
               </p>
             </div>
             <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
@@ -259,11 +239,11 @@ export default function DemoPage() {
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-gray-400">
             Upload a CSV and generate your first compliance report in under 2 hours.
-            Or schedule a call to discuss your specific regulatory requirements.
+            Enterprise teams can also contact sales to discuss implementation requirements.
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/register"
+              href="/register?plan=starter"
               className="rounded-lg bg-primary-600 px-8 py-3 text-base font-semibold text-white hover:bg-primary-500"
             >
               Start Free Trial
@@ -272,7 +252,7 @@ export default function DemoPage() {
               href="mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Demo%20Request"
               className="rounded-lg border border-gray-700 px-8 py-3 text-base font-medium text-gray-300 hover:border-gray-500 hover:text-white"
             >
-              Schedule a Call
+              Contact Sales
             </Link>
             <Link
               href="/login"

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from '../components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'How We Operate | OffGridFlow',
@@ -9,16 +10,7 @@ export const metadata: Metadata = {
 export default function HowWeOperatePage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      <header className="border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">OffGridFlow</Link>
-          <div className="flex items-center gap-4 text-sm text-gray-400">
-            <Link href="/pricing" className="hover:text-white">Pricing</Link>
-            <Link href="/demo" className="hover:text-white">How It Works</Link>
-            <Link href="/trust" className="hover:text-white">Trust Center</Link>
-          </div>
-        </div>
-      </header>
+      <SiteNav />
 
       <main className="mx-auto max-w-5xl px-6 py-16">
         <h1 className="text-3xl font-bold text-white">How We Operate</h1>
@@ -78,7 +70,7 @@ export default function HowWeOperatePage() {
                 title: 'Sustainability Manager / ESG Lead',
                 trigger: 'Regulatory deadline approaching, current process is manual or consultant-dependent',
                 needs: 'Scope 1/2/3 accuracy, framework alignment, factor transparency',
-                objections: 'Will the data hold up under audit? Is it GHG Protocol compliant?',
+                objections: 'Will the data hold up under audit? Is the methodology documented and reviewable?',
               },
               {
                 role: 'Economic Buyer',

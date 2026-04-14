@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from '../components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'Methodology Library | OffGridFlow',
@@ -25,12 +26,7 @@ const methods = [
 export default function MethodologyPage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      <nav className="border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">OffGridFlow</Link>
-          <Link href="/" className="text-sm text-gray-400 hover:text-white">Back to Home</Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       <div className="mx-auto max-w-4xl px-6 py-16">
         <h1 className="mb-2 text-3xl font-bold text-white">Methodology Library</h1>

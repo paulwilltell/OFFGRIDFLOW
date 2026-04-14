@@ -56,16 +56,16 @@ export default function HomePage() {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/demo"
+              href="/register?plan=starter"
               className="rounded-lg bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-500 hover:shadow-primary-500/30"
             >
-              See It In Action
+              Start Free Trial
             </Link>
             <Link
-              href="/register?plan=starter"
+              href="/demo"
               className="rounded-lg border border-gray-700 px-8 py-3.5 text-base font-medium text-gray-300 transition hover:border-gray-500 hover:text-white"
             >
-              Start Free Trial
+              Review Workflow
             </Link>
             <Link
               href="/login"
@@ -84,7 +84,7 @@ export default function HomePage() {
           <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-gray-500">
             <span className="flex items-center gap-1.5">
               <svg className="h-4 w-4 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-              GHG Protocol Compliant
+              GHG Protocol methodology documented
             </span>
             <span className="flex items-center gap-1.5">
               <svg className="h-4 w-4 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -169,7 +169,7 @@ export default function HomePage() {
                 step: '02',
                 title: 'Calculate emissions',
                 pain: 'Stop guessing at emission factors.',
-                solution: 'GHG Protocol-compliant engine applies verified factors from EPA eGRID, DEFRA, and IEA across Scope 1, 2, and 3. Every calculation is traceable to its source factor.',
+                solution: 'The calculation engine applies factor sources documented in our methodology library across Scope 1, 2, and 3. Every calculation is traceable to its source factor and reporting method.',
               },
               {
                 step: '03',
@@ -342,7 +342,7 @@ export default function HomePage() {
                 desc: 'Multi-site, multi-jurisdiction',
                 features: ['Everything in Enterprise', 'Custom integrations', 'Multi-region compliance', 'On-site implementation', 'SLA guarantee', 'Unlimited users'],
                 cta: 'Contact Sales',
-                href: '/demo',
+                href: 'mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Global%20Plan%20Inquiry',
                 highlight: false,
               },
             ].map((tier) => (
@@ -399,16 +399,16 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/demo"
+              href="/register?plan=starter"
               className="rounded-lg bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-500"
             >
-              See It In Action
+              Start Free Trial
             </Link>
             <Link
-              href="/register?plan=starter"
+              href="/demo"
               className="text-sm font-medium text-gray-400 transition hover:text-white"
             >
-              Or start your free trial &rarr;
+              Review the workflow &rarr;
             </Link>
           </div>
         </div>

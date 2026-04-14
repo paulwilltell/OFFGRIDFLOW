@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { Suspense, useState, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ApiRequestError, api } from '@/lib/api';
@@ -30,7 +30,7 @@ const PLAN_INFO: Record<string, { name: string; price: string; desc: string }> =
   'starter': { name: 'Audit Prep', price: '$6,500/year', desc: 'Scope 1 & 2 tracking, single compliance framework, CSV import' },
 };
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useSession();
@@ -367,5 +367,24 @@ export default function RegisterPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+function RegisterPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6 rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">OffGridFlow</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Loading registration form...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<RegisterPageFallback />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

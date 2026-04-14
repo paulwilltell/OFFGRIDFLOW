@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { SiteNav } from '../components/SiteNav';
 
 export const metadata: Metadata = {
   title: 'Pricing | OffGridFlow',
@@ -87,11 +88,11 @@ const faq = [
   },
   {
     q: 'Are reports audit-ready?',
-    a: 'Yes. Reports are generated using GHG Protocol-compliant calculation methodologies with verified emission factors. Export formats include PDF, XBRL/iXBRL, and Excel. We recommend independent verification before regulatory submission.',
+    a: 'Yes. Reports are generated using the calculation methods documented in our methodology library and verified emission-factor sources. Export formats include PDF, XBRL/iXBRL, and Excel. We recommend independent verification before regulatory submission.',
   },
   {
     q: 'Can I try before I buy?',
-    a: 'Yes. Request a demo and we will walk you through the platform with your actual use case. No commitment required.',
+    a: 'Yes. Start a free trial to validate the workflow with your own data. Enterprise teams can also contact sales for implementation planning.',
   },
   {
     q: 'What happens to my data if I cancel?',
@@ -102,20 +103,7 @@ const faq = [
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-dark-900 text-gray-100">
-      <nav className="border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-white">OffGridFlow</Link>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-gray-400 hover:text-white">Sign In</Link>
-            <Link
-              href="/register"
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
-            >
-              Start Free Trial
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNav />
 
       <section className="px-6 py-24">
         <div className="mx-auto max-w-6xl">
