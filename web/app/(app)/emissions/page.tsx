@@ -563,7 +563,7 @@ function EmptyState() {
       formData.append('file', file);
       const csrfToken = await getCSRFToken();
 
-      const res = await fetch('/api/ingestion/upload/csv', {
+      const res = await fetch('/api/ingestion/utility-bills/upload', {
         method: 'POST',
         credentials: 'include',
         headers: { [CSRF_HEADER_NAME]: csrfToken },
@@ -628,13 +628,26 @@ function EmptyState() {
       }
 
       const result = await res.json();
-      setUploadResult(result);
+      const activitiesSaved =
+        result?.activities_count ??
+        result?.activitiesSaved ??
+        result?.total_activities ??
+        0;
+      const uploadStatus =
+        typeof result?.success === 'boolean'
+          ? (result.success ? 'success' : 'failed')
+          : result?.status ?? 'success';
+
+      setUploadResult({
+        status: uploadStatus,
+        activitiesSaved,
+      });
       recordAuditEvent('data.import.completed', {
         entityType: 'csv_upload',
         metadata: {
           file_name: file.name,
-          activities_saved: result?.activitiesSaved ?? null,
-          status: result?.status ?? null,
+          activities_saved: activitiesSaved,
+          status: uploadStatus,
         },
       });
     } catch (err) {

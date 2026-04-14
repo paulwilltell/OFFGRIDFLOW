@@ -59,26 +59,18 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
 
   // Fetch compliance deadlines
   const refreshDeadlines = useCallback(async () => {
-    setIsLoading(true);
+    // The production API currently exposes compliance summaries, not a dedicated
+    // deadlines endpoint. Returning an honest empty list here avoids noisy 404s
+    // and prevents the dashboard from implying deadlines data exists when it
+    // has not been shipped yet.
     setError(null);
 
-    try {
-      const response = await api.get<{ deadlines: ComplianceDeadline[] }>(
-        `/api/compliance/deadlines?tenant_id=${tenantId}`
-      );
-      
-      const processedDeadlines = response.deadlines.map((d) => ({
-        ...d,
-        status: d.status === 'completed' ? 'completed' : calculateStatus(d.dueDate),
-      }));
-      
-      setDeadlines(processedDeadlines);
-    } catch (err) {
-      if (!useMockFallback) {
-        setError(err instanceof Error ? err : new Error('Failed to load compliance deadlines'));
-        return;
-      }
-      // Use mock data in development if API fails
+    if (!useMockFallback) {
+      setDeadlines([]);
+      return;
+    }
+
+    // Use mock data in development if the dedicated deadlines endpoint is not available.
       const mockDeadlines: ComplianceDeadline[] = [
         {
           id: '1',
@@ -143,9 +135,6 @@ export function useCompliance(tenantId: string): UseComplianceReturn {
         ...d,
         status: d.status === 'completed' ? 'completed' : calculateStatus(d.dueDate),
       })));
-    } finally {
-      setIsLoading(false);
-    }
   }, [tenantId, useMockFallback]);
 
   // Run compliance check

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { CarbonApi } from '@/lib/api/carbon';
+import { api } from '@/lib/api';
+import type { PaginatedResponse, Scope2Emission, Scope2Summary } from '@/lib/types';
 import { 
   EmissionData, 
   ComplianceStatus, 
@@ -115,8 +116,59 @@ export const useCarbonStore = create<CarbonState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const api = CarbonApi.getInstance();
-          const emissions = await api.getEmissions(tenantId, timeframe);
+          const [summaryResult, activitiesResult] = await Promise.allSettled([
+            api.get<Scope2Summary>('/api/emissions/scope2/summary'),
+            api.get<PaginatedResponse<Scope2Emission>>('/api/emissions/scope2?per_page=250'),
+          ]);
+
+          const summary =
+            summaryResult.status === 'fulfilled' ? summaryResult.value : null;
+          const activities =
+            activitiesResult.status === 'fulfilled' ? activitiesResult.value.data ?? [] : [];
+
+          if (!summary && activities.length === 0) {
+            throw new Error('No emissions data available yet');
+          }
+
+          const dataSourcesMap = new Map<string, DataSource>();
+          for (const activity of activities) {
+            const key =
+              activity.meterId || activity.region || activity.location || activity.id;
+            const existing = dataSourcesMap.get(key);
+            if (existing) {
+              existing.emissions += activity.emissionsTonsCO2e;
+              continue;
+            }
+
+            dataSourcesMap.set(key, {
+              id: key,
+              type: 'import',
+              name: activity.meterId || activity.location || activity.region || 'Imported utility data',
+              lastSync: activity.calculatedAt || summary?.timestamp || new Date().toISOString(),
+              status: 'active',
+              emissions: activity.emissionsTonsCO2e,
+            });
+          }
+
+          const total =
+            summary?.totalEmissionsTonsCO2e ??
+            activities.reduce((sum, activity) => sum + activity.emissionsTonsCO2e, 0);
+
+          const emissions: EmissionData = {
+            id: `scope2-${tenantId}-${timeframe}`,
+            tenantId,
+            total,
+            scope1: 0,
+            scope2: total,
+            scope3: 0,
+            intensity: 0,
+            timeframe,
+            dataSources: Array.from(dataSourcesMap.values()),
+            updatedAt: summary?.timestamp || new Date().toISOString(),
+            methodology: 'ghg_protocol',
+            uncertainty: 0,
+            region: 'global',
+          };
           
           set((state) => {
             state.emissions = emissions;

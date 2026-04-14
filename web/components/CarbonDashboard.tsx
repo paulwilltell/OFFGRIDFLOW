@@ -620,7 +620,7 @@ const DashboardContent = memo(function DashboardContent({
   const fetchEmissions = useCarbonStore((s) => s.fetchEmissions);
   const updateMetrics = useCarbonStore((s) => s.updateMetrics);
 
-  const { deadlines, checkCompliance } = useCompliance(tenantId);
+  const { checkCompliance } = useCompliance(tenantId);
   const { subscribe } = useRealTime();
 
   // Load data
@@ -664,7 +664,7 @@ const DashboardContent = memo(function DashboardContent({
     });
 
     try {
-      const report = await CarbonApi.generateComplianceReport(tenantId, format, ['scope1', 'scope2', 'scope3']);
+      const report = await CarbonApi.getInstance().generateComplianceReport(tenantId, format, ['scope1', 'scope2', 'scope3']);
       if (report?.url) {
         window.open(report.url, '_blank');
       } else {

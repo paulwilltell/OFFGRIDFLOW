@@ -36,7 +36,6 @@ const AUTH_COOKIE_PATHS = new Set([
 const AUTH_EXEMPT_PATHS = new Set([
   '/auth/csrf-token',
   '/auth/login',
-  '/auth/logout',
   '/auth/password/forgot',
   '/auth/password/reset',
   '/auth/register',

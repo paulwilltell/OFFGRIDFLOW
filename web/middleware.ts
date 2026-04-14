@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const protectedPaths = [
+  '/audit',
+  '/blockchain',
+  '/compliance',
   '/dashboard',
   '/emissions',
-  '/compliance',
+  '/onboarding',
   '/settings',
   '/workflow',
-  '/blockchain',
 ];
 
 export function middleware(request: NextRequest) {
@@ -39,6 +41,8 @@ export const config = {
     '/dashboard/:path*',
     '/emissions/:path*',
     '/compliance/:path*',
+    '/audit/:path*',
+    '/onboarding/:path*',
     '/settings/:path*',
     '/workflow/:path*',
     '/blockchain/:path*',
