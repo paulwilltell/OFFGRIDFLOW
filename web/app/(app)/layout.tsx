@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, useRequireAuth } from '@/lib/session';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { HelpWidget } from './components/HelpWidget';
 
 const navItems = [
   {
@@ -169,6 +170,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </ErrorBoundary>
       </main>
+
+      {/* Floating help widget — provides every authenticated page with a
+          self-service escalation path to reduce chargeback risk. */}
+      <HelpWidget />
     </div>
   );
 }

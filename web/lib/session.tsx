@@ -79,9 +79,24 @@ function clearLegacyTokens() {
   localStorage.removeItem('offgridflow_session');
 }
 
+function shouldBootstrapSession(pathname: string | null): boolean {
+  if (!pathname) return false;
+
+  return [
+    '/audit',
+    '/blockchain',
+    '/compliance',
+    '/dashboard',
+    '/emissions',
+    '/onboarding',
+    '/settings',
+    '/workflow',
+  ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  // Note: pathname available via usePathname() if needed for route-specific session logic
+  const pathname = usePathname();
 
   const [state, setState] = useState<SessionState>({
     user: null,
@@ -172,8 +187,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [clearSession]);
 
   useEffect(() => {
-    refreshSession();
-  }, [refreshSession]);
+    if (!shouldBootstrapSession(pathname)) {
+      setState((prev) => (prev.loading ? { ...prev, loading: false } : prev));
+      return;
+    }
+
+    void refreshSession();
+  }, [pathname, refreshSession]);
 
   const login = useCallback(
     async (payload: LoginPayload): Promise<LoginResponse> => {

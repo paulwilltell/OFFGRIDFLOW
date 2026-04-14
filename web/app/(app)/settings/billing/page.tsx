@@ -186,13 +186,42 @@ function BillingContent() {
               </div>
             </dl>
             {hasManagedSubscription ? (
-              <button
-                onClick={handleManageSubscription}
-                disabled={portalLoading}
-                className="mt-5 w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
-              >
-                {portalLoading ? 'Loading…' : 'Manage Subscription'}
-              </button>
+              <>
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={portalLoading}
+                  className="mt-5 w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                >
+                  {portalLoading ? 'Loading…' : 'Manage Subscription (Stripe Portal)'}
+                </button>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Use the Stripe Billing Portal to update payment methods, download invoices,
+                  or cancel your subscription. Changes take effect at the end of your current
+                  billing period.
+                </p>
+                <div className="mt-4 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-3 text-xs text-gray-600 dark:text-gray-400">
+                  <p className="mb-1 font-medium text-gray-900 dark:text-gray-100">
+                    Refund and cancellation policy
+                  </p>
+                  <p>
+                    Annual plans: 14-day refund window from initial purchase; after 14 days,
+                    non-refundable. Monthly plans: no refunds; cancel anytime with access
+                    continuing through the current period. Renewal charges are non-refundable.
+                    Full terms at{' '}
+                    <a href="/terms#section-4" className="text-green-600 dark:text-green-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                      Section 4 of Terms
+                    </a>
+                    .
+                  </p>
+                  <p className="mt-2">
+                    Need help before cancelling? Email{' '}
+                    <a href="mailto:contact@off-grid-flow.com?subject=Help%20with%20OffGridFlow" className="text-green-600 dark:text-green-400 hover:underline">
+                      contact@off-grid-flow.com
+                    </a>
+                    {' '}— we&apos;ll respond within one business day.
+                  </p>
+                </div>
+              </>
             ) : (
               <p className="mt-5 text-sm text-gray-500 dark:text-gray-400">
                 No active subscription yet. Choose a plan below to start checkout.
