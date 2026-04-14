@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 import { ComplianceSummary, FrameworkStatus } from '@/lib/types';
+import { fetchLatestComplianceSummary } from '@/lib/compliance';
 import { useRequireAuth } from '@/lib/session';
 import styles from './page.module.css';
 
@@ -18,6 +18,7 @@ const statusCopy: Record<string, string> = {
 export default function CaliforniaPage() {
   const session = useRequireAuth();
   const [summary, setSummary] = useState<ComplianceSummary | null>(null);
+  const [reportYear, setReportYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,8 +28,9 @@ export default function CaliforniaPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.get<ComplianceSummary>('/api/compliance/summary');
-        setSummary(data);
+        const { summary: normalizedSummary, year } = await fetchLatestComplianceSummary();
+        setSummary(normalizedSummary);
+        setReportYear(year);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load SB 253/261 readiness');
       } finally {
@@ -93,6 +95,7 @@ export default function CaliforniaPage() {
           <div className={styles.statusText}>{formatStatus(ca?.status ?? 'not_started')}</div>
         </div>
         <p className={styles.muted}>{statusCopy[ca?.status ?? 'not_started']}</p>
+        {reportYear && <p className={styles.muted}>Showing readiness for reporting year {reportYear}.</p>}
         <div className={styles.grid}>
           <ChecklistItem
             title="Scope 1"

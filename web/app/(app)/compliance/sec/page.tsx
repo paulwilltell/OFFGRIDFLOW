@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 import { ComplianceSummary } from '@/lib/types';
+import { fetchLatestComplianceSummary } from '@/lib/compliance';
 import { useRequireAuth } from '@/lib/session';
 
 export default function SECPage() {
   const session = useRequireAuth();
   const [summary, setSummary] = useState<ComplianceSummary | null>(null);
+  const [reportYear, setReportYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,8 +19,9 @@ export default function SECPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.get<ComplianceSummary>('/api/compliance/summary');
-        setSummary(data);
+        const { summary: normalizedSummary, year } = await fetchLatestComplianceSummary();
+        setSummary(normalizedSummary);
+        setReportYear(year);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load SEC climate readiness');
       } finally {
@@ -98,6 +100,11 @@ export default function SECPage() {
         <div style={{ color: '#888', fontSize: '0.9rem' }}>
           Prepare emissions disclosures, material risk assessment, and governance controls aligned to SEC rules.
         </div>
+        {reportYear && (
+          <div style={{ color: '#6b7280', fontSize: '0.85rem' }}>
+            Showing the latest reporting year with imported emissions data: {reportYear}
+          </div>
+        )}
       </div>
     </div>
   );

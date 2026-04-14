@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import type { CSRDComplianceResponse, ValidationInfo } from '@/lib/types';
+import type { EmissionsTotals, ValidationInfo } from '@/lib/types';
 import { useRequireAuth } from '@/lib/session';
 
 const severityColors: Record<string, { bg: string; text: string }> = {
@@ -12,12 +12,120 @@ const severityColors: Record<string, { bg: string; text: string }> = {
   info: { bg: '#1e3a8a', text: '#bfdbfe' },
 };
 
+type CSRDPageStatus = 'ok' | 'incomplete' | 'warnings';
+
+interface NormalizedCSRDReport {
+  standard: string;
+  orgId: string;
+  year: number;
+  totals: EmissionsTotals;
+  metrics: Record<string, unknown> & {
+    validation?: ValidationInfo;
+  };
+  status: CSRDPageStatus;
+  timestamp: string;
+}
+
+interface BackendValidationIssue {
+  message?: string;
+}
+
+interface BackendCSRDReport {
+  orgId?: string;
+  year?: number;
+  generatedAt?: string;
+  metrics?: Record<string, unknown>;
+  validationResults?: {
+    valid?: boolean;
+    errors?: BackendValidationIssue[];
+    warnings?: BackendValidationIssue[];
+  };
+  completenessScore?: number;
+}
+
+function buildYearOptions(currentYear: number): number[] {
+  return [currentYear, currentYear - 1, currentYear - 2, currentYear - 3];
+}
+
+function numberValue(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function extractTotals(report: BackendCSRDReport): EmissionsTotals {
+  const ghg = (report.metrics?.['E1-6_ghgEmissions'] as Record<string, unknown> | undefined) ?? {};
+  const scope1 = (ghg.scope1 as Record<string, unknown> | undefined) ?? {};
+  const scope2 = (ghg.scope2 as Record<string, unknown> | undefined) ?? {};
+  const scope3 = (ghg.scope3 as Record<string, unknown> | undefined) ?? {};
+  const scope2Location = (scope2.locationBased as Record<string, unknown> | undefined) ?? {};
+  const total = (ghg.totalGHGEmissions as Record<string, unknown> | undefined) ?? {};
+
+  const scope1Tons = numberValue(scope1.grossEmissions);
+  const scope2Tons = numberValue(scope2Location.grossEmissions);
+  const scope3Tons = numberValue(scope3.grossEmissions);
+  const totalTons = numberValue(total.value) || scope1Tons + scope2Tons + scope3Tons;
+
+  return {
+    scope1Tons,
+    scope2Tons,
+    scope3Tons,
+    totalTons,
+  };
+}
+
+function mapValidation(report: BackendCSRDReport): ValidationInfo {
+  return {
+    valid: report.validationResults?.valid ?? true,
+    errors: (report.validationResults?.errors ?? []).map((entry) => entry.message ?? 'Validation error'),
+    warnings: (report.validationResults?.warnings ?? []).map((entry) => entry.message ?? 'Validation warning'),
+  };
+}
+
+function deriveStatus(report: BackendCSRDReport, totals: EmissionsTotals, validation: ValidationInfo): CSRDPageStatus {
+  if (validation.errors.length > 0 || totals.totalTons === 0) {
+    return 'incomplete';
+  }
+  if (validation.warnings.length > 0 || (report.completenessScore ?? 0) < 100) {
+    return 'warnings';
+  }
+  return 'ok';
+}
+
+function normalizeCSRDResponse(raw: unknown, requestedYear: number): NormalizedCSRDReport {
+  const payload =
+    raw && typeof raw === 'object' && 'report' in raw && raw.report && typeof raw.report === 'object'
+      ? (raw.report as BackendCSRDReport)
+      : (raw as BackendCSRDReport);
+
+  const totals = extractTotals(payload);
+  const validation = mapValidation(payload);
+
+  return {
+    standard: 'CSRD / ESRS E1',
+    orgId: payload.orgId ?? '',
+    year: payload.year ?? requestedYear,
+    totals,
+    metrics: {
+      ...(payload.metrics ?? {}),
+      validation,
+    },
+    status: deriveStatus(payload, totals, validation),
+    timestamp: payload.generatedAt ?? new Date().toISOString(),
+  };
+}
+
+async function fetchCSRDReport(year: number): Promise<NormalizedCSRDReport> {
+  const data = await api.get<unknown>(`/api/compliance/csrd?year=${year}`);
+  return normalizeCSRDResponse(data, year);
+}
+
 export default function CSRDPage() {
   const session = useRequireAuth();
-  const [report, setReport] = useState<CSRDComplianceResponse | null>(null);
+  const [report, setReport] = useState<NormalizedCSRDReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const currentYear = new Date().getFullYear();
+  const yearOptions = buildYearOptions(currentYear);
+  const [year, setYear] = useState(currentYear);
 
   const downloadExport = useCallback(
     (format: 'pdf' | 'xbrl') => {
@@ -38,8 +146,27 @@ export default function CSRDPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.get<CSRDComplianceResponse>(`/api/compliance/csrd?year=${year}`);
-        setReport(data);
+        let nextReport = await fetchCSRDReport(year);
+        let resolvedYear = year;
+
+        if (year === currentYear && nextReport.totals.totalTons === 0) {
+          for (const fallbackYear of yearOptions) {
+            if (fallbackYear >= year) {
+              continue;
+            }
+            const fallbackReport = await fetchCSRDReport(fallbackYear);
+            if (fallbackReport.totals.totalTons > 0) {
+              nextReport = fallbackReport;
+              resolvedYear = fallbackYear;
+              break;
+            }
+          }
+        }
+
+        setReport(nextReport);
+        if (resolvedYear !== year) {
+          setYear(resolvedYear);
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load CSRD report');
       } finally {
@@ -48,7 +175,7 @@ export default function CSRDPage() {
     };
 
     fetchReport();
-  }, [year, session.isAuthenticated]);
+  }, [year, session.isAuthenticated, currentYear]);
 
   const validation = report?.metrics?.validation as ValidationInfo | undefined;
 
@@ -115,7 +242,7 @@ export default function CSRDPage() {
               padding: '0.5rem',
             }}
           >
-            {[2024, 2023, 2022].map((y) => (
+            {yearOptions.map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
@@ -191,27 +318,27 @@ export default function CSRDPage() {
         <DisclosureItem
           code="E1-1"
           title="Transition plan for climate change mitigation"
-          status={hasData(report?.metrics?.['E1-1'])}
+          status={hasData(report?.metrics?.['E1-1_transitionPlan'])}
         />
         <DisclosureItem
           code="E1-2"
           title="Policies related to climate change mitigation and adaptation"
-          status={hasData(report?.metrics?.['E1-2'])}
+          status={hasData(report?.metrics?.['E1-2_policies'])}
         />
         <DisclosureItem
           code="E1-3"
           title="Actions and resources in relation to climate change policies"
-          status={hasData(report?.metrics?.['E1-3'])}
+          status={hasData(report?.metrics?.['E1-3_actions'])}
         />
         <DisclosureItem
           code="E1-4"
           title="Targets related to climate change mitigation and adaptation"
-          status={hasData(report?.metrics?.['E1-4'])}
+          status={hasData(report?.metrics?.['E1-4_targets'])}
         />
         <DisclosureItem
           code="E1-5"
           title="Energy consumption and mix"
-          status={hasData(report?.metrics?.['E1-5'])}
+          status={hasData(report?.metrics?.['E1-5_energy'])}
         />
         <DisclosureItem
           code="E1-6"
@@ -221,17 +348,17 @@ export default function CSRDPage() {
         <DisclosureItem
           code="E1-7"
           title="GHG removals and GHG mitigation projects financed through carbon credits"
-          status={hasData(report?.metrics?.['E1-7'])}
+          status={hasData(report?.metrics?.['E1-7_removalsAndCredits'])}
         />
         <DisclosureItem
           code="E1-8"
           title="Internal carbon pricing"
-          status={hasData(report?.metrics?.['E1-8'])}
+          status={hasData(report?.metrics?.['E1-8_carbonPricing'])}
         />
         <DisclosureItem
           code="E1-9"
           title="Anticipated financial effects from climate-related physical and transition risks"
-          status={hasData(report?.metrics?.['E1-9'])}
+          status={hasData(report?.metrics?.['E1-9_financialEffects'])}
         />
       </div>
 
