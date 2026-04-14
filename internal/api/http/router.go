@@ -468,6 +468,50 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 		protectedMux.HandleFunc("/api/audit/approvals/", auditHandlers.UpdateApproval)
 		protectedMux.HandleFunc("/api/audit/changelog", auditHandlers.GetChangeLog)
 
+		// Diamond-Tier: Factor Snapshots (Panel 1B — Reproducibility)
+		protectedMux.HandleFunc("/api/audit/factor-snapshots", func(w http.ResponseWriter, req *http.Request) {
+			switch req.Method {
+			case http.MethodGet:
+				auditHandlers.GetFactorSnapshots(w, req)
+			case http.MethodPost:
+				auditHandlers.CreateFactorSnapshot(w, req)
+			default:
+				responders.MethodNotAllowed(w, "GET, POST")
+			}
+		})
+		protectedMux.HandleFunc("/api/audit/factor-snapshots/", func(w http.ResponseWriter, req *http.Request) {
+			if strings.HasSuffix(req.URL.Path, "/lock") {
+				auditHandlers.LockFactorSnapshot(w, req)
+			} else {
+				auditHandlers.GetFactorSnapshot(w, req)
+			}
+		})
+
+		// Diamond-Tier: Data Quality Anomalies (Panel 1B — Anomaly Detection)
+		protectedMux.HandleFunc("/api/audit/anomalies", auditHandlers.GetAnomalies)
+		protectedMux.HandleFunc("/api/audit/anomalies/scan", auditHandlers.RunAnomalyDetectionHandler)
+		protectedMux.HandleFunc("/api/audit/anomalies/", auditHandlers.ResolveAnomalyHandler)
+
+		// Diamond-Tier: Alert Actions (Panel 2C — Built-in Next Actions)
+		protectedMux.HandleFunc("/api/audit/alerts", auditHandlers.GetAlertActions)
+		protectedMux.HandleFunc("/api/audit/alerts/", func(w http.ResponseWriter, req *http.Request) {
+			if strings.HasSuffix(req.URL.Path, "/comments") {
+				auditHandlers.GetAlertCommentsHandler(w, req)
+			} else {
+				auditHandlers.UpdateAlertAction(w, req)
+			}
+		})
+
+		// Diamond-Tier: Export Reconciliation (Panel 2E — Exports Match On-Screen Truth)
+		protectedMux.HandleFunc("/api/audit/exports", auditHandlers.GetExportHistory)
+		protectedMux.HandleFunc("/api/audit/exports/stakeholder", auditHandlers.GenerateStakeholderExportHandler)
+		protectedMux.HandleFunc("/api/audit/exports/", auditHandlers.ReconcileExportHandler)
+
+		// Diamond-Tier: Customer Health (Panel 3E — Renewal Engineering)
+		protectedMux.HandleFunc("/api/audit/health", auditHandlers.GetCustomerHealth)
+		protectedMux.HandleFunc("/api/audit/health/refresh", auditHandlers.RefreshCustomerHealth)
+		protectedMux.HandleFunc("/api/audit/health/history", auditHandlers.GetHealthHistory)
+
 		// Data governance endpoints (export, deletion, retention policy)
 		govHandlers := audit.NewDataGovernanceHandlers(r.cfg.DB.DB)
 		protectedMux.HandleFunc("/api/governance/export", govHandlers.ExportAllData)

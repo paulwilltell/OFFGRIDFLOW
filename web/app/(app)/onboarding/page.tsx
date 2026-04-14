@@ -1,7 +1,16 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSession, useRequireAuth } from '@/lib/session';
+
+type OnboardingSegment = 'self_serve' | 'assisted' | 'enterprise';
+
+const segmentConfig: Record<OnboardingSegment, { label: string; desc: string; timeline: string }> = {
+  self_serve: { label: 'Self-Serve', desc: 'CSV upload to first report', timeline: 'Under 2 hours' },
+  assisted: { label: 'Assisted', desc: 'Cloud connectors + Scope 3', timeline: '1-2 weeks' },
+  enterprise: { label: 'Enterprise', desc: 'Full integration + approval workflows', timeline: '2-4 weeks' },
+};
 
 const milestones = [
   {
@@ -11,90 +20,168 @@ const milestones = [
     action: null,
     href: null,
     autoComplete: true,
+    segments: ['self_serve', 'assisted', 'enterprise'] as OnboardingSegment[],
+    training: null,
   },
   {
     step: 2,
+    title: 'Organization Profile',
+    description: 'Set your industry, country, fiscal year, and reporting preferences.',
+    action: 'Set Up Profile',
+    href: '/settings/organization',
+    autoComplete: false,
+    segments: ['self_serve', 'assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'admin', topic: 'Organization settings and user management' },
+  },
+  {
+    step: 3,
     title: 'First Data Upload',
     description: 'Upload a CSV with utility bills, energy consumption, or fleet data.',
     action: 'Upload CSV',
     href: '/emissions',
     autoComplete: false,
+    segments: ['self_serve', 'assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'operator', topic: 'CSV format requirements and data validation' },
   },
   {
-    step: 3,
+    step: 4,
     title: 'Connect a Cloud Source',
     description: 'Set up automated data pipelines from AWS, Azure, GCP, SAP, or utility providers.',
     action: 'Configure Sources',
     href: '/settings/data-sources',
     autoComplete: false,
-  },
-  {
-    step: 4,
-    title: 'Review Your Inventory',
-    description: 'Check Scope 1 & 2 emissions on the dashboard. Verify data quality and factor accuracy.',
-    action: 'Open Dashboard',
-    href: '/dashboard/carbon',
-    autoComplete: false,
+    segments: ['assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'operator', topic: 'Cloud connector setup and credential management' },
   },
   {
     step: 5,
+    title: 'Run Data Quality Scan',
+    description: 'Verify data integrity — detect outliers, duplicates, and missing periods before reporting.',
+    action: 'Run Scan',
+    href: '/audit/data-quality',
+    autoComplete: false,
+    segments: ['self_serve', 'assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'operator', topic: 'Data quality checks and anomaly resolution' },
+  },
+  {
+    step: 6,
+    title: 'Review Emissions Dashboard',
+    description: 'Check Scope 1, 2 & 3 emissions on the dashboard. Verify factor accuracy.',
+    action: 'Open Dashboard',
+    href: '/dashboard/carbon',
+    autoComplete: false,
+    segments: ['self_serve', 'assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'executive', topic: 'Dashboard views and KPI interpretation' },
+  },
+  {
+    step: 7,
+    title: 'Lock Factor Snapshot',
+    description: 'Freeze emission factors to your reporting period for audit reproducibility.',
+    action: 'Factor Snapshots',
+    href: '/audit/factor-snapshots',
+    autoComplete: false,
+    segments: ['assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'auditor', topic: 'Factor version locking and calculation ledger' },
+  },
+  {
+    step: 8,
     title: 'Generate First Report',
     description: 'Generate an audit-ready compliance report (CSRD, SEC, SB 253, or CBAM).',
     action: 'Generate Report',
     href: '/compliance/csrd',
     autoComplete: false,
+    segments: ['self_serve', 'assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'executive', topic: 'Compliance framework selection and report generation' },
   },
   {
-    step: 6,
+    step: 9,
     title: 'Submit for Review',
     description: 'Create an approval request and submit your inventory for internal review.',
     action: 'Start Approval',
     href: '/audit/approvals',
     autoComplete: false,
+    segments: ['assisted', 'enterprise'] as OnboardingSegment[],
+    training: { role: 'auditor', topic: 'Approval workflow and audit trail review' },
   },
   {
-    step: 7,
+    step: 10,
     title: 'Approved & Locked',
     description: 'Report reviewed, approved, and locked. Ready for stakeholders or auditors.',
     action: 'View Approvals',
     href: '/audit/approvals',
     autoComplete: false,
+    segments: ['assisted', 'enterprise'] as OnboardingSegment[],
+    training: null,
   },
 ];
 
 export default function OnboardingPage() {
   useRequireAuth();
   const { user } = useSession();
+  const [segment, setSegment] = useState<OnboardingSegment>('self_serve');
+  const [milestoneData, setMilestoneData] = useState<any>(null);
 
-  // Step 1 is always complete if the user exists
-  const completedSteps = user ? 1 : 0;
+  // Load milestone data from API
+  useEffect(() => {
+    fetch('/api/audit/health', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setMilestoneData(d.health))
+      .catch(() => {});
+  }, []);
+
+  // Filter milestones by segment
+  const filteredMilestones = milestones.filter((m) => m.segments.includes(segment));
+
+  // Calculate completion based on real data
+  let completedSteps = 0;
+  if (user) completedSteps = 1; // Account created
+  if (milestoneData?.total_activities_count > 0) completedSteps = Math.max(completedSteps, 3);
+  if (milestoneData?.reports_generated_count > 0) completedSteps = Math.max(completedSteps, 6);
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white">Getting Started</h1>
         <p className="mt-1 text-xs text-gray-500">
-          Follow these steps to reach your first audit-ready report. Typical time: under 2 hours.
+          Follow these steps to reach your first audit-ready report.
         </p>
+      </div>
+
+      {/* Segment Selector */}
+      <div className="mb-6 flex items-center gap-1 rounded-lg border border-gray-800 bg-gray-900/50 p-1">
+        {(Object.entries(segmentConfig) as [OnboardingSegment, typeof segmentConfig[OnboardingSegment]][]).map(([key, cfg]) => (
+          <button
+            key={key}
+            onClick={() => setSegment(key)}
+            className={`flex-1 rounded-md px-4 py-2 text-center transition ${
+              segment === key
+                ? 'bg-primary-600/20 text-primary-400'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <div className="text-xs font-medium">{cfg.label}</div>
+            <div className="text-[10px] text-gray-600">{cfg.timeline}</div>
+          </button>
+        ))}
       </div>
 
       {/* Progress bar */}
       <div className="mb-8">
         <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
-          <span>{completedSteps} of {milestones.length} complete</span>
-          <span>{Math.round((completedSteps / milestones.length) * 100)}%</span>
+          <span>{Math.min(completedSteps, filteredMilestones.length)} of {filteredMilestones.length} complete</span>
+          <span>{Math.round((Math.min(completedSteps, filteredMilestones.length) / filteredMilestones.length) * 100)}%</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-gray-800">
           <div
             className="h-full rounded-full bg-primary-600 transition-all duration-500"
-            style={{ width: `${(completedSteps / milestones.length) * 100}%` }}
+            style={{ width: `${(Math.min(completedSteps, filteredMilestones.length) / filteredMilestones.length) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Milestones */}
       <div className="space-y-3">
-        {milestones.map((m, i) => {
+        {filteredMilestones.map((m, i) => {
           const isComplete = i < completedSteps;
           const isCurrent = i === completedSteps;
           const isFuture = i > completedSteps;
@@ -135,17 +222,26 @@ export default function OnboardingPage() {
                   <p className={`mt-1 text-xs ${isFuture ? 'text-gray-600' : 'text-gray-400'}`}>
                     {m.description}
                   </p>
-                  {m.action && m.href && (isCurrent || isComplete) && (
-                    <Link
-                      href={m.href}
-                      className={`mt-3 inline-block rounded-lg px-4 py-1.5 text-xs font-medium transition ${
-                        isCurrent ? 'bg-primary-600 text-white hover:bg-primary-500' :
-                        'border border-gray-700 text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      {m.action}
-                    </Link>
-                  )}
+                  <div className="mt-3 flex items-center gap-2">
+                    {m.action && m.href && (isCurrent || isComplete) && (
+                      <Link
+                        href={m.href}
+                        className={`inline-block rounded-lg px-4 py-1.5 text-xs font-medium transition ${
+                          isCurrent ? 'bg-primary-600 text-white hover:bg-primary-500' :
+                          'border border-gray-700 text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        {m.action}
+                      </Link>
+                    )}
+                    {m.training && (isCurrent || isComplete) && (
+                      <span className="rounded border border-gray-800 bg-gray-900/50 px-2.5 py-1 text-[10px] text-gray-500">
+                        {m.training.role === 'admin' ? 'Admin' :
+                         m.training.role === 'operator' ? 'Operator' :
+                         m.training.role === 'executive' ? 'Executive' : 'Auditor'} — {m.training.topic}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

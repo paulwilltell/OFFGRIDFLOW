@@ -226,49 +226,358 @@ function QuickActions() {
 }
 
 // ============================================================================
+// Role View Switcher (Panel 2A: Role-based views)
+// ============================================================================
+
+type DashboardRole = 'executive' | 'operator' | 'auditor';
+
+function RoleViewSwitcher({ role, onRoleChange }: { role: DashboardRole; onRoleChange: (r: DashboardRole) => void }) {
+  const roles: { key: DashboardRole; label: string; desc: string }[] = [
+    { key: 'executive', label: 'Executive', desc: 'KPIs, trends, compliance status' },
+    { key: 'operator', label: 'Operator', desc: 'Data entry, quality, connectors' },
+    { key: 'auditor', label: 'Auditor', desc: 'Ledger, approvals, evidence trail' },
+  ];
+
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-gray-800 bg-gray-900/50 p-1">
+      {roles.map((r) => (
+        <button
+          key={r.key}
+          onClick={() => onRoleChange(r.key)}
+          title={r.desc}
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+            role === r.key
+              ? 'bg-primary-600/20 text-primary-400'
+              : 'text-gray-500 hover:text-gray-300'
+          }`}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// Data Quality Summary Widget (Panel 2B: Data state indicators)
+// ============================================================================
+
+function DataQualitySummary() {
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    fetch('/api/audit/anomalies?status=open', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setCounts(d.summary))
+      .catch(() => {});
+  }, []);
+
+  if (!counts) return null;
+  const hasIssues = counts.open > 0;
+
+  return (
+    <Link
+      href="/audit/data-quality"
+      className={`rounded-xl border p-4 transition hover:border-gray-600 ${
+        counts.critical > 0
+          ? 'border-red-800/60 bg-red-900/10'
+          : counts.warning > 0
+          ? 'border-yellow-800/60 bg-yellow-900/10'
+          : 'border-gray-800 bg-gray-800/40'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Data Quality</h3>
+        {!hasIssues && <span className="rounded bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-400">Clean</span>}
+      </div>
+      {hasIssues ? (
+        <div className="mt-2 flex items-center gap-3">
+          {counts.critical > 0 && (
+            <span className="text-sm font-semibold text-red-400">{counts.critical} critical</span>
+          )}
+          {counts.warning > 0 && (
+            <span className="text-sm font-semibold text-yellow-400">{counts.warning} warnings</span>
+          )}
+          <span className="text-xs text-gray-500">{counts.open} open</span>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm font-semibold text-green-400">No anomalies detected</p>
+      )}
+    </Link>
+  );
+}
+
+// ============================================================================
+// Alert Summary Widget (Panel 2C: Alert visibility in working surface)
+// ============================================================================
+
+function AlertSummary() {
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    fetch('/api/audit/alerts?status=open', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setCounts(d.summary))
+      .catch(() => {});
+  }, []);
+
+  if (!counts || counts.total === 0) return null;
+
+  return (
+    <Link
+      href="/audit/alerts"
+      className={`rounded-xl border p-4 transition hover:border-gray-600 ${
+        counts.critical_active > 0 ? 'border-red-800/60 bg-red-900/10' : 'border-gray-800 bg-gray-800/40'
+      }`}
+    >
+      <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Open Alerts</h3>
+      <div className="mt-2 flex items-center gap-3">
+        <span className="text-lg font-bold text-white">{counts.open + counts.in_progress + counts.escalated}</span>
+        <span className="text-xs text-gray-500">active</span>
+        {counts.critical_active > 0 && (
+          <span className="rounded bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-400">{counts.critical_active} critical</span>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+// ============================================================================
+// Auditor View (Panel 2A: Role-specific view)
+// ============================================================================
+
+function AuditorView() {
+  const [ledger, setLedger] = useState<any[]>([]);
+  const [approvals, setApprovals] = useState<any[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/audit/ledger?limit=10', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/audit/approvals', { credentials: 'include' }).then(r => r.json()),
+    ]).then(([l, a]) => {
+      setLedger(l.entries || []);
+      setApprovals(a.approvals || []);
+    }).catch(() => {});
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <MetricCard label="Ledger Records" value={ledger.length} />
+        <MetricCard label="Pending Approvals" value={approvals.filter(a => a.status === 'submitted' || a.status === 'reviewed').length} />
+        <MetricCard label="Approved" value={approvals.filter(a => a.status === 'approved').length} />
+      </div>
+
+      <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Recent Calculations</h3>
+          <Link href="/audit/ledger" className="text-xs text-primary-400 hover:underline">View All</Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-800 text-left text-xs text-gray-500">
+                <th className="pb-2 pr-4">Scope</th>
+                <th className="pb-2 pr-4">Category</th>
+                <th className="pb-2 pr-4">Quantity</th>
+                <th className="pb-2 pr-4">Factor</th>
+                <th className="pb-2 pr-4">Result (tCO2e)</th>
+                <th className="pb-2 pr-4">Status</th>
+                <th className="pb-2">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledger.slice(0, 8).map((entry) => (
+                <tr key={entry.id} className="border-b border-gray-800/30">
+                  <td className="py-2 pr-4 text-white">{entry.scope}</td>
+                  <td className="py-2 pr-4 text-gray-300">{entry.category || '-'}</td>
+                  <td className="py-2 pr-4 text-gray-300">{entry.quantity} {entry.unit}</td>
+                  <td className="py-2 pr-4 text-gray-400">{entry.emission_factor_value}</td>
+                  <td className="py-2 pr-4 font-medium text-white">{entry.result_tonnes_co2e?.toFixed(4)}</td>
+                  <td className="py-2 pr-4">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                      entry.is_locked ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
+                    }`}>
+                      {entry.is_locked ? 'Locked' : 'Draft'}
+                    </span>
+                  </td>
+                  <td className="py-2 text-gray-500 text-xs">{new Date(entry.calculated_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Approval Workflow</h3>
+            <Link href="/audit/approvals" className="text-xs text-primary-400 hover:underline">View All</Link>
+          </div>
+          <div className="space-y-2">
+            {approvals.slice(0, 5).map((a) => (
+              <div key={a.id} className="flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2">
+                <div>
+                  <span className="text-sm text-white">{a.entity_type}</span>
+                  <span className="ml-2 text-[10px] text-gray-500">{a.entity_id?.slice(0, 8)}</span>
+                </div>
+                <span className={`rounded px-2 py-0.5 text-[10px] font-medium ${
+                  a.status === 'approved' ? 'bg-green-500/10 text-green-400' :
+                  a.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
+                  a.status === 'submitted' ? 'bg-blue-500/10 text-blue-400' :
+                  'bg-gray-500/10 text-gray-400'
+                }`}>
+                  {a.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <DataQualitySummary />
+          <Link
+            href="/audit/factor-snapshots"
+            className="block rounded-xl border border-gray-800 bg-gray-800/40 p-4 transition hover:border-gray-600"
+          >
+            <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Factor Snapshots</h3>
+            <p className="mt-2 text-sm text-gray-300">Lock emission factors to reporting periods for reproducibility.</p>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Operator View (Panel 2A: Role-specific view)
+// ============================================================================
+
+function OperatorView({ emissions, dataSources, timeframe, tenantId }: {
+  emissions: EmissionData;
+  dataSources: DataSource[];
+  timeframe: Timeframe;
+  tenantId: string;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-4">
+        <MetricCard label="Total Sources" value={dataSources?.length || 0} />
+        <MetricCard label="Active Sources" value={dataSources?.filter(ds => ds.status === 'active').length || 0} />
+        <MetricCard label="Error Sources" value={dataSources?.filter(ds => ds.status === 'error').length || 0} />
+        <MetricCard label="Last Upload" value={dataSources?.[0]?.lastSync ? String(dataSources[0].lastSync) : '-'} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <DataQualitySummary />
+        <AlertSummary />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
+          <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Data Sources</h3>
+          <div className="space-y-2">
+            {(dataSources || []).map((ds) => (
+              <div key={ds.id} className="flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2">
+                <div className="flex items-center gap-2.5">
+                  <span className={`h-2 w-2 rounded-full ${
+                    ds.status === 'active' ? 'bg-green-500' : ds.status === 'error' ? 'bg-red-500' : 'bg-gray-500'
+                  }`} />
+                  <span className="text-sm text-white">{ds.name}</span>
+                  <span className="text-[10px] uppercase text-gray-600">{ds.type}</span>
+                </div>
+                <span className="text-xs text-gray-400">{formatNumber(ds.emissions)} tCO2e</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Data Entry</h3>
+          {[
+            { label: 'Upload CSV', href: '/emissions', desc: 'Bulk import emissions data' },
+            { label: 'Connect Source', href: '/settings/data-sources', desc: 'Add AWS, Azure, GCP, SAP' },
+            { label: 'Emission Factors', href: '/settings/factors', desc: 'Browse and verify factors' },
+            { label: 'Run Quality Scan', href: '/audit/data-quality', desc: 'Check data for anomalies' },
+          ].map((action) => (
+            <Link
+              key={action.label}
+              href={action.href}
+              className="block rounded-xl border border-gray-800/50 bg-gray-900/30 p-4 transition hover:border-gray-700"
+            >
+              <span className="text-sm font-medium text-white">{action.label}</span>
+              <p className="mt-0.5 text-xs text-gray-500">{action.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Dashboard Header
 // ============================================================================
 
 const DashboardHeader = memo(function DashboardHeader({
   onExport,
   lastUpdated,
+  role,
+  onRoleChange,
 }: {
   onExport: (format: 'pdf' | 'csv' | 'excel') => void;
   lastUpdated?: string;
+  role: DashboardRole;
+  onRoleChange: (r: DashboardRole) => void;
 }) {
   const [exportOpen, setExportOpen] = useState(false);
+
+  const roleLabels: Record<DashboardRole, string> = {
+    executive: 'Executive View',
+    operator: 'Operator View',
+    auditor: 'Auditor View',
+  };
 
   return (
     <div className="mb-6 flex items-center justify-between">
       <div>
-        <h1 className="text-xl font-bold text-white">Carbon Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-white">Carbon Dashboard</h1>
+          <span className="rounded bg-primary-600/10 px-2 py-0.5 text-[10px] font-medium text-primary-400">
+            {roleLabels[role]}
+          </span>
+        </div>
         <p className="mt-0.5 text-xs text-gray-500">
           {lastUpdated ? `Updated ${new Date(lastUpdated).toLocaleString()}` : 'Real-time emissions overview'}
         </p>
       </div>
-      <div className="relative">
-        <button
-          onClick={() => setExportOpen(!exportOpen)}
-          className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-2 text-sm text-gray-300 transition hover:border-gray-600 hover:text-white"
-        >
-          Export Report
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {exportOpen && (
-          <div className="absolute right-0 z-50 mt-1 w-44 rounded-lg border border-gray-700 bg-gray-800 shadow-xl">
-            {(['pdf', 'csv', 'excel'] as const).map((fmt) => (
-              <button
-                key={fmt}
-                onClick={() => { onExport(fmt); setExportOpen(false); }}
-                className="block w-full px-4 py-2 text-left text-sm text-gray-300 transition first:rounded-t-lg last:rounded-b-lg hover:bg-gray-700 hover:text-white"
-              >
-                Export as {fmt.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="flex items-center gap-3">
+        <RoleViewSwitcher role={role} onRoleChange={onRoleChange} />
+        <div className="relative">
+          <button
+            onClick={() => setExportOpen(!exportOpen)}
+            className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-2 text-sm text-gray-300 transition hover:border-gray-600 hover:text-white"
+          >
+            Export
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 z-50 mt-1 w-44 rounded-lg border border-gray-700 bg-gray-800 shadow-xl">
+              {(['pdf', 'csv', 'excel'] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  onClick={() => { onExport(fmt); setExportOpen(false); }}
+                  className="block w-full px-4 py-2 text-left text-sm text-gray-300 transition first:rounded-t-lg last:rounded-b-lg hover:bg-gray-700 hover:text-white"
+                >
+                  Export as {fmt.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -290,6 +599,7 @@ const DashboardContent = memo(function DashboardContent({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [role, setRole] = useState<DashboardRole>('executive');
 
   const emissions = useCarbonStore((s) => s.emissions);
   const complianceStatus = useCarbonStore((s) => s.complianceStatus);
@@ -402,73 +712,92 @@ const DashboardContent = memo(function DashboardContent({
 
   return (
     <div>
-      <DashboardHeader onExport={handleExport} lastUpdated={emissions.updatedAt?.toString()} />
+      <DashboardHeader onExport={handleExport} lastUpdated={emissions.updatedAt?.toString()} role={role} onRoleChange={setRole} />
 
-      {/* Top KPI Row */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard
-          label="Total Emissions"
-          value={total}
-          unit="tCO2e"
-          change={emissions.percentageChange}
-          changeLabel="vs last period"
-          quality="calculated"
-        />
-        <MetricCard
-          label="Scope 1 — Direct"
-          value={emissions.scope1}
-          unit="tCO2e"
-        />
-        <MetricCard
-          label="Scope 2 — Energy"
-          value={emissions.scope2}
-          unit="tCO2e"
-        />
-        <MetricCard
-          label="Scope 3 — Value Chain"
-          value={emissions.scope3}
-          unit="tCO2e"
-        />
-      </div>
+      {/* Auditor-specific view */}
+      {role === 'auditor' && <AuditorView />}
 
-      {/* Main Grid */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Chart — 8 cols */}
-        <div className="lg:col-span-8">
-          <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Emissions Trend</h3>
-              <span className="text-[10px] text-gray-600">GHG Protocol methodology</span>
-            </div>
-            <Suspense fallback={<LoadingSkeleton type="chart" />}>
-              <EmissionChart data={emissions ? [emissions] : []} timeframe={timeframe} height={320} />
-            </Suspense>
+      {/* Operator-specific view */}
+      {role === 'operator' && (
+        <OperatorView emissions={emissions} dataSources={dataSources} timeframe={timeframe} tenantId={tenantId} />
+      )}
+
+      {/* Executive view (default) */}
+      {role === 'executive' && (
+        <>
+          {/* Top KPI Row */}
+          <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard
+              label="Total Emissions"
+              value={total}
+              unit="tCO2e"
+              change={emissions.percentageChange}
+              changeLabel="vs last period"
+              quality="calculated"
+            />
+            <MetricCard
+              label="Scope 1 — Direct"
+              value={emissions.scope1}
+              unit="tCO2e"
+            />
+            <MetricCard
+              label="Scope 2 — Energy"
+              value={emissions.scope2}
+              unit="tCO2e"
+            />
+            <MetricCard
+              label="Scope 3 — Value Chain"
+              value={emissions.scope3}
+              unit="tCO2e"
+            />
           </div>
-        </div>
 
-        {/* Right sidebar — 4 cols */}
-        <div className="space-y-4 lg:col-span-4">
-          <ScopeBreakdown scope1={emissions.scope1} scope2={emissions.scope2} scope3={emissions.scope3} />
-          <ComplianceTracker status={complianceStatus as unknown as Record<string, ComplianceStatusType>} />
-        </div>
-      </div>
+          {/* Data Quality & Alert Indicators */}
+          <div className="mb-6 grid gap-4 lg:grid-cols-2">
+            <DataQualitySummary />
+            <AlertSummary />
+          </div>
 
-      {/* Bottom row */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-4">
-          <MetricCard
-            label="Carbon Intensity"
-            value={intensity > 0 ? intensity.toFixed(1) : '—'}
-            unit={intensity > 0 ? 'tCO2e / $M revenue' : ''}
-          />
-        </div>
-        <div className="lg:col-span-4">
-          <ActivityLedger dataSources={dataSources} />
-        </div>
-        <div className="lg:col-span-4">
-          <QuickActions />
-        </div>
-      </div>
+          {/* Main Grid */}
+          <div className="grid gap-6 lg:grid-cols-12">
+            {/* Chart — 8 cols */}
+            <div className="lg:col-span-8">
+              <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Emissions Trend</h3>
+                  <span className="text-[10px] text-gray-600">GHG Protocol methodology</span>
+                </div>
+                <Suspense fallback={<LoadingSkeleton type="chart" />}>
+                  <EmissionChart data={emissions ? [emissions] : []} timeframe={timeframe} height={320} />
+                </Suspense>
+              </div>
+            </div>
+
+            {/* Right sidebar — 4 cols */}
+            <div className="space-y-4 lg:col-span-4">
+              <ScopeBreakdown scope1={emissions.scope1} scope2={emissions.scope2} scope3={emissions.scope3} />
+              <ComplianceTracker status={complianceStatus as unknown as Record<string, ComplianceStatusType>} />
+            </div>
+          </div>
+
+          {/* Bottom row */}
+          <div className="mt-6 grid gap-6 lg:grid-cols-12">
+            <div className="lg:col-span-4">
+              <MetricCard
+                label="Carbon Intensity"
+                value={intensity > 0 ? intensity.toFixed(1) : '—'}
+                unit={intensity > 0 ? 'tCO2e / $M revenue' : ''}
+              />
+            </div>
+            <div className="lg:col-span-4">
+              <ActivityLedger dataSources={dataSources} />
+            </div>
+            <div className="lg:col-span-4">
+              <QuickActions />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 });
@@ -492,7 +821,7 @@ export function CarbonDashboard({ tenantId, timeframe, onDataChange }: CarbonDas
 
   return (
     <ErrorBoundary componentName="CarbonDashboard">
-      <RealTimeProvider tenantId={tenantId} onUpdate={handleUpdate}>
+      <RealTimeProvider tenantId={tenantId ?? 'default'} onUpdate={handleUpdate}>
         <DashboardContent tenantId={tenantId} timeframe={timeframe} onDataChange={onDataChange} />
       </RealTimeProvider>
     </ErrorBoundary>

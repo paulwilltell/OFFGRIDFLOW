@@ -50,6 +50,9 @@ const navItems = [
     children: [
       { label: 'Calculation Ledger', href: '/audit/ledger' },
       { label: 'Approvals', href: '/audit/approvals' },
+      { label: 'Factor Snapshots', href: '/audit/factor-snapshots' },
+      { label: 'Data Quality', href: '/audit/data-quality' },
+      { label: 'Alerts', href: '/audit/alerts' },
       { label: 'Getting Started', href: '/onboarding' },
     ],
   },
