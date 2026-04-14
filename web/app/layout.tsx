@@ -18,6 +18,12 @@ const jetBrainsMono = JetBrains_Mono({
 export const metadata = {
   title: "OffGridFlow",
   description: "Carbon accounting and compliance platform",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

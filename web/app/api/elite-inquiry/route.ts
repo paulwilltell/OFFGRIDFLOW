@@ -51,7 +51,7 @@ Reply directly to: ${from}
       },
       body: JSON.stringify({
         personalizations: [{
-          to: [{ email: 'paul@offgridflow.com', name: 'Paul — OffGridFlow' }],
+          to: [{ email: 'contact@off-grid-flow.com', name: 'Paul — OffGridFlow' }],
           reply_to: { email: from, name: contact_name },
         }],
         from: {

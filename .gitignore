@@ -39,3 +39,4 @@ temp/
 *.tmp
 web/nul
 output/
+reports/~$*

@@ -34,7 +34,7 @@ export default function HomePage() {
           <div className="mb-8 flex justify-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-xs text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              SB 253 reporting deadline approaching — 5,300+ companies must comply
+              SB 253 reporting deadlines active — applies to companies with {'>'}$1B revenue doing business in California
             </div>
           </div>
 
@@ -47,8 +47,10 @@ export default function HomePage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-gray-400">
-            Big 4 firms charge $50,000&ndash;$200,000 for carbon audits. OffGridFlow delivers
-            the same GHG Protocol-compliant calculations and audit-ready reports&mdash;starting
+            Big 4 firms charge $50,000&ndash;$200,000 for carbon audits. OffGridFlow calculates
+            Scope 1, 2, and 3 emissions using{' '}
+            <Link href="/methodology" className="text-primary-400 hover:underline">GHG Protocol methodology</Link>{' '}
+            and generates compliance reports&mdash;starting
             at <strong className="text-white">$6,500/year</strong>.
           </p>
 

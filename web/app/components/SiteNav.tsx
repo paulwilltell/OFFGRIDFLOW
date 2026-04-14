@@ -15,18 +15,18 @@ export function SiteNav() {
             Carbon Accounting
           </span>
         </Link>
-        <div className="hidden items-center gap-8 text-sm text-gray-400 md:flex">
-          <a href="/#how-it-works" className="transition hover:text-white">
+        <div className="hidden items-center gap-6 text-sm text-gray-400 md:flex">
+          <Link href="/demo" className="transition hover:text-white">
             How It Works
-          </a>
-          <a href="/#capabilities" className="transition hover:text-white">
-            Capabilities
-          </a>
-          <a href="/#pricing" className="transition hover:text-white">
+          </Link>
+          <Link href="/pricing" className="transition hover:text-white">
             Pricing
-          </a>
-          <Link href="/about" className="transition hover:text-white">
-            About
+          </Link>
+          <Link href="/methodology" className="transition hover:text-white">
+            Methodology
+          </Link>
+          <Link href="/trust" className="transition hover:text-white">
+            Trust
           </Link>
         </div>
         <div className="flex items-center gap-3">
@@ -54,10 +54,10 @@ export function SiteNav() {
                 Sign In
               </Link>
               <Link
-                href="/demo"
+                href="/register"
                 className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
               >
-                Start Demo
+                Start Free Trial
               </Link>
             </>
           )}

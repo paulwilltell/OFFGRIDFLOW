@@ -15,10 +15,10 @@ export default function AboutPage() {
             OffGridFlow
           </Link>
           <Link
-            href="/demo"
+            href="/register"
             className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
           >
-            Start Demo
+            Start Free Trial
           </Link>
         </div>
       </nav>
@@ -37,8 +37,9 @@ export default function AboutPage() {
               Starting in 2024&ndash;2026, thousands of companies face mandatory emissions
               disclosure under CSRD (EU), SEC Climate Rules (US), California SB 253, CBAM, and
               IFRS S2. Legacy solutions from Big 4 firms run $50,000&ndash;$200,000+ per year.
-              OffGridFlow delivers the same GHG Protocol-compliant calculations and audit-ready
-              reports at a fraction of that cost.
+              OffGridFlow calculates Scope 1, 2, and 3 emissions using GHG Protocol methodology
+              (documented at <a href="/methodology" className="text-primary-400 hover:underline">/methodology</a>)
+              and generates compliance reports at a fraction of that cost.
             </p>
 
             <h2 className="mt-12 text-2xl font-semibold text-white">Founder</h2>
@@ -55,7 +56,7 @@ export default function AboutPage() {
             <h2 className="mt-12 text-2xl font-semibold text-white">Technical Foundation</h2>
 
             <ul className="list-inside list-disc space-y-2 text-gray-400">
-              <li>GHG Protocol-compliant Scope 1, 2, 3 calculation engine with EPA eGRID, DEFRA, IEA, and IPCC emission factors</li>
+              <li>Scope 1, 2, 3 calculation engine using <a href="/methodology" className="text-primary-400 hover:underline">GHG Protocol methodology</a> with EPA eGRID, DEFRA, IEA, and IPCC emission factors</li>
               <li>Automated cloud connectors: AWS CUR, Azure Carbon API, GCP Carbon Footprint API</li>
               <li>Enterprise SAP &amp; utility bill integration</li>
               <li>Multi-framework reporting: CSRD/ESRS, SEC, SB 253, CBAM, IFRS S2</li>
