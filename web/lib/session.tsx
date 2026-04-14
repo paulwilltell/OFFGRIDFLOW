@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { api, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, TENANT_ID_KEY } from './api';
+import { api, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, TENANT_ID_KEY, ApiRequestError } from './api';
 
 export interface Tenant {
   id: string;
@@ -171,8 +171,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: true,
       }));
     } catch (err) {
-      clearSession();
-      // If the current page is protected, let downstream redirect logic handle it.
+      // Only clear the session on explicit auth failures (401/403).
+      // Network errors, 500s, and transient failures must NOT log the user out
+      // — otherwise any flaky connection kicks paying customers back to login.
+      const isAuthFailure =
+        err instanceof ApiRequestError && (err.status === 401 || err.status === 403);
+
+      if (isAuthFailure) {
+        clearSession();
+      } else {
+        // Transient/network error: preserve token, end loading, keep current
+        // authenticated state. The user keeps their session; API calls will
+        // retry naturally as the user interacts.
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          // If we already had a user from a prior refresh, keep it.
+          // If not (cold start), leave isAuthenticated false — but the token
+          // is still in localStorage, so a future refresh will try again.
+          isAuthenticated: Boolean(prev.user),
+        }));
+      }
     }
   }, [clearSession]);
 
@@ -256,10 +275,18 @@ export function useRequireAuth() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!session.loading && !session.isAuthenticated) {
-      const returnTo = encodeURIComponent(pathname || '/');
-      router.replace(`/login?returnTo=${returnTo}`);
-    }
+    if (session.loading) return;
+    if (session.isAuthenticated) return;
+
+    // Only redirect to login if there is no stored access token at all.
+    // If a token exists but the refresh call failed transiently, stay put —
+    // the user hasn't logged out, the API just didn't respond this time.
+    if (typeof window === 'undefined') return;
+    const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY));
+    if (hasToken) return;
+
+    const returnTo = encodeURIComponent(pathname || '/');
+    router.replace(`/login?returnTo=${returnTo}`);
   }, [session.loading, session.isAuthenticated, pathname, router]);
 
   return session;
