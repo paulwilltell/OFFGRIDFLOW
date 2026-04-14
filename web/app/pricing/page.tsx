@@ -156,6 +156,18 @@ export default function PricingPage() {
               </div>
             ))}
           </div>
+
+          {/* Refund policy + calculation disclaimer — required by liability audit findings #20 and #21 */}
+          <div className="mx-auto mt-12 max-w-3xl space-y-4 text-center text-xs text-gray-500">
+            <p>
+              <strong className="text-gray-300">Refund policy.</strong> Annual subscriptions include a 14-day refund window from initial purchase. After 14 days, annual subscriptions are non-refundable; cancel at any time and access continues through the end of the current billing period. See the{' '}
+              <Link href="/terms#section-4" className="text-primary-400 hover:underline">Terms</Link>{' '}for full detail.
+            </p>
+            <p>
+              <strong className="text-gray-300">Calculations are drafts.</strong> OffGridFlow applies documented GHG Protocol methodology and verified emission factors. The Platform does not guarantee regulatory acceptance of any report. Customers are responsible for verification before submission to auditors, regulators, or stakeholders. See the{' '}
+              <Link href="/methodology" className="text-primary-400 hover:underline">Methodology Library</Link>.
+            </p>
+          </div>
         </div>
       </section>
 

@@ -45,6 +45,7 @@ function RegisterPageContent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
@@ -74,6 +75,11 @@ function RegisterPageContent() {
       return;
     }
 
+    if (!acceptedTerms) {
+      setError('You must accept the Terms of Service and Privacy Policy to create an account.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -86,6 +92,8 @@ function RegisterPageContent() {
         company_name: companyName || undefined,
         job_title: jobTitle || undefined,
         selected_plan: planParam || undefined,
+        terms_accepted: true,
+        terms_accepted_at: new Date().toISOString(),
       });
       
       // Check if email verification is required
@@ -323,10 +331,37 @@ function RegisterPageContent() {
             </div>
           </div>
 
+          {/* Required Terms & Privacy acceptance. Per liability audit finding
+              #15: explicit acceptance creates an auditable trail at registration. */}
+          <div className="flex items-start gap-3 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-3">
+            <input
+              id="acceptedTerms"
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              required
+              aria-required="true"
+              className="mt-0.5 h-4 w-4 rounded border-gray-400 text-green-600 focus:ring-green-500 focus:ring-offset-0"
+            />
+            <label htmlFor="acceptedTerms" className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+              I have read and agree to the{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-500 underline">
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-500 underline">
+                Privacy Policy
+              </a>
+              . I understand that OffGridFlow is a calculation and reporting tool,
+              that reports are drafts, and that I am solely responsible for verifying
+              outputs before submitting them to any regulatory body or third party.
+            </label>
+          </div>
+
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -358,12 +393,6 @@ function RegisterPageContent() {
               )}
             </button>
           </div>
-
-          <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-            By creating an account, you agree to our{' '}
-            <a href="/terms" className="underline">Terms of Service</a> and{' '}
-            <a href="/privacy" className="underline">Privacy Policy</a>.
-          </p>
         </form>
       </div>
     </div>
