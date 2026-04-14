@@ -65,6 +65,12 @@ export default function HomePage() {
             >
               Start Free Trial
             </Link>
+            <Link
+              href="/login"
+              className="text-sm font-medium text-gray-500 transition hover:text-white"
+            >
+              Already have an account? Log in
+            </Link>
           </div>
 
           {/* Product Preview */}

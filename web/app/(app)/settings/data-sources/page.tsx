@@ -67,6 +67,34 @@ const CONNECTOR_LOGOS: Record<string, string> = {
   utility: '⚡',
 };
 
+const CONNECTOR_DESCRIPTIONS: Record<string, { title: string; desc: string; dataType: string }> = {
+  aws: {
+    title: 'Amazon Web Services',
+    desc: 'Pull carbon footprint data from AWS Cost and Usage Reports (CUR) via S3, or query the AWS Customer Carbon Footprint Tool API.',
+    dataType: 'Cloud compute, storage, and data transfer emissions',
+  },
+  azure: {
+    title: 'Microsoft Azure',
+    desc: 'Connect to the Azure Carbon Optimization API to pull emissions data for your Azure subscriptions and resource groups.',
+    dataType: 'Cloud compute, storage, and networking emissions',
+  },
+  gcp: {
+    title: 'Google Cloud Platform',
+    desc: 'Access the GCP Carbon Footprint API via BigQuery to pull project-level carbon data with regional grid breakdowns.',
+    dataType: 'Cloud compute, storage, and ML workload emissions',
+  },
+  sap: {
+    title: 'SAP ERP',
+    desc: 'Integrate with SAP S/4HANA or ECC to pull energy consumption, fleet fuel, and facility utility data from your ERP system.',
+    dataType: 'Facility energy, fleet fuel, procurement spend',
+  },
+  utility: {
+    title: 'Utility Provider',
+    desc: 'Connect directly to your utility provider (PG&E, Con Edison, etc.) via Green Button or utility API to pull meter-level consumption data.',
+    dataType: 'Electricity, natural gas, water, steam usage',
+  },
+};
+
 // ─── Configure Modal ──────────────────────────────────────────────────────────
 
 function ConfigureModal({
@@ -202,6 +230,8 @@ function ConnectorCard({
   const isRunning = connector.status === 'running';
   const isError = connector.status === 'error';
 
+  const info = CONNECTOR_DESCRIPTIONS[name] ?? { title: connector.name, desc: '', dataType: '' };
+
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Header row */}
@@ -209,7 +239,7 @@ function ConnectorCard({
         <div className="flex items-center gap-3">
           <span className="text-3xl">{logo}</span>
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white">{connector.name}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-white">{info.title}</h3>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span
                 className={`inline-block w-2 h-2 rounded-full ${
@@ -235,6 +265,16 @@ function ConnectorCard({
           Configure →
         </button>
       </div>
+
+      {/* Description */}
+      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{info.desc}</p>
+
+      {/* Data type */}
+      {info.dataType && (
+        <div className="text-[10px] text-gray-400 dark:text-gray-500">
+          <span className="font-medium uppercase tracking-wider">Data:</span> {info.dataType}
+        </div>
+      )}
 
       {/* Last sync */}
       <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -404,8 +444,24 @@ export default function DataSourcesPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 px-5 py-4 text-sm text-red-700 dark:text-red-300">
-            {error}
+          <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 px-5 py-4">
+            <div className="flex items-start gap-3">
+              <span className="text-red-500 text-lg mt-0.5">!</span>
+              <div>
+                <h3 className="text-sm font-semibold text-red-700 dark:text-red-300">Unable to load connector status</h3>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>
+                <p className="text-xs text-red-500/70 dark:text-red-400/60 mt-2">
+                  This usually means the API is still deploying or the connector service isn't configured yet.
+                  You can still browse the available connectors below and configure credentials.
+                </p>
+                <button
+                  onClick={() => { setError(null); fetchData(); }}
+                  className="mt-3 text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -445,14 +501,14 @@ export default function DataSourcesPage() {
 
         {/* Connector grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {loading &&
+          {loading && !error &&
             Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
                 className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 h-48 animate-pulse"
               />
             ))}
-          {!loading &&
+          {(!loading || error) &&
             merged.map((c) => (
               <ConnectorCard
                 key={c.name}
@@ -463,6 +519,20 @@ export default function DataSourcesPage() {
                 onConfigure={() => setConfigTarget(c)}
               />
             ))}
+        </div>
+
+        {/* CSV Upload alternative */}
+        <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800/50 px-6 py-8 text-center">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No cloud connectors yet?</h3>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+            You can upload emissions data directly via CSV. Most customers start here and add cloud connectors later.
+          </p>
+          <a
+            href="/emissions"
+            className="mt-4 inline-block rounded-lg bg-green-600 px-5 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+          >
+            Upload CSV Instead
+          </a>
         </div>
 
         {/* Ingestion logs */}
