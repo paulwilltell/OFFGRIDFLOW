@@ -467,6 +467,12 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 		})
 		protectedMux.HandleFunc("/api/audit/approvals/", auditHandlers.UpdateApproval)
 		protectedMux.HandleFunc("/api/audit/changelog", auditHandlers.GetChangeLog)
+
+		// Data governance endpoints (export, deletion, retention policy)
+		govHandlers := audit.NewDataGovernanceHandlers(r.cfg.DB.DB)
+		protectedMux.HandleFunc("/api/governance/export", govHandlers.ExportAllData)
+		protectedMux.HandleFunc("/api/governance/delete-request", govHandlers.RequestDeletion)
+		protectedMux.HandleFunc("/api/governance/retention", govHandlers.GetRetentionPolicy)
 	}
 
 	// GraphQL endpoint

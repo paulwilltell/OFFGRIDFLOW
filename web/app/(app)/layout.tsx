@@ -36,6 +36,7 @@ const navItems = [
       { label: 'SEC Climate', href: '/compliance/sec' },
       { label: 'California SB 253', href: '/compliance/california' },
       { label: 'CBAM', href: '/compliance/cbam' },
+      { label: 'Scope 3 Categories', href: '/compliance/scope3' },
     ],
   },
   {
