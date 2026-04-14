@@ -428,6 +428,7 @@ export default function HomePage() {
                 <Link href="/demo" className="block hover:text-white">How It Works</Link>
                 <Link href="/pricing" className="block hover:text-white">Pricing</Link>
                 <Link href="/methodology" className="block hover:text-white">Methodology</Link>
+                <Link href="/how-we-operate" className="block hover:text-white">How We Operate</Link>
                 <Link href="/case-study" className="block hover:text-white">Case Study</Link>
               </div>
             </div>
