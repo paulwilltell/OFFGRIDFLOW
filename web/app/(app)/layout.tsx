@@ -69,6 +69,7 @@ const navItems = [
     children: [
       { label: 'Billing', href: '/settings/billing' },
       { label: 'Data Sources', href: '/settings/data-sources' },
+      { label: 'Data Governance', href: '/settings/data-governance' },
       { label: 'Organization', href: '/settings/organization' },
       { label: 'Security', href: '/settings/security' },
       { label: 'Users', href: '/settings/users' },

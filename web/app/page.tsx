@@ -461,6 +461,9 @@ export default function HomePage() {
               <div className="space-y-2 text-sm text-gray-400">
                 <Link href="/privacy" className="block hover:text-white">Privacy Policy</Link>
                 <Link href="/terms" className="block hover:text-white">Terms of Service</Link>
+                <Link href="/privacy#do-not-sell" className="block hover:text-white">
+                  Do Not Sell or Share
+                </Link>
               </div>
             </div>
           </div>

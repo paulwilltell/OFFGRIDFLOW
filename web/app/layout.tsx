@@ -2,6 +2,7 @@ import "../styles/globals.css";
 import type { ReactNode } from "react";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AppProviders } from "./providers";
+import { CookieConsent } from "./components/CookieConsent";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,20 +34,37 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${inter.variable} ${jetBrainsMono.variable}`}
     >
       <head>
-        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18088629744" />
+        {/* Google Consent Mode v2 defaults — deny all consented storage until
+            the user explicitly accepts via the CookieConsent banner. This makes
+            the gtag below GDPR/ePrivacy compliant by default. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
+              gtag('consent', 'default', {
+                'ad_storage': 'denied',
+                'ad_user_data': 'denied',
+                'ad_personalization': 'denied',
+                'analytics_storage': 'denied',
+                'wait_for_update': 500
+              });
               gtag('js', new Date());
-              gtag('config', 'AW-18088629744');
+            `,
+          }}
+        />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18088629744" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              gtag('config', 'AW-18088629744', { anonymize_ip: true });
             `,
           }}
         />
       </head>
       <body className="font-sans antialiased">
         <AppProviders>{children}</AppProviders>
+        <CookieConsent />
       </body>
     </html>
   );
