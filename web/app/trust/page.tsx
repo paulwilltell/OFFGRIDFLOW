@@ -113,6 +113,135 @@ export default function TrustCenterPage() {
           </div>
         </section>
 
+        {/* RBAC Matrix */}
+        <section className="mb-10">
+          <h2 className="mb-4 text-xl font-semibold text-white">Role-Based Access Control (RBAC)</h2>
+          <p className="mb-4 text-sm text-gray-400">
+            OffGridFlow enforces role-based permissions at the API layer. Every request is validated against the authenticated user&apos;s role before data is returned.
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-gray-800">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800 bg-gray-800/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Capability</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Admin</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">User</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Viewer</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-300">
+                {[
+                  ['View dashboard and emissions data', true, true, true],
+                  ['Upload CSV / connect data sources', true, true, false],
+                  ['Create and edit activities', true, true, false],
+                  ['Generate compliance reports', true, true, false],
+                  ['Submit reports for approval', true, true, false],
+                  ['Approve or reject reports', true, false, false],
+                  ['Lock factor snapshots', true, false, false],
+                  ['Manage users and roles', true, false, false],
+                  ['Configure billing and subscription', true, false, false],
+                  ['Export all organization data', true, false, false],
+                  ['Request data deletion', true, false, false],
+                  ['View audit logs and change history', true, true, true],
+                ].map(([cap, admin, user, viewer]) => (
+                  <tr key={cap as string} className="border-b border-gray-800/30">
+                    <td className="px-4 py-2 text-white">{cap as string}</td>
+                    <td className="px-4 py-2 text-center">{admin ? <span className="text-green-400">Yes</span> : <span className="text-gray-600">No</span>}</td>
+                    <td className="px-4 py-2 text-center">{user ? <span className="text-green-400">Yes</span> : <span className="text-gray-600">No</span>}</td>
+                    <td className="px-4 py-2 text-center">{viewer ? <span className="text-green-400">Yes</span> : <span className="text-gray-600">No</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Data Governance Walkthrough */}
+        <section className="mb-10">
+          <h2 className="mb-4 text-xl font-semibold text-white">Data Governance Walkthrough</h2>
+          <p className="mb-4 text-sm text-gray-400">
+            OffGridFlow provides self-service data governance endpoints. Admins can export, request deletion, and review retention policies without contacting support.
+          </p>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Data Export (GET /api/governance/export)</h3>
+              <p className="mt-1 text-xs text-gray-400">
+                Admin-only. Returns a JSON package containing all organization data: users, activities, calculation ledger entries, and change log.
+                Response includes <code className="rounded bg-gray-800 px-1 text-primary-400">exported_at</code> timestamp and <code className="rounded bg-gray-800 px-1 text-primary-400">tenant_name</code>.
+                Download as a file via Content-Disposition header.
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Deletion Request (POST /api/governance/delete-request)</h3>
+              <p className="mt-1 text-xs text-gray-400">
+                Admin-only. Initiates a 30-day retention window. The request is logged in the change log with the requesting user&apos;s ID.
+                Data is retained for 30 days to allow cancellation, then permanently removed.
+                Response includes <code className="rounded bg-gray-800 px-1 text-primary-400">deletion_date</code> and <code className="rounded bg-gray-800 px-1 text-primary-400">retention_days</code>.
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Retention Policy (GET /api/governance/retention)</h3>
+              <p className="mt-1 text-xs text-gray-400">
+                Returns the organization&apos;s data retention schedule:
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-gray-500">
+                <li><strong className="text-gray-300">Emission data:</strong> Subscription + 90 days</li>
+                <li><strong className="text-gray-300">Calculation ledger:</strong> Subscription + 7 years (audit trail)</li>
+                <li><strong className="text-gray-300">User accounts:</strong> Subscription + 30 days</li>
+                <li><strong className="text-gray-300">Change log:</strong> Subscription + 7 years</li>
+                <li><strong className="text-gray-300">Evidence files:</strong> Subscription + 90 days</li>
+              </ul>
+              <p className="mt-2 text-xs text-gray-500">
+                Export formats: JSON (full dataset), PDF (reports), CSV (activities), XBRL (compliance).
+                All emission data, reports, and uploaded evidence remain the property of the customer.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Data Classification */}
+        <section className="mb-10">
+          <h2 className="mb-4 text-xl font-semibold text-white">Data Classification</h2>
+          <div className="overflow-x-auto rounded-xl border border-gray-800">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800 bg-gray-800/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Data Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Classification</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Handling</th>
+                </tr>
+              </thead>
+              <tbody className="text-gray-300">
+                {[
+                  ['User credentials (passwords)', 'Secret', 'bcrypt hashed, never stored in plaintext, never logged'],
+                  ['API keys', 'Secret', 'SHA-256 hashed at rest, prefix-only display in UI'],
+                  ['Cloud connector credentials', 'Confidential', 'Encrypted at rest (AES-256), tenant-scoped access only'],
+                  ['Emission activity data', 'Internal', 'Tenant-isolated, soft-deleted, exportable, 90-day post-subscription retention'],
+                  ['Calculation results', 'Internal', 'Immutable ledger, 7-year retention for audit compliance'],
+                  ['Compliance reports', 'Internal', 'Versioned, approval-gated, export with checksum verification'],
+                  ['Audit logs', 'Internal', 'Append-only, 7-year retention, includes IP and user agent'],
+                  ['Email addresses', 'PII', 'Used for authentication only, exportable via governance API, deletable on request'],
+                  ['Emission factors', 'Public', 'Sourced from EPA, IEA, DEFRA, IPCC — publicly available data'],
+                ].map(([type, classification, handling]) => (
+                  <tr key={type} className="border-b border-gray-800/30">
+                    <td className="px-4 py-2 font-medium text-white">{type}</td>
+                    <td className="px-4 py-2">
+                      <span className={`rounded px-2 py-0.5 text-[10px] font-medium ${
+                        classification === 'Secret' ? 'bg-red-500/10 text-red-400' :
+                        classification === 'Confidential' ? 'bg-amber-500/10 text-amber-400' :
+                        classification === 'PII' ? 'bg-purple-500/10 text-purple-400' :
+                        classification === 'Internal' ? 'bg-blue-500/10 text-blue-400' :
+                        'bg-gray-500/10 text-gray-400'
+                      }`}>{classification}</span>
+                    </td>
+                    <td className="px-4 py-2 text-xs text-gray-400">{handling}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         {/* Compliance Readiness */}
         <section className="mb-10">
           <h2 className="mb-4 text-xl font-semibold text-white">Compliance &amp; Certifications Roadmap</h2>
@@ -142,7 +271,7 @@ export default function TrustCenterPage() {
           <h2 className="mb-4 text-xl font-semibold text-white">Resources for Procurement</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { name: 'Security Architecture Overview', href: '/methodology', type: 'Web Page' },
+              { name: 'Data Architecture', href: '/architecture', type: 'Web Page' },
               { name: 'Privacy Policy', href: '/privacy', type: 'Web Page' },
               { name: 'Terms of Service', href: '/terms', type: 'Web Page' },
               { name: 'Data Retention Policy', href: '/trust#retention', type: 'Web Page' },

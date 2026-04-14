@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ApiRequestError, api } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -23,10 +23,21 @@ interface RegisterResponse {
   verification_token?: string; // Only in dev mode
 }
 
+const PLAN_INFO: Record<string, { name: string; price: string; desc: string }> = {
+  'audit_prep': { name: 'Audit Prep', price: '$6,500/year', desc: 'Scope 1 & 2 tracking, single compliance framework, CSV import' },
+  'compliance_pro': { name: 'Compliance Pro', price: '$10,800/year', desc: 'Full Scope 1, 2 & 3, cloud connectors, CSRD + SEC frameworks' },
+  'enterprise': { name: 'Enterprise', price: '$15,000/year', desc: 'All 5 frameworks, SAP integration, dedicated account manager' },
+  'starter': { name: 'Audit Prep', price: '$6,500/year', desc: 'Scope 1 & 2 tracking, single compliance framework, CSV import' },
+};
+
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useSession();
-  
+
+  const planParam = searchParams.get('plan') || '';
+  const selectedPlan = PLAN_INFO[planParam] || null;
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -74,6 +85,7 @@ export default function RegisterPage() {
         password,
         company_name: companyName || undefined,
         job_title: jobTitle || undefined,
+        selected_plan: planParam || undefined,
       });
       
       // Check if email verification is required
@@ -166,7 +178,13 @@ export default function RegisterPage() {
           <h2 className="mt-6 text-center text-xl font-bold text-gray-900 dark:text-white">
             Create your account
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          {selectedPlan && (
+            <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-center">
+              <div className="text-sm font-semibold text-green-800 dark:text-green-300">{selectedPlan.name} — {selectedPlan.price}</div>
+              <div className="text-xs text-green-600 dark:text-green-400 mt-0.5">{selectedPlan.desc}</div>
+            </div>
+          )}
+          <p className="mt-3 text-center text-sm text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
             <Link
               href="/login"

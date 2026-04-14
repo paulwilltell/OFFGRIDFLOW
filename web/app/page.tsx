@@ -436,6 +436,7 @@ export default function HomePage() {
               <div className="space-y-2 text-sm text-gray-400">
                 <Link href="/trust" className="block hover:text-white">Trust Center</Link>
                 <Link href="/security" className="block hover:text-white">Security</Link>
+                <Link href="/architecture" className="block hover:text-white">Architecture</Link>
                 <Link href="/status" className="block hover:text-white">Status</Link>
                 <Link href="/about" className="block hover:text-white">About</Link>
                 <a href="mailto:contact@off-grid-flow.com" className="block hover:text-white">Contact</a>
