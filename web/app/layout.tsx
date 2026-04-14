@@ -32,6 +32,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${inter.variable} ${jetBrainsMono.variable}`}
     >
+      <head>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18088629744" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'AW-18088629744');
+            `,
+          }}
+        />
+      </head>
       <body className="font-sans antialiased">
         <AppProviders>{children}</AppProviders>
       </body>
