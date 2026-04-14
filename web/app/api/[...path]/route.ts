@@ -61,6 +61,15 @@ function createProxyHeaders(request: NextRequest, path: string): Headers {
     }
   }
 
+  const forwardedCookies = request.cookies
+    .getAll()
+    .map(({ name, value }) => `${name}=${value}`)
+    .join('; ');
+
+  if (forwardedCookies) {
+    headers.set('cookie', forwardedCookies);
+  }
+
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (token && shouldAttachBearer(path) && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);

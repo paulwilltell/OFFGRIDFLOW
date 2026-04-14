@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/example/offgridflow/internal/api/http/middleware"
@@ -47,6 +48,23 @@ type Scope2SummaryResponse struct {
 	PeriodStart            string             `json:"periodStart,omitempty"`
 	PeriodEnd              string             `json:"periodEnd,omitempty"`
 	Timestamp              string             `json:"timestamp"`
+}
+
+// Scope2HeatmapCellResponse represents a single heatmap point.
+type Scope2HeatmapCellResponse struct {
+	Date      string  `json:"date"`
+	Hour      int     `json:"hour"`
+	Value     float64 `json:"value"`
+	Intensity float64 `json:"intensity"`
+}
+
+// Scope2HeatmapResponse returns temporal emissions distribution data.
+type Scope2HeatmapResponse struct {
+	Data  []Scope2HeatmapCellResponse `json:"data"`
+	Max   float64                     `json:"max"`
+	Min   float64                     `json:"min"`
+	Dates []string                    `json:"dates"`
+	Hours []int                       `json:"hours"`
 }
 
 // -----------------------------------------------------------------------------
@@ -177,19 +195,39 @@ func (h *Scope2Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	// Convert to API response format
 	now := time.Now().Format(time.RFC3339)
+	activitiesByID := make(map[string]ingestion.Activity, len(activities))
+	for _, act := range activities {
+		activitiesByID[act.ID] = act
+	}
 	response := make([]Scope2Response, 0, len(filtered))
 	for _, rec := range filtered {
+		act, ok := activitiesByID[rec.ActivityID]
+		meterID := rec.ActivityID
+		location := rec.Region
+		dataSource := "utility_bill"
+		if ok {
+			if act.MeterID != "" {
+				meterID = act.MeterID
+			}
+			if act.Location != "" {
+				location = act.Location
+			}
+			if act.Source != "" {
+				dataSource = act.Source
+			}
+		}
+
 		response = append(response, Scope2Response{
 			ID:                rec.ID,
-			MeterID:           rec.ActivityID,
-			Location:          rec.Region,
+			MeterID:           meterID,
+			Location:          location,
 			Region:            rec.Region,
 			QuantityKWh:       rec.InputQuantity,
 			EmissionsKgCO2e:   rec.EmissionsKgCO2e,
 			EmissionsTonsCO2e: rec.EmissionsTonnesCO2e,
 			EmissionFactor:    rec.EmissionFactor,
 			Methodology:       string(rec.Method),
-			DataSource:        "utility_bill",
+			DataSource:        dataSource,
 			DataQuality:       string(rec.DataQuality),
 			PeriodStart:       rec.PeriodStart.Format(time.RFC3339),
 			PeriodEnd:         rec.PeriodEnd.Format(time.RFC3339),
@@ -238,6 +276,147 @@ func (h *Scope2Handler) filterRecords(records []emissions.EmissionRecord, region
 	}
 
 	return filtered
+}
+
+// Heatmap handles GET /api/emissions/heatmap - returns temporal emissions intensity data.
+func (h *Scope2Handler) Heatmap(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		responders.MethodNotAllowed(w, http.MethodGet)
+		return
+	}
+
+	if h.activityStore == nil || h.calculator == nil {
+		responders.ServiceUnavailable(w, "scope2 handler not configured", 0)
+		return
+	}
+
+	tenantID, ok := middleware.MustGetTenantID(w, r)
+	if !ok {
+		return
+	}
+
+	ctx := r.Context()
+	activities, err := h.activityStore.ListByOrgAndSource(ctx, tenantID, "utility_bill")
+	if err != nil {
+		responders.InternalError(w, "failed to load activities")
+		return
+	}
+
+	emissionsActivities := make([]emissions.Activity, 0, len(activities))
+	for _, act := range activities {
+		emissionsActivities = append(emissionsActivities, act)
+	}
+
+	records, err := h.calculator.CalculateBatch(ctx, emissionsActivities)
+	if err != nil {
+		responders.InternalError(w, "failed to calculate emissions")
+		return
+	}
+
+	period := r.URL.Query().Get("period")
+	if period != "month" {
+		period = "week"
+	}
+
+	windowDays := 7
+	if period == "month" {
+		windowDays = 30
+	}
+
+	response := buildScope2Heatmap(records, windowDays)
+	responders.SetCacheControl(w, 5*time.Minute, false)
+	responders.JSON(w, http.StatusOK, response)
+}
+
+func buildScope2Heatmap(records []emissions.EmissionRecord, windowDays int) Scope2HeatmapResponse {
+	hours := make([]int, 24)
+	for hour := range hours {
+		hours[hour] = hour
+	}
+
+	if len(records) == 0 {
+		return Scope2HeatmapResponse{
+			Data:  []Scope2HeatmapCellResponse{},
+			Max:   0,
+			Min:   0,
+			Dates: []string{},
+			Hours: hours,
+		}
+	}
+
+	anchor := records[0].PeriodStart.UTC().Truncate(24 * time.Hour)
+	for _, rec := range records[1:] {
+		recDate := rec.PeriodStart.UTC().Truncate(24 * time.Hour)
+		if recDate.After(anchor) {
+			anchor = recDate
+		}
+	}
+
+	windowStart := anchor.AddDate(0, 0, -(windowDays - 1))
+	dates := make([]string, 0, windowDays)
+	for current := windowStart; !current.After(anchor); current = current.AddDate(0, 0, 1) {
+		dates = append(dates, current.Format("2006-01-02"))
+	}
+
+	valuesBySlot := make(map[string]float64)
+	maxValue := 0.0
+	minValue := 0.0
+	nonZeroSeen := false
+
+	for _, rec := range records {
+		recTime := rec.PeriodStart.UTC()
+		if recTime.Before(windowStart) || recTime.After(anchor.Add(24*time.Hour-time.Nanosecond)) {
+			continue
+		}
+
+		dateKey := recTime.Truncate(24 * time.Hour).Format("2006-01-02")
+		slotKey := dateKey + "-" + strconv.Itoa(recTime.Hour())
+		valuesBySlot[slotKey] += rec.EmissionsTonnesCO2e
+	}
+
+	data := make([]Scope2HeatmapCellResponse, 0, len(valuesBySlot))
+	for key, value := range valuesBySlot {
+		if value > maxValue {
+			maxValue = value
+		}
+		if value > 0 && (!nonZeroSeen || value < minValue) {
+			minValue = value
+			nonZeroSeen = true
+		}
+
+		dateHour := strings.SplitN(key, "-", 4)
+		if len(dateHour) < 4 {
+			continue
+		}
+		hour, err := strconv.Atoi(dateHour[3])
+		if err != nil {
+			continue
+		}
+		date := strings.Join(dateHour[:3], "-")
+		data = append(data, Scope2HeatmapCellResponse{
+			Date:  date,
+			Hour:  hour,
+			Value: value,
+		})
+	}
+
+	if !nonZeroSeen {
+		minValue = 0
+	}
+
+	for idx := range data {
+		if maxValue > 0 {
+			data[idx].Intensity = data[idx].Value / maxValue
+		}
+	}
+
+	return Scope2HeatmapResponse{
+		Data:  data,
+		Max:   maxValue,
+		Min:   minValue,
+		Dates: dates,
+		Hours: hours,
+	}
 }
 
 // Scope2SummaryHandler returns aggregated Scope 2 emissions.

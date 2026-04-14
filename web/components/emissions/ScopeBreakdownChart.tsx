@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { api, ApiRequestError } from '../../lib/api';
 
-interface ScopeData {
+export interface ScopeData {
   scope: string;
   emissions: number;
   percentage: number;
@@ -20,6 +20,8 @@ interface ScopeBreakdownChartProps {
   height?: number;
   startDate?: string;
   endDate?: string;
+  data?: ScopeData[];
+  total?: number;
 }
 
 const SCOPE_COLORS = {
@@ -28,13 +30,21 @@ const SCOPE_COLORS = {
   'Scope 3': '#10b981',
 };
 
-export default function ScopeBreakdownChart({ height = 400, startDate, endDate }: ScopeBreakdownChartProps) {
+export default function ScopeBreakdownChart({ height = 400, startDate, endDate, data: providedData, total: providedTotal }: ScopeBreakdownChartProps) {
   const [data, setData] = useState<ScopeData[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (providedData) {
+      setData(providedData);
+      setTotal(providedTotal ?? providedData.reduce((sum, entry) => sum + entry.emissions, 0));
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     const fetchScopeData = async () => {
       setLoading(true);
       setError(null);
@@ -62,7 +72,7 @@ export default function ScopeBreakdownChart({ height = 400, startDate, endDate }
     };
 
     fetchScopeData();
-  }, [startDate, endDate]);
+  }, [endDate, providedData, providedTotal, startDate]);
 
   if (loading) {
     return (

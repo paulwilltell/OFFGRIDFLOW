@@ -57,7 +57,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https: https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com",
-              `connect-src 'self' ${apiOrigin} https://*.stripe.com https://googleads.g.doubleclick.net https://www.google.com https://google.com https://www.googleadservices.com https://googleadservices.com`,
+              `connect-src 'self' ${apiOrigin} https://*.stripe.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://google.com https://www.googleadservices.com https://googleadservices.com`,
               "frame-src 'self' https://*.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",

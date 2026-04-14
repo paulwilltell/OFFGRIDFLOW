@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/example/offgridflow/internal/api/http/responders"
+	"github.com/example/offgridflow/internal/audit"
 	"github.com/example/offgridflow/internal/auth"
 	"github.com/example/offgridflow/internal/emissions"
 	"github.com/example/offgridflow/internal/ingestion"
@@ -20,6 +21,7 @@ type ActivitiesHandler struct {
 	scope1Calc *emissions.Scope1Calculator
 	scope2Calc *emissions.Scope2Calculator
 	scope3Calc *emissions.Scope3Calculator
+	auditStore *audit.Store
 	defaultOrg string
 }
 
@@ -29,6 +31,7 @@ type ActivitiesHandlerConfig struct {
 	Scope1Calc   *emissions.Scope1Calculator
 	Scope2Calc   *emissions.Scope2Calculator
 	Scope3Calc   *emissions.Scope3Calculator
+	AuditStore   *audit.Store
 	DefaultOrgID string
 }
 
@@ -39,6 +42,7 @@ func NewActivitiesHandler(cfg ActivitiesHandlerConfig) *ActivitiesHandler {
 		scope1Calc: cfg.Scope1Calc,
 		scope2Calc: cfg.Scope2Calc,
 		scope3Calc: cfg.Scope3Calc,
+		auditStore: cfg.AuditStore,
 		defaultOrg: cfg.DefaultOrgID,
 	}
 }
@@ -88,11 +92,16 @@ func (h *ActivitiesHandler) create(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var payload struct {
-		Name  string  `json:"name"`
-		Type  string  `json:"type"`
-		Value float64 `json:"value"`
-		Unit  string  `json:"unit"`
-		Date  string  `json:"date"`
+		Name        string            `json:"name"`
+		Type        string            `json:"type"`
+		Value       float64           `json:"value"`
+		Unit        string            `json:"unit"`
+		Date        string            `json:"date"`
+		PeriodStart string            `json:"period_start"`
+		PeriodEnd   string            `json:"period_end"`
+		MeterID     string            `json:"meter_id"`
+		Location    string            `json:"location"`
+		Metadata    map[string]string `json:"metadata"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		responders.BadRequest(w, "invalid_json", "invalid request body")
@@ -101,13 +110,24 @@ func (h *ActivitiesHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	// Parse date (YYYY-MM-DD) as period start
 	var periodStart time.Time
-	if payload.Date != "" {
-		if t, err := time.Parse("2006-01-02", payload.Date); err == nil {
+	periodStartRaw := payload.PeriodStart
+	if periodStartRaw == "" {
+		periodStartRaw = payload.Date
+	}
+	if periodStartRaw != "" {
+		if t, err := time.Parse("2006-01-02", periodStartRaw); err == nil {
 			periodStart = t
 		}
 	}
 	if periodStart.IsZero() {
 		periodStart = time.Now()
+	}
+
+	periodEnd := periodStart.Add(24 * time.Hour)
+	if payload.PeriodEnd != "" {
+		if t, err := time.Parse("2006-01-02", payload.PeriodEnd); err == nil {
+			periodEnd = t.Add(24 * time.Hour)
+		}
 	}
 
 	src := string(ingestion.SourceManual)
@@ -124,13 +144,22 @@ func (h *ActivitiesHandler) create(w http.ResponseWriter, r *http.Request) {
 		ID:          uuid.New().String(),
 		Source:      src,
 		Category:    payload.Type,
-		Location:    "",
+		MeterID:     payload.MeterID,
+		Location:    payload.Location,
 		PeriodStart: periodStart,
-		PeriodEnd:   periodStart.Add(24 * time.Hour),
+		PeriodEnd:   periodEnd,
 		Quantity:    payload.Value,
 		Unit:        payload.Unit,
 		OrgID:       h.defaultOrg,
+		Metadata:    payload.Metadata,
 		CreatedAt:   time.Now(),
+	}
+
+	if act.Metadata == nil {
+		act.Metadata = map[string]string{}
+	}
+	if payload.Name != "" {
+		act.Metadata["display_name"] = payload.Name
 	}
 
 	if tenant, ok := auth.TenantFromContext(r.Context()); ok && tenant != nil {
@@ -145,7 +174,15 @@ func (h *ActivitiesHandler) create(w http.ResponseWriter, r *http.Request) {
 	// Attempt to compute emissions for the created activity (scope 2 if kWh)
 	var emissionsResp interface{}
 	if h.scope2Calc != nil && strings.EqualFold(act.Unit, "kWh") {
-		records, err := h.scope2Calc.CalculateBatch(r.Context(), []emissions.Activity{act})
+		var (
+			records []emissions.EmissionRecord
+			err     error
+		)
+		if h.auditStore != nil {
+			records, err = audit.NewAuditedScope2Calculator(h.scope2Calc, h.auditStore).CalculateBatch(r.Context(), []emissions.Activity{act})
+		} else {
+			records, err = h.scope2Calc.CalculateBatch(r.Context(), []emissions.Activity{act})
+		}
 		if err == nil && len(records) > 0 {
 			rec := records[0]
 			emissionsResp = map[string]interface{}{

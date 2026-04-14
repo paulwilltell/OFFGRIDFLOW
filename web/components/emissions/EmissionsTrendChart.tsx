@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { api, ApiRequestError } from '../../lib/api';
 
-interface TrendDataPoint {
+export interface TrendDataPoint {
   date: string;
   scope1: number;
   scope2: number;
@@ -20,14 +20,22 @@ interface TrendResponse {
 interface EmissionsTrendChartProps {
   period?: 'week' | 'month' | 'quarter' | 'year';
   height?: number;
+  data?: TrendDataPoint[];
 }
 
-export default function EmissionsTrendChart({ period = 'year', height = 400 }: EmissionsTrendChartProps) {
+export default function EmissionsTrendChart({ period = 'year', height = 400, data: providedData }: EmissionsTrendChartProps) {
   const [data, setData] = useState<TrendDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (providedData) {
+      setData(providedData);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     const fetchTrendData = async () => {
       setLoading(true);
       setError(null);
@@ -47,7 +55,7 @@ export default function EmissionsTrendChart({ period = 'year', height = 400 }: E
     };
 
     fetchTrendData();
-  }, [period]);
+  }, [period, providedData]);
 
   if (loading) {
     return (

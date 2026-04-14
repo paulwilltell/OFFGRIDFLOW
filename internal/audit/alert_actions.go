@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 )
@@ -83,6 +82,9 @@ FROM alert_actions WHERE organization_id = $1`
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
+		if isMissingAuditTableError(err) {
+			return []AlertAction{}, nil
+		}
 		return nil, fmt.Errorf("get alert actions: %w", err)
 	}
 	defer rows.Close()
@@ -192,6 +194,16 @@ FROM alert_actions WHERE organization_id = $1`
 	var open, inProgress, escalated, resolved, criticalActive, total int
 	err := s.db.QueryRowContext(ctx, query, orgID).Scan(&open, &inProgress, &escalated, &resolved, &criticalActive, &total)
 	if err != nil {
+		if isMissingAuditTableError(err) {
+			return map[string]int{
+				"open":            0,
+				"in_progress":     0,
+				"escalated":       0,
+				"resolved":        0,
+				"critical_active": 0,
+				"total":           0,
+			}, nil
+		}
 		return nil, fmt.Errorf("get alert action counts: %w", err)
 	}
 

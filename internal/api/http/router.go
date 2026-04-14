@@ -379,15 +379,21 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 	if scope2Handler := r.buildScope2Handler(); scope2Handler != nil {
 		protectedMux.HandleFunc("/api/emissions/scope2", scope2Handler.List)
 		protectedMux.HandleFunc("/api/emissions/scope2/summary", scope2Handler.Summary)
+		protectedMux.HandleFunc("/api/emissions/heatmap", scope2Handler.Heatmap)
 	}
 
 	// Activities endpoints (create/list)
 	if r.cfg.ActivityStore != nil {
+		var auditStore *audit.Store
+		if r.cfg.DB != nil {
+			auditStore = audit.NewStore(r.cfg.DB.DB)
+		}
 		activitiesHandler := handlers.NewActivitiesHandler(handlers.ActivitiesHandlerConfig{
 			Store:        r.cfg.ActivityStore,
 			Scope1Calc:   r.cfg.Scope1Calculator,
 			Scope2Calc:   r.cfg.Scope2Calculator,
 			Scope3Calc:   r.cfg.Scope3Calculator,
+			AuditStore:   auditStore,
 			DefaultOrgID: "",
 		})
 		protectedMux.Handle("/api/emissions/activities", activitiesHandler)
@@ -585,7 +591,6 @@ func (r *router) applyProtectedMiddleware(handler http.Handler) http.Handler {
 				"/health",
 				"/livez",
 				"/readyz",
-				"/api/auth/",
 				"/api/billing/webhook",
 				"/api/offgrid/mode",
 			}, // All other /api paths require auth

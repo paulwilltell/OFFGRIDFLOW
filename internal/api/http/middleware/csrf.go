@@ -86,6 +86,14 @@ func (m *CSRFMiddleware) Wrap(next http.Handler) http.Handler {
 			return
 		}
 
+		// Requests that already carry an explicit bearer token have been
+		// authenticated by a trusted client/proxy and do not rely on ambient
+		// browser cookies for authorization. CSRF protection is not needed there.
+		if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		cookie, err := r.Cookie(m.cookieName)
 		if err != nil || cookie.Value == "" {
 			http.Error(w, "CSRF token missing", http.StatusForbidden)

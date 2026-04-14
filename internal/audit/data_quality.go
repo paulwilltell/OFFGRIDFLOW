@@ -2,9 +2,9 @@ package audit
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -90,6 +90,9 @@ FROM data_quality_anomalies WHERE organization_id = $1`
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
+		if isMissingAuditTableError(err) {
+			return []Anomaly{}, nil
+		}
 		return nil, fmt.Errorf("get anomalies: %w", err)
 	}
 	defer rows.Close()
@@ -159,6 +162,16 @@ FROM data_quality_anomalies WHERE organization_id = $1`
 	var open, critical, warning, ack, resolved, total int
 	err := s.db.QueryRowContext(ctx, query, orgID).Scan(&open, &critical, &warning, &ack, &resolved, &total)
 	if err != nil {
+		if isMissingAuditTableError(err) {
+			return map[string]int{
+				"open":         0,
+				"critical":     0,
+				"warning":      0,
+				"acknowledged": 0,
+				"resolved":     0,
+				"total":        0,
+			}, nil
+		}
 		return nil, fmt.Errorf("get anomaly counts: %w", err)
 	}
 
@@ -170,6 +183,15 @@ FROM data_quality_anomalies WHERE organization_id = $1`
 		"resolved":     resolved,
 		"total":        total,
 	}, nil
+}
+
+func isMissingAuditTableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	message := err.Error()
+	return strings.Contains(message, "42P01") || strings.Contains(strings.ToLower(message), "does not exist")
 }
 
 // RunAnomalyDetection scans activities for data quality issues.

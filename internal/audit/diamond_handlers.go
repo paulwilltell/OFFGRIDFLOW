@@ -58,7 +58,7 @@ func (h *Handlers) GetFactorSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	snapshot, err := h.store.GetFactorSnapshot(r.Context(), id, tenant.ID)
 	if err != nil {
-		responders.NotFound(w, "snapshot_not_found", err.Error())
+		responders.NotFound(w, err.Error())
 		return
 	}
 	responders.JSON(w, http.StatusOK, snapshot)

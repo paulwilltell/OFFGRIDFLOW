@@ -1,14 +1,63 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type ChangeEvent } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
-import { getCSRFToken, CSRF_HEADER_NAME } from '@/lib/csrf';
+import { api, ApiRequestError } from '@/lib/api';
 import type { Scope2Emission, Scope2Summary, PaginatedResponse, PageInfo } from '@/lib/types';
 import { useRequireAuth } from '@/lib/session';
 import { EmissionsTrendChart, ScopeBreakdownChart, EmissionsHeatmap } from '@/components/emissions';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { recordAuditEvent } from '@/lib/auditLog';
+import type { TrendDataPoint } from '@/components/emissions/EmissionsTrendChart';
+import type { ScopeData } from '@/components/emissions/ScopeBreakdownChart';
+
+function buildTrendData(emissions: Scope2Emission[]): TrendDataPoint[] {
+  const byMonth = new Map<string, TrendDataPoint>();
+
+  for (const emission of emissions) {
+    const date = new Date(emission.periodStart);
+    if (Number.isNaN(date.getTime())) {
+      continue;
+    }
+
+    const monthKey = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+      .toISOString()
+      .slice(0, 10);
+
+    const existing = byMonth.get(monthKey) ?? {
+      date: monthKey,
+      scope1: 0,
+      scope2: 0,
+      scope3: 0,
+      total: 0,
+    };
+
+    existing.scope2 += emission.emissionsTonsCO2e;
+    existing.total += emission.emissionsTonsCO2e;
+    byMonth.set(monthKey, existing);
+  }
+
+  return [...byMonth.values()].sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function buildScopeBreakdown(emissions: Scope2Emission[]): { data: ScopeData[]; total: number } {
+  const total = emissions.reduce((sum, emission) => sum + emission.emissionsTonsCO2e, 0);
+  if (total === 0) {
+    return { data: [], total: 0 };
+  }
+
+  return {
+    data: [
+      {
+        scope: 'Scope 2',
+        emissions: total,
+        percentage: 100,
+        activities: emissions.length,
+      },
+    ],
+    total,
+  };
+}
 
 export default function EmissionsPage() {
   const session = useRequireAuth();
@@ -86,6 +135,8 @@ export default function EmissionsPage() {
 
   // Get unique regions for filter dropdown
   const uniqueRegions = [...new Set(emissions.map((e) => e.region).filter(Boolean))];
+  const trendData = buildTrendData(emissions);
+  const scopeBreakdown = buildScopeBreakdown(emissions);
 
   return (
     <ErrorBoundary>
@@ -138,8 +189,14 @@ export default function EmissionsPage() {
       {!loading && emissions.length > 0 && (
         <div style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-            <EmissionsTrendChart period="year" height={350} />
-            <ScopeBreakdownChart height={350} startDate={startDate} endDate={endDate} />
+            <EmissionsTrendChart period="year" height={350} data={trendData} />
+            <ScopeBreakdownChart
+              height={350}
+              startDate={startDate}
+              endDate={endDate}
+              data={scopeBreakdown.data}
+              total={scopeBreakdown.total}
+            />
           </div>
           <EmissionsHeatmap period="week" height={350} />
         </div>
@@ -506,12 +563,74 @@ function SkeletonTable({ rows }: { rows: number }) {
   );
 }
 
+type ParsedImportRow = {
+  meterId: string;
+  location: string;
+  periodStart: string;
+  periodEnd: string;
+  kwh: number;
+};
+
+function parseImportCsv(raw: string): ParsedImportRow[] {
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    throw new Error('The CSV has no data rows. Add at least one row beneath the header and retry.');
+  }
+
+  const headers = lines[0].split(',').map((cell) => cell.trim().toLowerCase());
+  const requiredHeaders = ['meter_id', 'location', 'period_start', 'period_end', 'kwh'];
+  const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+
+  if (missingHeaders.length > 0) {
+    throw new Error(
+      `The CSV is missing required columns: ${missingHeaders.join(', ')}. ` +
+        'Expected columns: meter_id, location, period_start, period_end, kwh.',
+    );
+  }
+
+  const columnIndex = Object.fromEntries(headers.map((header, index) => [header, index]));
+
+  return lines.slice(1).map((line, rowIndex) => {
+    const cells = line.split(',').map((cell) => cell.trim());
+    const meterId = cells[columnIndex.meter_id] ?? '';
+    const location = cells[columnIndex.location] ?? '';
+    const periodStart = cells[columnIndex.period_start] ?? '';
+    const periodEnd = cells[columnIndex.period_end] ?? '';
+    const kwhRaw = cells[columnIndex.kwh] ?? '';
+    const kwh = Number(kwhRaw);
+
+    if (!meterId || !location || !periodStart || !periodEnd || !kwhRaw) {
+      throw new Error(
+        `Row ${rowIndex + 2} is incomplete. Every row must include meter_id, location, period_start, period_end, and kwh.`,
+      );
+    }
+
+    if (!Number.isFinite(kwh) || kwh < 0) {
+      throw new Error(`Row ${rowIndex + 2} has an invalid kwh value: "${kwhRaw}".`);
+    }
+
+    return {
+      meterId,
+      location,
+      periodStart,
+      periodEnd,
+      kwh,
+    };
+  });
+}
+
 function EmptyState() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ status: string; activitiesSaved: number } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -559,95 +678,70 @@ function EmptyState() {
     });
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const csrfToken = await getCSRFToken();
+      const rows = parseImportCsv(await file.text());
+      let activitiesSaved = 0;
+      const failures: string[] = [];
+      const REQUEST_SPACING_MS = 250;
+      const MAX_ATTEMPTS = 4;
 
-      const res = await fetch('/api/ingestion/utility-bills/upload', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { [CSRF_HEADER_NAME]: csrfToken },
-        body: formData,
-      });
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index];
+        const rowNumber = index + 2;
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        const apiMessage = body?.error?.message as string | undefined;
-        const apiDetail = body?.error?.detail as string | undefined;
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+          try {
+            await api.post('/api/emissions/activities', {
+              name: `${row.meterId} (${row.location})`,
+              type: 'electricity',
+              value: row.kwh,
+              unit: 'kWh',
+              period_start: row.periodStart,
+              period_end: row.periodEnd,
+              meter_id: row.meterId,
+              location: row.location,
+            });
+            activitiesSaved += 1;
+            break;
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Unknown import error';
+            const rateLimited = err instanceof ApiRequestError && err.status === 429;
 
-        // Surface a specific, human-friendly message based on status code.
-        let message: string;
-        switch (res.status) {
-          case 400:
-            message =
-              apiMessage ||
-              'The CSV could not be parsed. Check that the first row contains headers and that each row has ' +
-                'meter_id, location, period_start, period_end, and kwh columns.';
+            if (rateLimited && attempt < MAX_ATTEMPTS) {
+              await sleep(attempt * 1000);
+              continue;
+            }
+
+            failures.push(`Row ${rowNumber}: ${message}`);
             break;
-          case 401:
-          case 403:
-            message = 'Your session has expired. Please sign in again before uploading.';
-            break;
-          case 413:
-            message = 'The upload exceeded the server limit. Split the file into smaller batches.';
-            break;
-          case 422:
-            message =
-              apiMessage ||
-              'One or more rows failed validation. No data was imported. Fix the highlighted rows and retry.';
-            break;
-          case 429:
-            message = 'Too many uploads in a short period. Wait a minute before retrying.';
-            break;
-          case 500:
-          case 502:
-          case 503:
-          case 504:
-            message =
-              'The server could not process the upload. This is on us, not your file. ' +
-              'Please retry; if the error persists, contact contact@off-grid-flow.com.';
-            break;
-          default:
-            message = apiMessage || `Upload failed (${res.status}).`;
+          }
         }
 
-        if (apiDetail && !message.includes(apiDetail)) {
-          message = `${message} Detail: ${apiDetail}`;
+        if (index < rows.length - 1) {
+          await sleep(REQUEST_SPACING_MS);
         }
-
-        recordAuditEvent('data.import.failed', {
-          entityType: 'csv_upload',
-          metadata: {
-            file_name: file.name,
-            http_status: res.status,
-            message,
-          },
-        });
-
-        throw new Error(message);
       }
 
-      const result = await res.json();
-      const activitiesSaved =
-        result?.activities_count ??
-        result?.activitiesSaved ??
-        result?.total_activities ??
-        0;
-      const uploadStatus =
-        typeof result?.success === 'boolean'
-          ? (result.success ? 'success' : 'failed')
-          : result?.status ?? 'success';
+      const uploadStatus = failures.length > 0 ? 'partial' : 'success';
 
       setUploadResult({
         status: uploadStatus,
         activitiesSaved,
       });
+
+      if (failures.length > 0) {
+        const preview = failures.slice(0, 3).join(' ');
+        const remainder = failures.length > 3 ? ` ${failures.length - 3} more row(s) failed.` : '';
+        setUploadError(`Imported ${activitiesSaved} row(s), but some entries failed. ${preview}${remainder}`);
+      }
+
       recordAuditEvent('data.import.completed', {
         entityType: 'csv_upload',
         metadata: {
           file_name: file.name,
+          rows_parsed: rows.length,
           activities_saved: activitiesSaved,
           status: uploadStatus,
+          failures: failures.length,
         },
       });
     } catch (err) {

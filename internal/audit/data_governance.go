@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"

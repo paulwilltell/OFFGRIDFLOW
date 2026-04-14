@@ -20,7 +20,7 @@ import (
 // ServiceConfig configures the audit service.
 type ServiceConfig struct {
 	// Store is the audit entry storage backend.
-	Store Store
+	Store EntryStore
 
 	// Logger for audit operations.
 	Logger *slog.Logger
@@ -59,11 +59,11 @@ func DefaultServiceConfig() ServiceConfig {
 }
 
 // =============================================================================
-// Store Interface
+// EntryStore Interface
 // =============================================================================
 
-// Store defines the storage interface for audit entries.
-type Store interface {
+// EntryStore defines the storage interface for audit entries.
+type EntryStore interface {
 	// Write persists an audit entry.
 	Write(ctx context.Context, entry AuditEntry) error
 
@@ -107,7 +107,7 @@ type Store interface {
 //	    log.Error("audit failed", "error", err)
 //	}
 type Service struct {
-	store  Store
+	store  EntryStore
 	logger *slog.Logger
 	config ServiceConfig
 	buffer chan AuditEntry

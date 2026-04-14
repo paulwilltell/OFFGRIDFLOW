@@ -28,13 +28,13 @@ func (a *AuditedScope3Calculator) Calculate(ctx context.Context, activity emissi
 		activity.GetQuantity(), activity.GetUnit(),
 		record.EmissionFactor, activity.GetUnit(),
 		record.EmissionsKgCO2e, record.EmissionsTonnesCO2e,
-		record.Category,
+		activity.GetCategory(),
 	)
 
 	entry := &LedgerEntry{
 		TenantID:             record.OrgID,
 		Scope:                "scope3",
-		Category:             record.Category,
+		Category:             activity.GetCategory(),
 		ActivityID:           record.ActivityID,
 		Quantity:             activity.GetQuantity(),
 		Unit:                 activity.GetUnit(),

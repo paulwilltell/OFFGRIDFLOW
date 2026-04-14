@@ -314,6 +314,8 @@ func (s *PostgresStore) GetByTenantID(ctx context.Context, tenantID string) (*Su
 	err := s.db.QueryRowContext(ctx, `
         SELECT id, tenant_id, stripe_customer_id, stripe_subscription_id, status, plan, current_period_end, created_at, updated_at
         FROM subscriptions WHERE tenant_id = $1
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
     `, tenantID).Scan(&sub.ID, &sub.TenantID, &sub.StripeCustomerID, &sub.StripeSubscriptionID, &sub.Status, &sub.Plan, &periodEnd, &sub.CreatedAt, &sub.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -335,6 +337,8 @@ func (s *PostgresStore) GetByStripeCustomer(ctx context.Context, customerID stri
 	err := s.db.QueryRowContext(ctx, `
         SELECT id, tenant_id, stripe_customer_id, stripe_subscription_id, status, plan, current_period_end, created_at, updated_at
         FROM subscriptions WHERE stripe_customer_id = $1
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
     `, customerID).Scan(&sub.ID, &sub.TenantID, &sub.StripeCustomerID, &sub.StripeSubscriptionID, &sub.Status, &sub.Plan, &periodEnd, &sub.CreatedAt, &sub.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -353,16 +357,40 @@ func (s *PostgresStore) Upsert(ctx context.Context, sub *Subscription) error {
 	if sub.ID == "" {
 		sub.ID = uuid.NewString()
 	}
-	_, err := s.db.ExecContext(ctx, `
-        INSERT INTO subscriptions (id, tenant_id, stripe_customer_id, stripe_subscription_id, status, plan, current_period_end, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        ON CONFLICT (tenant_id) DO UPDATE SET
-            stripe_customer_id = EXCLUDED.stripe_customer_id,
-            stripe_subscription_id = EXCLUDED.stripe_subscription_id,
-            status = EXCLUDED.status,
-            plan = EXCLUDED.plan,
-            current_period_end = EXCLUDED.current_period_end,
-            updated_at = EXCLUDED.updated_at
-    `, sub.ID, sub.TenantID, sub.StripeCustomerID, sub.StripeSubscriptionID, sub.Status, sub.Plan, sub.CurrentPeriodEnd, sub.CreatedAt, sub.UpdatedAt)
-	return err
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(ctx, `
+        UPDATE subscriptions
+        SET stripe_customer_id = $2,
+            stripe_subscription_id = $3,
+            status = $4,
+            plan = $5,
+            current_period_end = $6,
+            updated_at = $7
+        WHERE tenant_id = $1
+    `, sub.TenantID, sub.StripeCustomerID, sub.StripeSubscriptionID, sub.Status, sub.Plan, sub.CurrentPeriodEnd, sub.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	rowsUpdated, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsUpdated == 0 {
+		_, err = tx.ExecContext(ctx, `
+            INSERT INTO subscriptions (id, tenant_id, stripe_customer_id, stripe_subscription_id, status, plan, current_period_end, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, sub.ID, sub.TenantID, sub.StripeCustomerID, sub.StripeSubscriptionID, sub.Status, sub.Plan, sub.CurrentPeriodEnd, sub.CreatedAt, sub.UpdatedAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
