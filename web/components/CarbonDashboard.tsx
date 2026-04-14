@@ -11,6 +11,8 @@ import { LoadingSkeleton, DashboardSkeleton } from '@/components/ui/LoadingSkele
 import { CarbonApi, downloadFile, formatNumber } from '@/lib/api/carbon';
 import { EmissionData, DataSource, Timeframe, ComplianceStatusType } from '@/types/carbon';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { methodologyLabel, CURRENT_METHODOLOGY } from '@/lib/methodology';
+import { recordAuditEvent } from '@/lib/auditLog';
 
 const EmissionChart = dynamic(() => import('@/components/charts/EmissionChartJS'), {
   loading: () => <LoadingSkeleton type="chart" />,
@@ -551,6 +553,16 @@ const DashboardHeader = memo(function DashboardHeader({
         <p className="mt-0.5 text-xs text-gray-500">
           {lastUpdated ? `Updated ${new Date(lastUpdated).toLocaleString()}` : 'Real-time emissions overview'}
         </p>
+        <Link
+          href="/methodology"
+          className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-medium text-gray-600 hover:text-primary-400 transition-colors"
+          title={`${methodologyLabel()} — effective ${CURRENT_METHODOLOGY.effectiveDate}. Click for full methodology documentation.`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-primary-500" />
+          {methodologyLabel()}
+          <span className="text-gray-700">·</span>
+          <span>effective {CURRENT_METHODOLOGY.effectiveDate}</span>
+        </Link>
       </div>
       <div className="flex items-center gap-3">
         <RoleViewSwitcher role={role} onRoleChange={onRoleChange} />
@@ -636,18 +648,53 @@ const DashboardContent = memo(function DashboardContent({
     return unsub;
   }, [tenantId, subscribe, updateMetrics, metrics]);
 
-  // Export handler
+  // Export handler — records to the client-side audit log regardless of
+  // whether the remote export succeeds, so the user's local trail shows
+  // that an export attempt was made.
   const handleExport = useCallback(async (format: 'pdf' | 'csv' | 'excel') => {
+    recordAuditEvent('report.exported', {
+      entityType: 'dashboard_summary',
+      metadata: {
+        format,
+        total_tco2e: emissions?.total ?? null,
+        scope1_tco2e: emissions?.scope1 ?? null,
+        scope2_tco2e: emissions?.scope2 ?? null,
+        scope3_tco2e: emissions?.scope3 ?? null,
+      },
+    });
+
     try {
       const report = await CarbonApi.generateComplianceReport(tenantId, format, ['scope1', 'scope2', 'scope3']);
       if (report?.url) {
         window.open(report.url, '_blank');
       } else {
-        const data = JSON.stringify({ emissions, metrics, complianceStatus }, null, 2);
+        const data = JSON.stringify(
+          {
+            methodology_version: CURRENT_METHODOLOGY.version,
+            methodology_effective_date: CURRENT_METHODOLOGY.effectiveDate,
+            exported_at: new Date().toISOString(),
+            emissions,
+            metrics,
+            complianceStatus,
+          },
+          null,
+          2,
+        );
         downloadFile(data, `offgridflow-report-${Date.now()}.json`);
       }
     } catch {
-      const data = JSON.stringify({ emissions, metrics, complianceStatus }, null, 2);
+      const data = JSON.stringify(
+        {
+          methodology_version: CURRENT_METHODOLOGY.version,
+          methodology_effective_date: CURRENT_METHODOLOGY.effectiveDate,
+          exported_at: new Date().toISOString(),
+          emissions,
+          metrics,
+          complianceStatus,
+        },
+        null,
+        2,
+      );
       downloadFile(data, `offgridflow-report-${Date.now()}.json`);
     }
   }, [tenantId, emissions, metrics, complianceStatus]);

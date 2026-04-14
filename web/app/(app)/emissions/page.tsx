@@ -8,6 +8,7 @@ import type { Scope2Emission, Scope2Summary, PaginatedResponse, PageInfo } from 
 import { useRequireAuth } from '@/lib/session';
 import { EmissionsTrendChart, ScopeBreakdownChart, EmissionsHeatmap } from '@/components/emissions';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { recordAuditEvent } from '@/lib/auditLog';
 
 export default function EmissionsPage() {
   const session = useRequireAuth();
@@ -514,9 +515,48 @@ function EmptyState() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Client-side validation with clear, actionable errors.
+    const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+    const ACCEPTED_EXTENSIONS = ['.csv'];
+
+    const hasAcceptedExtension = ACCEPTED_EXTENSIONS.some((ext) =>
+      file.name.toLowerCase().endsWith(ext),
+    );
+    if (!hasAcceptedExtension) {
+      setUploadError(
+        `File "${file.name}" is not a CSV. Please upload a file ending in .csv. ` +
+          `Expected columns: meter_id, location, period_start, period_end, kwh.`,
+      );
+      e.target.value = '';
+      return;
+    }
+    if (file.size === 0) {
+      setUploadError(
+        `File "${file.name}" is empty. Please export your data and upload the CSV again.`,
+      );
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      setUploadError(
+        `File "${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB — ` +
+          `larger than the 50 MB limit. Split the file into smaller batches by reporting period.`,
+      );
+      e.target.value = '';
+      return;
+    }
+
     setUploading(true);
     setUploadError(null);
     setUploadResult(null);
+
+    recordAuditEvent('data.import.started', {
+      entityType: 'csv_upload',
+      metadata: {
+        file_name: file.name,
+        file_size_bytes: file.size,
+      },
+    });
 
     try {
       const formData = new FormData();
@@ -532,15 +572,86 @@ function EmptyState() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error?.message || `Upload failed (${res.status})`);
+        const apiMessage = body?.error?.message as string | undefined;
+        const apiDetail = body?.error?.detail as string | undefined;
+
+        // Surface a specific, human-friendly message based on status code.
+        let message: string;
+        switch (res.status) {
+          case 400:
+            message =
+              apiMessage ||
+              'The CSV could not be parsed. Check that the first row contains headers and that each row has ' +
+                'meter_id, location, period_start, period_end, and kwh columns.';
+            break;
+          case 401:
+          case 403:
+            message = 'Your session has expired. Please sign in again before uploading.';
+            break;
+          case 413:
+            message = 'The upload exceeded the server limit. Split the file into smaller batches.';
+            break;
+          case 422:
+            message =
+              apiMessage ||
+              'One or more rows failed validation. No data was imported. Fix the highlighted rows and retry.';
+            break;
+          case 429:
+            message = 'Too many uploads in a short period. Wait a minute before retrying.';
+            break;
+          case 500:
+          case 502:
+          case 503:
+          case 504:
+            message =
+              'The server could not process the upload. This is on us, not your file. ' +
+              'Please retry; if the error persists, contact contact@off-grid-flow.com.';
+            break;
+          default:
+            message = apiMessage || `Upload failed (${res.status}).`;
+        }
+
+        if (apiDetail && !message.includes(apiDetail)) {
+          message = `${message} Detail: ${apiDetail}`;
+        }
+
+        recordAuditEvent('data.import.failed', {
+          entityType: 'csv_upload',
+          metadata: {
+            file_name: file.name,
+            http_status: res.status,
+            message,
+          },
+        });
+
+        throw new Error(message);
       }
 
       const result = await res.json();
       setUploadResult(result);
+      recordAuditEvent('data.import.completed', {
+        entityType: 'csv_upload',
+        metadata: {
+          file_name: file.name,
+          activities_saved: result?.activitiesSaved ?? null,
+          status: result?.status ?? null,
+        },
+      });
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed');
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setUploadError(message);
+      recordAuditEvent('data.import.failed', {
+        entityType: 'csv_upload',
+        metadata: {
+          file_name: file.name,
+          message,
+        },
+      });
     } finally {
       setUploading(false);
+      // Reset the input so the same file can be re-uploaded if the user
+      // fixes an issue and retries.
+      e.target.value = '';
     }
   };
 
