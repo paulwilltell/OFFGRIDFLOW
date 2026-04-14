@@ -141,6 +141,15 @@ export default function HomePage() {
               Read the full case study
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </Link>
+            <div className="mt-3">
+              <Link
+                href="/evidence"
+                className="inline-flex items-center gap-1 text-sm font-medium text-gray-300 transition hover:text-white"
+              >
+                Review the redacted evidence pack
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </Link>
+            </div>
           </div>
         </div></FadeIn>
       </section>
@@ -429,6 +438,7 @@ export default function HomePage() {
               <div className="space-y-2 text-sm text-gray-400">
                 <Link href="/demo" className="block hover:text-white">How It Works</Link>
                 <Link href="/pricing" className="block hover:text-white">Pricing</Link>
+                <Link href="/evidence" className="block hover:text-white">Evidence Pack</Link>
                 <Link href="/methodology" className="block hover:text-white">Methodology</Link>
                 <Link href="/how-we-operate" className="block hover:text-white">How We Operate</Link>
                 <Link href="/case-study" className="block hover:text-white">Case Study</Link>
@@ -440,6 +450,7 @@ export default function HomePage() {
                 <Link href="/trust" className="block hover:text-white">Trust Center</Link>
                 <Link href="/security" className="block hover:text-white">Security</Link>
                 <Link href="/architecture" className="block hover:text-white">Architecture</Link>
+                <Link href="/operations" className="block hover:text-white">Operations Proof</Link>
                 <Link href="/status" className="block hover:text-white">Status</Link>
                 <Link href="/about" className="block hover:text-white">About</Link>
                 <a href="mailto:contact@off-grid-flow.com" className="block hover:text-white">Contact</a>

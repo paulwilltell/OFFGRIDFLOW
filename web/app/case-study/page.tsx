@@ -158,19 +158,23 @@ export default function CaseStudyPage() {
                 Want the same results for your company?
               </p>
               <p className="mt-2 text-sm text-gray-400">
-                Upload your utility data and get your first report in under 2 hours.
+                Upload your utility data and get your first report in under 2 hours. If you need the drill-down,
+                review the redacted packet behind this case study first.
               </p>
               <div className="mt-5 flex justify-center gap-4">
+                <Link
+                  href="/evidence"
+                  className="rounded-lg border border-gray-700 px-6 py-2.5 text-sm font-medium text-gray-300 transition hover:border-gray-500 hover:text-white"
+                >
+                  Review Evidence Pack
+                </Link>
                 <Link
                   href="/register?plan=starter"
                   className="rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-500"
                 >
                   Start Free Trial
                 </Link>
-                <Link
-                  href="/demo"
-                  className="rounded-lg border border-gray-700 px-6 py-2.5 text-sm font-medium text-gray-300 transition hover:border-gray-500 hover:text-white"
-                >
+                <Link href="/demo" className="rounded-lg border border-gray-700 px-6 py-2.5 text-sm font-medium text-gray-300 transition hover:border-gray-500 hover:text-white">
                   Review Workflow
                 </Link>
               </div>

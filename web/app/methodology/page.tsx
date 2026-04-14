@@ -277,6 +277,10 @@ export default function MethodologyPage() {
         </section>
 
         <div className="mt-10 text-center">
+          <Link href="/evidence" className="text-sm text-primary-400 hover:underline">Redacted Evidence Pack</Link>
+          <span className="mx-3 text-gray-700">|</span>
+          <Link href="/operations" className="text-sm text-primary-400 hover:underline">Operations Proof</Link>
+          <span className="mx-3 text-gray-700">|</span>
           <Link href="/security" className="text-sm text-primary-400 hover:underline">Security &amp; Trust Center</Link>
           <span className="mx-3 text-gray-700">|</span>
           <Link href="/about" className="text-sm text-primary-400 hover:underline">About OffGridFlow</Link>

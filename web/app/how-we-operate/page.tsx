@@ -354,6 +354,47 @@ export default function HowWeOperatePage() {
           </div>
         </section>
 
+        <section className="mt-16">
+          <h2 className="text-xs font-medium uppercase tracking-widest text-primary-400">
+            Sponsor Reviews, Win/Loss, and Feedback Loop
+          </h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Commercial learning is reviewed on a cadence and fed back into onboarding, product scope, and positioning.
+          </p>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Sponsor Review Cadence</h3>
+              <ul className="mt-3 space-y-2 text-xs text-gray-300">
+                <li>Day 30: first-value review against the initial reporting objective</li>
+                <li>Day 60: adoption review covering connectors, approvals, and open anomalies</li>
+                <li>Quarterly: executive sponsor review for active enterprise accounts</li>
+                <li>Pre-renewal: risk review if health score drops below 80</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Win/Loss Review</h3>
+              <ul className="mt-3 space-y-2 text-xs text-gray-300">
+                <li>Monthly review of won, lost, stalled, and churned opportunities</li>
+                <li>Root-cause codes captured for pricing, data maturity, security, and scope gaps</li>
+                <li>Segment and source-level win rate tracked alongside onboarding duration</li>
+                <li>ICP and disqualification language updated when recurring mismatch appears</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Feedback to Product</h3>
+              <ul className="mt-3 space-y-2 text-xs text-gray-300">
+                <li>Weekly triage of onboarding friction, anomaly-resolution blockers, and export failures</li>
+                <li>High-frequency issues become roadmap items, onboarding changes, or trust-page updates</li>
+                <li>Messaging claims are tightened when proof gaps show up in procurement or audit review</li>
+                <li>Closed-loop check: every shipped fix is reflected in docs, workflows, or qualification criteria</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         {/* Links */}
         <div className="mt-12 flex flex-wrap gap-4 text-sm">
           <Link href="/pricing" className="text-primary-400 hover:underline">Pricing</Link>
@@ -361,6 +402,8 @@ export default function HowWeOperatePage() {
           <Link href="/trust" className="text-primary-400 hover:underline">Trust Center</Link>
           <Link href="/architecture" className="text-primary-400 hover:underline">Architecture</Link>
           <Link href="/methodology" className="text-primary-400 hover:underline">Methodology</Link>
+          <Link href="/evidence" className="text-primary-400 hover:underline">Evidence Pack</Link>
+          <Link href="/operations" className="text-primary-400 hover:underline">Operations Proof</Link>
         </div>
       </main>
     </div>

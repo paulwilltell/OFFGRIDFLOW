@@ -191,8 +191,10 @@ export default function ArchitecturePage() {
 
         {/* Links */}
         <div className="mt-12 flex flex-wrap gap-4 text-sm">
+          <Link href="/evidence" className="text-primary-400 hover:underline">Evidence Pack</Link>
           <Link href="/methodology" className="text-primary-400 hover:underline">Methodology Library</Link>
           <Link href="/trust" className="text-primary-400 hover:underline">Trust Center</Link>
+          <Link href="/operations" className="text-primary-400 hover:underline">Operations Proof</Link>
           <Link href="/security" className="text-primary-400 hover:underline">Security</Link>
           <Link href="/status" className="text-primary-400 hover:underline">Status</Link>
         </div>

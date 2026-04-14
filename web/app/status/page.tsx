@@ -140,7 +140,11 @@ export default function StatusPage() {
         </div>
 
         <div className="mt-10 text-center text-xs text-gray-600">
-          <Link href="/" className="hover:text-gray-400">Back to OffGridFlow</Link>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link href="/operations" className="hover:text-gray-400">Operations Proof</Link>
+            <Link href="/trust" className="hover:text-gray-400">Trust Center</Link>
+            <Link href="/" className="hover:text-gray-400">Back to OffGridFlow</Link>
+          </div>
         </div>
       </div>
     </div>

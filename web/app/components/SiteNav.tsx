@@ -22,6 +22,9 @@ export function SiteNav() {
           <Link href="/pricing" className="transition hover:text-white">
             Pricing
           </Link>
+          <Link href="/evidence" className="transition hover:text-white">
+            Evidence
+          </Link>
           <Link href="/methodology" className="transition hover:text-white">
             Methodology
           </Link>

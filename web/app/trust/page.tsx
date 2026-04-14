@@ -152,6 +152,32 @@ export default function TrustCenterPage() {
           </div>
         </section>
 
+        <section className="mb-10">
+          <h2 className="mb-4 text-xl font-semibold text-white">Security Control Artifacts</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Tenant Isolation Test Artifact</h3>
+              <p className="mt-2 text-xs leading-relaxed text-gray-400">
+                In the integration suite, a second registered tenant authenticates successfully and then calls{' '}
+                <code className="rounded bg-gray-800 px-1 text-primary-400">GET /api/emissions/activities</code>.
+                The response is <span className="text-white">200 OK</span> with{' '}
+                <span className="text-white">0 activities</span> from the first tenant, proving no cross-tenant data leakage
+                through the main emissions activity endpoint.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">MFA Challenge Flow</h3>
+              <p className="mt-2 text-xs leading-relaxed text-gray-400">
+                The login flow supports a second authentication step with a six-digit one-time code.
+                After primary credential verification, users complete{' '}
+                <code className="rounded bg-gray-800 px-1 text-primary-400">/api/auth/verify-2fa</code>{' '}
+                using a temporary token and TOTP code before a session token is issued.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Data Governance Walkthrough */}
         <section className="mb-10">
           <h2 className="mb-4 text-xl font-semibold text-white">Data Governance Walkthrough</h2>
@@ -268,6 +294,8 @@ export default function TrustCenterPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {[
               { name: 'Data Architecture', href: '/architecture', type: 'Web Page' },
+              { name: 'Evidence Pack', href: '/evidence', type: 'Web Page' },
+              { name: 'Operations Proof', href: '/operations', type: 'Web Page' },
               { name: 'Privacy Policy', href: '/privacy', type: 'Web Page' },
               { name: 'Terms of Service', href: '/terms', type: 'Web Page' },
               { name: 'Data Retention Policy', href: '/trust#retention', type: 'Web Page' },
