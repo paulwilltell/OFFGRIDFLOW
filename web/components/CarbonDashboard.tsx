@@ -700,7 +700,7 @@ const DashboardContent = memo(function DashboardContent({
         </div>
         <div className="mt-6 rounded-lg border border-gray-800/50 bg-gray-900/30 p-3 text-center">
           <p className="text-xs text-gray-600">
-            Need help? <a href="mailto:paul@off-gridflow.com" className="text-primary-400 hover:underline">paul@off-gridflow.com</a>
+            Need help? <a href="mailto:contact@off-grid-flow.com" className="text-primary-400 hover:underline">contact@off-grid-flow.com</a>
           </p>
         </div>
       </div>

@@ -70,8 +70,8 @@ export default function PrivacyPage() {
                 If you are in the European Economic Area, you have the right to access, correct,
                 delete, or export your personal data. You may also object to processing or request
                 restriction. Contact us at{' '}
-                <a href="mailto:paul@off-gridflow.com" className="text-primary-400 hover:underline">
-                  paul@off-gridflow.com
+                <a href="mailto:contact@off-grid-flow.com" className="text-primary-400 hover:underline">
+                  contact@off-grid-flow.com
                 </a>{' '}
                 to exercise these rights.
               </p>
@@ -99,8 +99,8 @@ export default function PrivacyPage() {
               <h2 className="mb-3 text-xl font-semibold text-white">8. Contact</h2>
               <p>
                 For privacy-related questions:{' '}
-                <a href="mailto:paul@off-gridflow.com" className="text-primary-400 hover:underline">
-                  paul@off-gridflow.com
+                <a href="mailto:contact@off-grid-flow.com" className="text-primary-400 hover:underline">
+                  contact@off-grid-flow.com
                 </a>
               </p>
               <p className="mt-2">OffGridFlow LLC</p>

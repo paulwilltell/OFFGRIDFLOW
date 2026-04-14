@@ -97,8 +97,8 @@ export default function SecurityPage() {
               <h2 className="mb-4 text-2xl font-semibold text-white">Responsible Disclosure</h2>
               <p>
                 If you discover a security vulnerability, please report it to{' '}
-                <a href="mailto:paul@off-gridflow.com" className="text-primary-400 hover:underline">
-                  paul@off-gridflow.com
+                <a href="mailto:contact@off-grid-flow.com" className="text-primary-400 hover:underline">
+                  contact@off-grid-flow.com
                 </a>
                 . We take all reports seriously and will respond within 48 hours.
               </p>

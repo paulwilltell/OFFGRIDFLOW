@@ -7,7 +7,7 @@ import { DashboardPreview } from './components/DashboardPreview';
 export const metadata: Metadata = {
   title: 'OffGridFlow | Carbon Compliance Without the Big 4 Price Tag',
   description:
-    'Automate Scope 1, 2, 3 emissions tracking and generate audit-ready compliance reports for CSRD, SEC, California SB 253, CBAM, and IFRS S2. Starting at $4,800/year.',
+    'Automate Scope 1, 2, 3 emissions tracking and generate audit-ready compliance reports for CSRD, SEC, California SB 253, CBAM, and IFRS S2. Starting at $6,500/year.',
   openGraph: {
     title: 'OffGridFlow | Carbon Compliance Without the Big 4 Price Tag',
     description:
@@ -425,16 +425,19 @@ export default function HomePage() {
             <div>
               <div className="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500">Product</div>
               <div className="space-y-2 text-sm text-gray-400">
-                <Link href="/demo" className="block hover:text-white">Demo</Link>
+                <Link href="/demo" className="block hover:text-white">How It Works</Link>
                 <Link href="/pricing" className="block hover:text-white">Pricing</Link>
-                <Link href="/security" className="block hover:text-white">Security</Link>
+                <Link href="/methodology" className="block hover:text-white">Methodology</Link>
+                <Link href="/case-study" className="block hover:text-white">Case Study</Link>
               </div>
             </div>
             <div>
-              <div className="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500">Company</div>
+              <div className="mb-3 text-xs font-medium uppercase tracking-wider text-gray-500">Trust</div>
               <div className="space-y-2 text-sm text-gray-400">
+                <Link href="/trust" className="block hover:text-white">Trust Center</Link>
+                <Link href="/security" className="block hover:text-white">Security</Link>
+                <Link href="/status" className="block hover:text-white">Status</Link>
                 <Link href="/about" className="block hover:text-white">About</Link>
-                <Link href="/case-study" className="block hover:text-white">Case Study</Link>
                 <a href="mailto:contact@off-grid-flow.com" className="block hover:text-white">Contact</a>
               </div>
             </div>

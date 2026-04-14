@@ -131,7 +131,7 @@ export default function CaseStudyPage() {
                 <div className="rounded-lg border border-gray-800 bg-dark-800 p-4">
                   <div className="text-sm font-medium text-white">Cost</div>
                   <div className="mt-1 text-xs text-gray-400">
-                    $4,800/year with OffGridFlow vs $35,000 quote from Big 4.
+                    $6,500/year with OffGridFlow vs $35,000 quote from Big 4.
                     <strong className="text-primary-400"> 86% savings.</strong>
                   </div>
                 </div>

@@ -1,755 +1,284 @@
-'use client';
-
-import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
-const personas = [
+export const metadata: Metadata = {
+  title: 'Demo | OffGridFlow',
+  description:
+    'See how OffGridFlow automates Scope 1, 2, 3 emissions tracking and generates audit-ready compliance reports.',
+};
+
+const workflow = [
   {
-    id: 'ciso',
-    label: 'Security Leaders',
-    headline: 'Harden risk posture with provable controls and audit-ready evidence.',
-    bullets: [
-      'SOC 2, GDPR, and ISO-ready audit trails with immutable change tracking',
-      'Fine-grained RBAC and tenant isolation across global subsidiaries',
-      'Data residency guardrails for multi-region compliance',
-    ],
-    kpi: { label: 'Audit prep time', value: '↓ 62%' },
+    step: '1',
+    title: 'Ingest Emissions Data',
+    desc: 'Upload a CSV of utility bills, energy consumption, or fleet fuel — or connect cloud sources (AWS, Azure, GCP, SAP) for automated ingestion.',
+    detail: 'Supported formats: CSV, JSON, Excel. Cloud connectors pull data on schedule with retry and duplicate detection.',
+    time: '< 5 minutes for CSV',
   },
   {
-    id: 'it',
-    label: 'IT Directors',
-    headline: 'Unify emissions data pipelines without ripping and replacing tooling.',
-    bullets: [
-      'Native integrations for ERP, cloud, and procurement systems',
-      'API-first ingestion with schema validation and data lineage',
-      'Scales to millions of records per month with predictable latency',
-    ],
-    kpi: { label: 'Integration time', value: '↓ 45%' },
+    step: '2',
+    title: 'Calculate Scopes 1, 2 & 3',
+    desc: 'The engine applies 184 emission factors from EPA eGRID, IEA, UK DEFRA, and IPCC to your activity data. Every calculation is recorded in an immutable ledger.',
+    detail: 'Scope 2: location-based and market-based methods (GHG Protocol). Scope 3: all 15 GHG Protocol categories with spend-based and activity-based factors.',
+    time: 'Instant',
   },
   {
-    id: 'ops',
-    label: 'Operations VPs',
-    headline: 'Turn compliance into measurable operational savings.',
-    bullets: [
-      'Automated supplier onboarding and emissions validation',
-      'Scenario modeling for cost and carbon reduction',
-      'Executive-ready dashboards with regional rollups',
-    ],
-    kpi: { label: 'Reporting cycle', value: '↓ 70%' },
+    step: '3',
+    title: 'Validate Data Quality',
+    desc: 'Anomaly detection flags outliers (z-score > 3), duplicate entries, missing time periods, and sudden changes (> 50% month-over-month).',
+    detail: 'Each anomaly shows expected vs. actual values, deviation %, and one-click resolve or dismiss.',
+    time: '< 1 minute scan',
+  },
+  {
+    step: '4',
+    title: 'Generate Compliance Reports',
+    desc: 'Select your framework — CSRD/ESRS E1, SEC Climate, California SB 253, CBAM, or IFRS S2 — and generate an audit-ready report with export to PDF or XBRL.',
+    detail: 'Reports include scope totals, factor sources, methodology notes, and reconciliation checksums.',
+    time: '< 30 seconds',
+  },
+  {
+    step: '5',
+    title: 'Review, Approve & Lock',
+    desc: 'Submit reports through an approval workflow: preparer, reviewer, approver. Lock emission factors to the reporting period via factor snapshots for reproducibility.',
+    detail: 'Every approval action is recorded with timestamp, actor, and notes. Locked calculations cannot be modified.',
+    time: 'Depends on your review process',
   },
 ];
 
-const demoModules = [
-  {
-    id: 'security',
-    label: 'Security & Compliance',
-    outcome: 'Reduce audit effort by 40% with continuous evidence capture.',
-    narrative:
-      'Every data change is logged, signed, and stored in a compliance-ready timeline. Automated gap detection flags missing evidence before audits.',
-    screens: ['Policy control map', 'Audit evidence timeline', 'Vendor risk review'],
-    dataPoints: ['2,481 control checks', '97% evidence coverage', '0 critical gaps'],
-    impact: [
-      'SOC 2 evidence pack generated in minutes',
-      'Role-based approvals across global teams',
-      'Continuous monitoring with exception alerts',
-    ],
-  },
-  {
-    id: 'reporting',
-    label: 'Reporting & Analytics',
-    outcome: 'Deliver board-ready climate disclosures with confidence.',
-    narrative:
-      'Automated reporting templates align with CSRD, SEC, and SB 253. Interactive dashboards connect emissions drivers to financial impact.',
-    screens: ['Executive scorecard', 'Scope 1-3 rollup', 'Disclosure builder'],
-    dataPoints: ['14 regions', '3,912 facilities', '84% reduction roadmap'],
-    impact: [
-      'Exportable CSRD and SEC packages',
-      'Scenario modeling tied to capex planning',
-      'Granular drill-down for audit assurance',
-    ],
-  },
-  {
-    id: 'integration',
-    label: 'Integration Workflow',
-    outcome: 'Connect data sources in days, not months.',
-    narrative:
-      'Ingestion pipelines validate data quality in real time, with lineage tracking and automated reconciliation against ERP baselines.',
-    screens: ['Connector health view', 'Data lineage graph', 'Reconciliation checks'],
-    dataPoints: ['12 connectors live', '99.4% data quality', '24,681 records/day'],
-    impact: [
-      'Pre-built connectors for ERP and cloud',
-      'Automated anomaly detection',
-      'Versioned data lineage for traceability',
-    ],
-  },
+const frameworks = [
+  { name: 'CSRD / ESRS E1', region: 'EU', desc: 'Corporate Sustainability Reporting Directive — mandatory for EU companies and large non-EU companies operating in the EU.' },
+  { name: 'SEC Climate Disclosure', region: 'US', desc: 'SEC climate-related disclosure rules for US public companies — Scope 1, 2, and material Scope 3.' },
+  { name: 'California SB 253', region: 'CA', desc: 'Climate Corporate Data Accountability Act — Scope 1, 2, 3 reporting for companies doing business in California with > $1B revenue.' },
+  { name: 'EU CBAM', region: 'EU', desc: 'Carbon Border Adjustment Mechanism — embedded emissions reporting for imports of cement, steel, aluminum, fertilizer, electricity, hydrogen.' },
+  { name: 'IFRS S2', region: 'Global', desc: 'International Sustainability Standards Board — climate-related disclosures aligned with TCFD for global capital markets.' },
 ];
 
-const deepDiveModules = [
-  {
-    title: 'Security & Compliance',
-    items: [
-      'SOC 2, GDPR, HIPAA-ready control mapping',
-      'SSO, SCIM provisioning, and advanced RBAC',
-      'Immutable audit logs with exportable evidence packs',
-    ],
-  },
-  {
-    title: 'Scalability & Performance',
-    items: [
-      'Regional data residency enforcement',
-      'High-volume ingestion with backpressure controls',
-      'Real-time dashboards optimized for enterprise scale',
-    ],
-  },
-  {
-    title: 'Integration Ecosystem',
-    items: [
-      'ERP + procurement integrations (SAP, Oracle, Workday)',
-      'Cloud telemetry ingestion (AWS, Azure, GCP)',
-      'Open API for custom partner pipelines',
-    ],
-  },
-  {
-    title: 'Administration & Governance',
-    items: [
-      'Centralized user and tenant management',
-      'Policy engines for approval workflows',
-      'Regional governance with delegated controls',
-    ],
-  },
+const factorSources = [
+  { name: 'EPA eGRID 2023', scope: '27 US subregions', type: 'Scope 2 grid electricity' },
+  { name: 'IEA 2023', scope: '55+ countries', type: 'Scope 2 international grids' },
+  { name: 'UK DEFRA 2024', scope: 'Global', type: 'Scope 1, 2, 3 fuels, transport, waste' },
+  { name: 'IPCC AR6 GWP-100', scope: 'Global', type: 'Refrigerant GWP values' },
+  { name: 'GHG Protocol', scope: '15 categories', type: 'Scope 3 methodology and factors' },
 ];
-
-const resources = [
-  'Enterprise datasheet (PDF)',
-  'ROI calculator + cost savings model',
-  'Implementation & onboarding guide',
-  'API documentation overview',
-  'Full case studies library',
-  'Security & compliance whitepaper',
-];
-
-const trustLogos = [
-  'GlobalEnergy',
-  'Atlas Logistics',
-  'Northwind Manufacturing',
-  'Helios Financial',
-  'Pinnacle Utilities',
-];
-
-const analystBadges = ['Gartner MQ', 'Forrester Wave', 'IDC MarketScape'];
-const complianceBadges = ['SOC 2 Type II', 'ISO 27001', 'GDPR Ready', 'HIPAA Ready'];
-const pressBadges = ['Forbes', 'WSJ', 'TechCrunch'];
 
 export default function DemoPage() {
-  const [activeModule, setActiveModule] = useState(demoModules[0].id);
-  const [activePersona, setActivePersona] = useState(personas[0].id);
-
-  const selectedModule = useMemo(
-    () => demoModules.find((module) => module.id === activeModule) ?? demoModules[0],
-    [activeModule]
-  );
-  const selectedPersona = useMemo(
-    () => personas.find((persona) => persona.id === activePersona) ?? personas[0],
-    [activePersona]
-  );
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background:
-          'radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 45%), radial-gradient(circle at 70% 20%, rgba(74, 222, 128, 0.18), transparent 50%), linear-gradient(135deg, #0b1222 0%, #0f172a 45%, #111827 100%)',
-        color: '#e2e8f0',
-      }}
-    >
-      <header
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          padding: '1rem 2.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'rgba(6, 10, 22, 0.75)',
-          backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(148, 163, 184, 0.15)',
-          zIndex: 1000,
-        }}
-      >
-        <Link
-          href="/"
-          style={{
-            fontSize: '1.4rem',
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-            background: 'linear-gradient(135deg, #38bdf8, #22c55e)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textDecoration: 'none',
-          }}
-        >
-          OffGridFlow
-        </Link>
-        <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-          <Link href="/" style={{ color: '#94a3b8', textDecoration: 'none' }}>
-            ← Back to Home
+    <div className="min-h-screen bg-dark-900 text-gray-100">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-gray-800/50 bg-dark-900/80 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link href="/" className="text-xl font-bold text-white">
+            OffGridFlow
           </Link>
-          <Link
-            href="/register"
-            style={{
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-              color: '#0b1222',
-              padding: '0.6rem 1.5rem',
-              borderRadius: '10px',
-              textDecoration: 'none',
-              fontWeight: 600,
-            }}
-          >
-            Start Free Trial
-          </Link>
-        </nav>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm text-gray-400 hover:text-white">
+              Home
+            </Link>
+            <Link href="/login" className="text-sm text-gray-400 hover:text-white">
+              Log In
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500"
+            >
+              Start Trial
+            </Link>
+          </div>
+        </div>
       </header>
 
-      <main style={{ paddingTop: '110px', maxWidth: '1200px', margin: '0 auto', padding: '110px 2rem 5rem' }}>
-        <section style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, letterSpacing: '0.25em' }}>
-            ENTERPRISE DEMO EXPERIENCE
-          </div>
-          <h1 style={{ fontSize: '2.8rem', fontWeight: 800, margin: '1rem 0 1rem' }}>
-            Experience how OffGridFlow reduces operational risk by 40%.
+      <main className="mx-auto max-w-5xl px-6 py-16">
+        {/* Hero */}
+        <section className="mb-16 text-center">
+          <h1 className="text-3xl font-bold text-white sm:text-4xl">
+            How OffGridFlow Works
           </h1>
-          <p style={{ fontSize: '1.1rem', color: '#94a3b8', maxWidth: '760px', margin: '0 auto 2rem' }}>
-            Streamline compliance, secure sensitive data, and unify global workflows with a platform engineered for
-            enterprise-scale climate reporting and governance.
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
+            From raw utility data to audit-ready compliance report in under 2 hours.
+            No consultants. No six-figure invoices.
           </p>
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-              gap: '0.75rem',
-              marginBottom: '1.5rem',
-            }}
-          >
-            {personas.map((persona) => (
-              <button
-                key={persona.id}
-                onClick={() => setActivePersona(persona.id)}
-                aria-pressed={activePersona === persona.id}
-                style={{
-                  padding: '0.65rem 1.1rem',
-                  borderRadius: '999px',
-                  border: activePersona === persona.id ? '1px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.3)',
-                  background: activePersona === persona.id ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                  color: activePersona === persona.id ? '#e2e8f0' : '#94a3b8',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                Demo for {persona.label}
-              </button>
-            ))}
-          </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '1rem',
-              marginBottom: '2rem',
-            }}
-          >
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.6)',
-                border: '1px solid rgba(148, 163, 184, 0.2)',
-                borderRadius: '12px',
-                padding: '1rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Primary outcome</div>
-              <div style={{ fontSize: '1rem', fontWeight: 700 }}>{selectedPersona.headline}</div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.6)',
-                border: '1px solid rgba(148, 163, 184, 0.2)',
-                borderRadius: '12px',
-                padding: '1rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{selectedPersona.kpi.label}</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#22c55e' }}>{selectedPersona.kpi.value}</div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.6)',
-                border: '1px solid rgba(148, 163, 184, 0.2)',
-                borderRadius: '12px',
-                padding: '1rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Trust signals</div>
-              <div style={{ fontSize: '1rem', fontWeight: 700 }}>SOC 2 • ISO 27001 • GDPR-ready</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
-            {trustLogos.map((logo) => (
+        </section>
+
+        {/* Core Workflow */}
+        <section className="mb-20">
+          <h2 className="mb-8 text-xs font-medium uppercase tracking-widest text-primary-400">
+            The 5-Step Workflow
+          </h2>
+          <div className="space-y-6">
+            {workflow.map((step) => (
               <div
-                key={logo}
-                style={{
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '999px',
-                  background: 'rgba(148, 163, 184, 0.12)',
-                  border: '1px solid rgba(148, 163, 184, 0.2)',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.04em',
-                }}
+                key={step.step}
+                className="rounded-xl border border-gray-800 bg-gray-800/30 p-6"
               >
-                {logo}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '3.5rem' }} aria-labelledby="interactive-demo">
-          <h2 id="interactive-demo" style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Interactive Demo Experience
-          </h2>
-          <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>
-            Choose your own adventure. Each module includes real-world data at enterprise scale, with narrative
-            highlights tied to business outcomes.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-            {demoModules.map((module) => (
-              <button
-                key={module.id}
-                onClick={() => setActiveModule(module.id)}
-                aria-pressed={activeModule === module.id}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '10px',
-                  border: activeModule === module.id ? '1px solid #22c55e' : '1px solid rgba(148, 163, 184, 0.3)',
-                  background: activeModule === module.id ? 'rgba(34, 197, 94, 0.18)' : 'transparent',
-                  color: activeModule === module.id ? '#e2e8f0' : '#94a3b8',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                {module.label}
-              </button>
-            ))}
-          </div>
-          <div
-            style={{
-              background: 'rgba(15, 23, 42, 0.7)',
-              borderRadius: '18px',
-              border: '1px solid rgba(148, 163, 184, 0.15)',
-              padding: '2rem',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '1.5rem',
-            }}
-          >
-            <div>
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                BUSINESS OUTCOME
-              </div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '0.75rem' }}>
-                {selectedModule.outcome}
-              </div>
-              <p style={{ color: '#94a3b8', lineHeight: 1.6 }}>{selectedModule.narrative}</p>
-              <div style={{ marginTop: '1.25rem' }}>
-                {selectedModule.impact.map((item) => (
-                  <div key={item} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ color: '#22c55e' }}>●</span>
-                    <span style={{ color: '#e2e8f0' }}>{item}</span>
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-600/10 text-lg font-bold text-primary-400">
+                    {step.step}
                   </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                PRIMARY SCREENS
-              </div>
-              <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                {selectedModule.screens.map((screen) => (
-                  <div
-                    key={screen}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      borderRadius: '10px',
-                      background: 'rgba(148, 163, 184, 0.12)',
-                      border: '1px solid rgba(148, 163, 184, 0.2)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {screen}
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                SIMULATED DATA SNAPSHOT
-              </div>
-              <div style={{ display: 'grid', gap: '0.6rem' }}>
-                {selectedModule.dataPoints.map((data) => (
-                  <div
-                    key={data}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      borderRadius: '10px',
-                      border: '1px dashed rgba(148, 163, 184, 0.3)',
-                      color: '#cbd5f5',
-                    }}
-                  >
-                    {data}
-                  </div>
-                ))}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.75rem' }}>
-                Simulated enterprise data. No customer data is used.
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '3rem' }} aria-labelledby="deep-dive">
-          <h2 id="deep-dive" style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Deep-Dive Capabilities
-          </h2>
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            {deepDiveModules.map((module) => (
-              <details
-                key={module.title}
-                style={{
-                  background: 'rgba(15, 23, 42, 0.65)',
-                  borderRadius: '14px',
-                  border: '1px solid rgba(148, 163, 184, 0.15)',
-                  padding: '1rem 1.5rem',
-                }}
-              >
-                <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: '1.05rem' }}>{module.title}</summary>
-                <div style={{ marginTop: '0.75rem', color: '#94a3b8' }}>
-                  {module.items.map((item) => (
-                    <div key={item} style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                      <span style={{ color: '#22c55e' }}>•</span>
-                      <span>{item}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-white">{step.title}</h3>
+                      <span className="hidden text-xs text-gray-500 sm:inline">{step.time}</span>
                     </div>
-                  ))}
+                    <p className="mt-2 text-sm text-gray-400">{step.desc}</p>
+                    <p className="mt-2 text-xs text-gray-500">{step.detail}</p>
+                  </div>
                 </div>
-              </details>
-            ))}
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '3.5rem' }} aria-labelledby="stakeholder-view">
-          <h2 id="stakeholder-view" style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Stakeholder-Specific Value Messaging
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '1.5rem',
-            }}
-          >
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.7)',
-                borderRadius: '16px',
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                padding: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                SELECTED PERSPECTIVE
-              </div>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{selectedPersona.label}</div>
-              <div style={{ color: '#94a3b8', marginTop: '0.75rem' }}>{selectedPersona.headline}</div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.7)',
-                borderRadius: '16px',
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                padding: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                TOP BENEFITS
-              </div>
-              {selectedPersona.bullets.map((bullet) => (
-                <div key={bullet} style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                  <span style={{ color: '#22c55e' }}>●</span>
-                  <span style={{ color: '#e2e8f0' }}>{bullet}</span>
-                </div>
-              ))}
-            </div>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.7)',
-                borderRadius: '16px',
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                padding: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                ROI SIGNAL
-              </div>
-              <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#22c55e' }}>
-                {selectedPersona.kpi.value}
-              </div>
-              <div style={{ color: '#94a3b8' }}>{selectedPersona.kpi.label}</div>
-            </div>
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '3.5rem' }} aria-labelledby="social-proof">
-          <h2 id="social-proof" style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Social Proof & Validation
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '1.5rem',
-            }}
-          >
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.75)',
-                borderRadius: '16px',
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                padding: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                CASE STUDY SNAPSHOT
-              </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                “OffGridFlow reduced our onboarding time from 2 weeks to 1 day.”
-              </div>
-              <div style={{ color: '#94a3b8' }}>VP Sustainability, Fortune 500 Manufacturing</div>
-              <div style={{ marginTop: '1rem', color: '#22c55e', fontWeight: 700 }}>Outcome: 3x faster reporting</div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.75)',
-                borderRadius: '16px',
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                padding: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                ANALYST RECOGNITION
-              </div>
-              {analystBadges.map((badge) => (
-                <div key={badge} style={{ marginBottom: '0.5rem', fontWeight: 600 }}>
-                  {badge}
-                </div>
-              ))}
-              <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Top performer in governance automation</div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.75)',
-                borderRadius: '16px',
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                padding: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                COMPLIANCE BADGES
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {complianceBadges.map((badge) => (
-                  <span
-                    key={badge}
-                    style={{
-                      padding: '0.35rem 0.7rem',
-                      borderRadius: '999px',
-                      background: 'rgba(34, 197, 94, 0.15)',
-                      border: '1px solid rgba(34, 197, 94, 0.3)',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
-              <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#94a3b8' }}>Independent verification ready</div>
-            </div>
-            <div
-              style={{
-                background: 'rgba(15, 23, 42, 0.75)',
-                borderRadius: '16px',
-                border: '1px solid rgba(148, 163, 184, 0.15)',
-                padding: '1.5rem',
-              }}
-            >
-              <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '0.5rem' }}>
-                AS SEEN IN
-              </div>
-              {pressBadges.map((badge) => (
-                <div key={badge} style={{ marginBottom: '0.4rem', fontWeight: 600 }}>
-                  {badge}
-                </div>
-              ))}
-              <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Featured for enterprise climate innovation</div>
-            </div>
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '3.5rem' }} aria-labelledby="next-steps">
-          <h2 id="next-steps" style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Clear, Friction-Free Next Steps
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '1rem',
-              marginBottom: '1.5rem',
-            }}
-          >
-            <Link
-              href="mailto:sales@offgridflow.com?subject=OffGridFlow%20Live%20Demo"
-              style={{
-                padding: '1rem',
-                borderRadius: '14px',
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                color: '#0b1222',
-                fontWeight: 700,
-                textAlign: 'center',
-              }}
-            >
-              Schedule a Personalized Live Demo
-            </Link>
-            <Link
-              href="/register"
-              style={{
-                padding: '1rem',
-                borderRadius: '14px',
-                border: '1px solid rgba(148, 163, 184, 0.3)',
-                background: 'rgba(15, 23, 42, 0.7)',
-                color: '#e2e8f0',
-                fontWeight: 700,
-                textAlign: 'center',
-              }}
-            >
-              Access a Guided Interactive Tour
-            </Link>
-            <Link
-              href="mailto:sales@offgridflow.com?subject=OffGridFlow%20Architecture%20Overview"
-              style={{
-                padding: '1rem',
-                borderRadius: '14px',
-                border: '1px solid rgba(148, 163, 184, 0.3)',
-                background: 'rgba(15, 23, 42, 0.7)',
-                color: '#e2e8f0',
-                fontWeight: 700,
-                textAlign: 'center',
-              }}
-            >
-              Request Architecture Overview
-            </Link>
-            <Link
-              href="mailto:sales@offgridflow.com?subject=OffGridFlow%20Custom%20POC"
-              style={{
-                padding: '1rem',
-                borderRadius: '14px',
-                border: '1px solid rgba(148, 163, 184, 0.3)',
-                background: 'rgba(15, 23, 42, 0.7)',
-                color: '#e2e8f0',
-                fontWeight: 700,
-                textAlign: 'center',
-              }}
-            >
-              Contact Sales for a Custom POC Plan
-            </Link>
-          </div>
-          <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-            Your data is confidential. Demos are tailored to your industry and risk profile.
-          </div>
-        </section>
-
-        <section style={{ marginBottom: '3.5rem' }} aria-labelledby="resources">
-          <h2 id="resources" style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Supporting Resources
-          </h2>
-          <div
-            style={{
-              background: 'rgba(15, 23, 42, 0.7)',
-              borderRadius: '16px',
-              border: '1px solid rgba(148, 163, 184, 0.15)',
-              padding: '1.5rem',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '0.75rem',
-            }}
-          >
-            {resources.map((resource) => (
-              <div
-                key={resource}
-                style={{
-                  padding: '0.75rem 1rem',
-                  borderRadius: '10px',
-                  border: '1px dashed rgba(148, 163, 184, 0.3)',
-                  color: '#e2e8f0',
-                  fontWeight: 600,
-                }}
-              >
-                {resource}
               </div>
             ))}
           </div>
         </section>
 
-        <section
-          style={{
-            padding: '2.5rem',
-            background: 'rgba(56, 189, 248, 0.08)',
-            borderRadius: '18px',
-            border: '1px solid rgba(56, 189, 248, 0.2)',
-          }}
-        >
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Ready to see your data in action?
+        {/* Compliance Frameworks */}
+        <section className="mb-20">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-widest text-primary-400">
+            Supported Frameworks
           </h2>
-          <p style={{ color: '#94a3b8', marginBottom: '1.5rem', maxWidth: '720px' }}>
-            We build a tailored demo around your data sources, regulatory requirements, and risk model so every
-            stakeholder leaves with a clear next step.
+          <p className="mb-6 text-sm text-gray-500">
+            OffGridFlow generates reports for five major disclosure regimes.
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-            <Link
-              href="mailto:sales@offgridflow.com?subject=OffGridFlow%20Demo%20Request"
-              style={{
-                background: 'linear-gradient(135deg, #38bdf8, #22c55e)',
-                color: '#0b1222',
-                padding: '0.9rem 2rem',
-                borderRadius: '12px',
-                fontWeight: 700,
-                textDecoration: 'none',
-              }}
-            >
-              Schedule Live Demo
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {frameworks.map((fw) => (
+              <div
+                key={fw.name}
+                className="rounded-xl border border-gray-800 bg-gray-800/30 p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white">{fw.name}</h3>
+                  <span className="rounded bg-gray-700 px-2 py-0.5 text-[10px] font-medium text-gray-400">
+                    {fw.region}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-gray-500 leading-relaxed">{fw.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Factor Sources */}
+        <section className="mb-20">
+          <h2 className="mb-2 text-xs font-medium uppercase tracking-widest text-primary-400">
+            Emission Factor Sources
+          </h2>
+          <p className="mb-6 text-sm text-gray-500">
+            184 verified emission factors with full provenance metadata.
+          </p>
+          <div className="overflow-hidden rounded-xl border border-gray-800">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800 bg-gray-800/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Source</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Coverage</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Used For</th>
+                </tr>
+              </thead>
+              <tbody>
+                {factorSources.map((f) => (
+                  <tr key={f.name} className="border-b border-gray-800/50">
+                    <td className="px-4 py-3 font-medium text-white">{f.name}</td>
+                    <td className="px-4 py-3 text-gray-400">{f.scope}</td>
+                    <td className="px-4 py-3 text-gray-500">{f.type}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-gray-600">
+            Full methodology documentation:{' '}
+            <Link href="/methodology" className="text-primary-400 hover:underline">
+              /methodology
             </Link>
+          </p>
+        </section>
+
+        {/* What You Get */}
+        <section className="mb-20">
+          <h2 className="mb-6 text-xs font-medium uppercase tracking-widest text-primary-400">
+            What the Platform Includes
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { title: 'Scope 1, 2 & 3 Calculators', desc: 'Activity-based, spend-based, and supplier-specific calculation methods per GHG Protocol.' },
+              { title: 'Immutable Calculation Ledger', desc: 'Every calculation recorded with formula, factor source, timestamp, and user. Locked on approval.' },
+              { title: 'Factor Version Locking', desc: 'Freeze emission factors to your reporting period so auditors can reproduce any prior calculation.' },
+              { title: 'Data Quality Engine', desc: 'Anomaly detection for outliers, duplicates, missing periods, and sudden changes.' },
+              { title: 'Approval Workflow', desc: 'Draft, submit, review, approve, reject — with full actor attribution and notes at each stage.' },
+              { title: 'Alert Action System', desc: 'Every data quality issue gets assign, comment, resolve, escalate, and dismiss actions.' },
+              { title: 'PDF & XBRL Export', desc: 'Compliance reports export to PDF for stakeholders and XBRL for regulatory submission.' },
+              { title: 'Cloud Connectors', desc: 'Automated data ingestion from AWS, Azure, GCP, SAP, and utility providers.' },
+            ].map((item) => (
+              <div key={item.title} className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+                <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+                <p className="mt-1 text-xs text-gray-500">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Trust — honest, no fabrication */}
+        <section className="mb-20">
+          <h2 className="mb-6 text-xs font-medium uppercase tracking-widest text-primary-400">
+            Trust & Security
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">GHG Protocol Compliant</h3>
+              <p className="mt-1 text-xs text-gray-500">
+                Scope 1, 2 (location + market-based), and all 15 Scope 3 categories aligned with GHG Protocol Corporate Standard.
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">SOC 2 Type I In Progress</h3>
+              <p className="mt-1 text-xs text-gray-500">
+                Targeting Q3 2026. Type II targeted Q1 2027. ISO 27001 targeted Q2 2027.
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-800 bg-gray-800/20 p-5">
+              <h3 className="text-sm font-semibold text-white">Tenant-Isolated Architecture</h3>
+              <p className="mt-1 text-xs text-gray-500">
+                RBAC with admin/user/viewer roles. JWT sessions. Account lockout. CSRF protection. Immutable audit logs.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3 text-xs text-gray-600">
+            <Link href="/trust" className="hover:text-primary-400">Trust Center</Link>
+            <span>|</span>
+            <Link href="/security" className="hover:text-primary-400">Security</Link>
+            <span>|</span>
+            <Link href="/privacy" className="hover:text-primary-400">Privacy Policy</Link>
+            <span>|</span>
+            <Link href="/methodology" className="hover:text-primary-400">Methodology</Link>
+            <span>|</span>
+            <Link href="/status" className="hover:text-primary-400">Status</Link>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="rounded-xl border border-primary-600/20 bg-primary-600/5 p-10 text-center">
+          <h2 className="text-2xl font-bold text-white">
+            Ready to see it with your data?
+          </h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-gray-400">
+            Upload a CSV and generate your first compliance report in under 2 hours.
+            Or schedule a call to discuss your specific regulatory requirements.
+          </p>
+          <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="/register"
-              style={{
-                border: '1px solid rgba(148, 163, 184, 0.3)',
-                background: 'rgba(15, 23, 42, 0.7)',
-                color: '#e2e8f0',
-                padding: '0.9rem 2rem',
-                borderRadius: '12px',
-                fontWeight: 700,
-                textDecoration: 'none',
-              }}
+              className="rounded-lg bg-primary-600 px-8 py-3 text-base font-semibold text-white hover:bg-primary-500"
             >
-              Start Interactive Tour
+              Start Free Trial
+            </Link>
+            <Link
+              href="mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Demo%20Request"
+              className="rounded-lg border border-gray-700 px-8 py-3 text-base font-medium text-gray-300 hover:border-gray-500 hover:text-white"
+            >
+              Schedule a Call
+            </Link>
+            <Link
+              href="/login"
+              className="text-sm text-gray-500 hover:text-white"
+            >
+              Already have an account? Log in
             </Link>
           </div>
         </section>

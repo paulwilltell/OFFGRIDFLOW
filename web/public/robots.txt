@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://off-grid-flow.com/sitemap.xml

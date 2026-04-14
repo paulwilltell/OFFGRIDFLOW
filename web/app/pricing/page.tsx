@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Pricing | OffGridFlow',
-  description: 'OffGridFlow pricing — enterprise carbon compliance starting at $4,800/year.',
+  description: 'OffGridFlow pricing — enterprise carbon compliance starting at $6,500/year.',
 };
 
 const tiers = [
@@ -156,7 +156,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <Link
-                  href={tier.name === 'Global Enterprise' ? '/demo' : `/register?plan=${tier.name.toLowerCase()}`}
+                  href={tier.name === 'Global' ? 'mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Global%20Plan%20Inquiry' : `/register?plan=${tier.name.toLowerCase().replace(/\s+/g, '_')}`}
                   className={`mt-8 block rounded-lg py-2.5 text-center text-sm font-medium transition ${
                     tier.highlight
                       ? 'bg-primary-600 text-white hover:bg-primary-500'
