@@ -5,8 +5,9 @@
  */
 
 import { APIError, RequestOptions } from './activities';
+import { config } from '../config';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+const API_BASE = config.apiBaseUrl;
 
 /**
  * User and auth types
@@ -38,47 +39,12 @@ export interface APIKey {
 }
 
 /**
- * Set auth token in storage
- */
-export const setAuthToken = (token: string): void => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('auth_token', token);
-  }
-};
-
-/**
- * Get auth token from storage
- */
-export const getAuthToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
-};
-
-/**
- * Remove auth token from storage
- */
-export const clearAuthToken = (): void => {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('auth_token');
-  }
-};
-
-/**
  * Build headers
  */
-const buildHeaders = (includeAuth = false): HeadersInit => {
-  const headers: HeadersInit = {
+const buildHeaders = (): HeadersInit => {
+  return {
     'Content-Type': 'application/json',
   };
-
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
-  return headers;
 };
 
 /**
@@ -114,16 +80,12 @@ export const register = async (
   const response = await fetch(`${API_BASE}/api/auth/register`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(data),
     signal: options.signal,
   });
 
-  const result = await handleResponse<AuthResponse>(response);
-
-  // Save token
-  setAuthToken(result.token);
-
-  return result;
+  return handleResponse<AuthResponse>(response);
 };
 
 /**
@@ -139,16 +101,12 @@ export const login = async (
   const response = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(data),
     signal: options.signal,
   });
 
-  const result = await handleResponse<AuthResponse>(response);
-
-  // Save token
-  setAuthToken(result.token);
-
-  return result;
+  return handleResponse<AuthResponse>(response);
 };
 
 /**
@@ -157,12 +115,10 @@ export const login = async (
 export const logout = async (options: RequestOptions = {}): Promise<void> => {
   const response = await fetch(`${API_BASE}/api/auth/logout`, {
     method: 'POST',
-    headers: buildHeaders(true),
+    headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
-
-  // Clear token regardless of response
-  clearAuthToken();
 
   if (!response.ok) {
     // Still clear token but log error
@@ -178,7 +134,8 @@ export const getCurrentUser = async (
 ): Promise<{ user: User }> => {
   const response = await fetch(`${API_BASE}/api/auth/me`, {
     method: 'GET',
-    headers: buildHeaders(true),
+    headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 
@@ -197,7 +154,8 @@ export const changePassword = async (
 ): Promise<{ message: string }> => {
   const response = await fetch(`${API_BASE}/api/auth/change-password`, {
     method: 'POST',
-    headers: buildHeaders(true),
+    headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(data),
     signal: options.signal,
   });
@@ -215,6 +173,7 @@ export const forgotPassword = async (
   const response = await fetch(`${API_BASE}/api/auth/password/forgot`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify({ email }),
     signal: options.signal,
   });
@@ -235,6 +194,7 @@ export const resetPassword = async (
   const response = await fetch(`${API_BASE}/api/auth/password/reset`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(data),
     signal: options.signal,
   });
@@ -255,7 +215,8 @@ export const createAPIKey = async (
 ): Promise<{ key: APIKey }> => {
   const response = await fetch(`${API_BASE}/api/auth/keys`, {
     method: 'POST',
-    headers: buildHeaders(true),
+    headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(data),
     signal: options.signal,
   });
@@ -271,7 +232,8 @@ export const listAPIKeys = async (
 ): Promise<{ keys: APIKey[] }> => {
   const response = await fetch(`${API_BASE}/api/auth/keys`, {
     method: 'GET',
-    headers: buildHeaders(true),
+    headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 
@@ -287,7 +249,8 @@ export const revokeAPIKey = async (
 ): Promise<{ message: string }> => {
   const response = await fetch(`${API_BASE}/api/auth/keys/${keyId}`, {
     method: 'DELETE',
-    headers: buildHeaders(true),
+    headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 
@@ -298,7 +261,8 @@ export const revokeAPIKey = async (
  * Check if user is authenticated
  */
 export const isAuthenticated = (): boolean => {
-  return getAuthToken() !== null;
+  if (typeof window === 'undefined') return false;
+  return Boolean(localStorage.getItem('auth_token') || localStorage.getItem('offgridflow_access_token'));
 };
 
 /**
@@ -309,14 +273,10 @@ export const refreshToken = async (
 ): Promise<AuthResponse> => {
   const response = await fetch(`${API_BASE}/api/auth/refresh`, {
     method: 'POST',
-    headers: buildHeaders(true),
+    headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 
-  const result = await handleResponse<AuthResponse>(response);
-
-  // Update token
-  setAuthToken(result.token);
-
-  return result;
+  return handleResponse<AuthResponse>(response);
 };

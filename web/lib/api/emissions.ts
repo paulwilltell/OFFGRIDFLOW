@@ -5,8 +5,9 @@
  */
 
 import { APIError, RequestOptions } from './activities';
+import { config } from '../config';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+const API_BASE = config.apiBaseUrl;
 
 /**
  * Emissions data types
@@ -37,27 +38,12 @@ export interface Scope2Summary {
 }
 
 /**
- * Get authentication token
- */
-const getAuthToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
-};
-
-/**
- * Build headers with auth
+ * Build headers
  */
 const buildHeaders = (): HeadersInit => {
-  const headers: HeadersInit = {
+  return {
     'Content-Type': 'application/json',
   };
-
-  const token = getAuthToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
 };
 
 /**
@@ -99,6 +85,7 @@ export const getScope2Summary = async (
   const response = await fetch(`${API_BASE}${url}`, {
     method: 'GET',
     headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 
@@ -125,6 +112,7 @@ export const getEmissionsSummary = async (
   const response = await fetch(`${API_BASE}${url}`, {
     method: 'GET',
     headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 
@@ -146,6 +134,7 @@ export const calculateEmissions = async (
   const response = await fetch(`${API_BASE}/api/emissions/calculate`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(activity),
     signal: options.signal,
   });
@@ -183,6 +172,7 @@ export const getEmissionsTrends = async (
     {
       method: 'GET',
       headers: buildHeaders(),
+      credentials: 'include',
       signal: options.signal,
     }
   );
@@ -216,6 +206,7 @@ export const getEmissionsByCategory = async (
   const response = await fetch(`${API_BASE}${url}`, {
     method: 'GET',
     headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 

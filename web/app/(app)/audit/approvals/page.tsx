@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, ApiRequestError } from '@/lib/api';
 import { useRequireAuth, useSession } from '@/lib/session';
 
 interface Approval {
@@ -39,13 +39,24 @@ export default function ApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = async () => {
+    setLoading(true);
+    setApiError(null);
     try {
       const res = await api.get<{ approvals: Approval[] }>('/api/audit/approvals');
       setApprovals(res.approvals || []);
-    } catch {
+    } catch (err) {
       setApprovals([]);
+      if (err instanceof ApiRequestError && err.status === 404) {
+        setApiError('Approval workflow service is not available in this environment yet.');
+      } else if (err instanceof ApiRequestError && err.status === 403) {
+        setApiError('Your account does not currently have access to approval workflows.');
+      } else {
+        setApiError('The approval workflow could not be loaded. Try again in a moment.');
+      }
     } finally {
       setLoading(false);
     }
@@ -55,18 +66,20 @@ export default function ApprovalsPage() {
 
   const handleAction = async (id: string, action: string) => {
     setActionLoading(id);
+    setActionError(null);
     try {
       await api.put(`/api/audit/approvals/${id}`, { action, notes });
       setNotes('');
       await load();
     } catch (err) {
-      console.error('Action failed:', err);
+      setActionError(err instanceof Error ? err.message : 'Approval action failed');
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleCreate = async () => {
+    setActionError(null);
     try {
       await api.post('/api/audit/approvals', {
         entity_type: 'report',
@@ -74,7 +87,7 @@ export default function ApprovalsPage() {
       });
       await load();
     } catch (err) {
-      console.error('Create failed:', err);
+      setActionError(err instanceof Error ? err.message : 'Failed to create approval request');
     }
   };
 
@@ -89,11 +102,18 @@ export default function ApprovalsPage() {
         </div>
         <button
           onClick={handleCreate}
+          disabled={Boolean(apiError)}
           className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-500"
         >
           New Approval Request
         </button>
       </div>
+
+      {actionError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {actionError}
+        </div>
+      )}
 
       {/* Workflow steps visualization */}
       <div className="mb-6 flex items-center justify-center gap-2 rounded-lg border border-gray-800 bg-gray-900/30 p-4">
@@ -110,6 +130,12 @@ export default function ApprovalsPage() {
 
       {loading ? (
         <div className="py-20 text-center text-gray-500">Loading approvals...</div>
+      ) : apiError ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-12 text-center">
+          <div className="mb-3 text-3xl">&#9888;</div>
+          <h3 className="mb-2 text-base font-semibold text-white">Approval Workflow Unavailable</h3>
+          <p className="text-sm text-amber-100/80">{apiError}</p>
+        </div>
       ) : approvals.length === 0 ? (
         <div className="rounded-xl border border-gray-800 bg-gray-800/30 p-12 text-center">
           <div className="mb-3 text-3xl">&#9989;</div>

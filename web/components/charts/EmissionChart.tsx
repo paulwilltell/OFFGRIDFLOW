@@ -19,37 +19,21 @@ export const EmissionChart = memo(function EmissionChart({
   const [view, setView] = useState<ChartView>('trend');
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
-  // Generate mock historical data for visualization
+  // Render only the current reporting period. We do not fabricate historical
+  // variance — showing a customer simulated emission trends would be a direct
+  // compliance and legal liability in a carbon reporting tool.
   const chartData = useMemo(() => {
     if (!data) return [];
-    
-    const periods = timeframe === 'monthly' ? 12 : timeframe === 'quarterly' ? 4 : 5;
-    const labels = timeframe === 'monthly' 
-      ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      : timeframe === 'quarterly'
-      ? ['Q1', 'Q2', 'Q3', 'Q4']
-      : ['2021', '2022', '2023', '2024', '2025'];
-
-    return labels.slice(0, periods).map((label, index) => {
-      // Simulate decreasing trend with some variation
-      const baseValue = data.total * (1 + (periods - index) * 0.05);
-      const variation = (Math.random() - 0.5) * 0.1 * baseValue;
-      const total = Math.max(0, baseValue + variation);
-      
-      // Distribute across scopes (approximate ratios)
-      const scope1Ratio = data.total > 0 ? data.scope1 / data.total : 0;
-      const scope2Ratio = data.total > 0 ? data.scope2 / data.total : 0;
-      const scope3Ratio = data.total > 0 ? data.scope3 / data.total : 0;
-
-      return {
-        label,
-        total: Math.round(total),
-        scope1: Math.round(total * scope1Ratio),
-        scope2: Math.round(total * scope2Ratio),
-        scope3: Math.round(total * scope3Ratio),
-      };
-    });
-  }, [data, timeframe]);
+    return [
+      {
+        label: 'Current',
+        total: Math.round(data.total),
+        scope1: Math.round(data.scope1),
+        scope2: Math.round(data.scope2),
+        scope3: Math.round(data.scope3),
+      },
+    ];
+  }, [data]);
 
   const maxValue = useMemo(() => {
     return Math.max(...chartData.map(d => d.total)) * 1.1;

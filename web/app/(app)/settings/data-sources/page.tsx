@@ -335,8 +335,8 @@ export default function DataSourcesPage() {
           api.get<Connector[]>('/api/connectors/list'),
           api.get<IngestionLog[]>('/api/ingestion/logs?limit=10'),
         ]);
-        setConnectors(c);
-        setLogs(l);
+        setConnectors(Array.isArray(c) ? c : []);
+        setLogs(Array.isArray(l) ? l : []);
         try {
           const s = await api.get<ScheduleStatus>('/api/connectors/schedule');
           setSchedule(s);

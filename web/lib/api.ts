@@ -43,11 +43,6 @@ export const TENANT_ID_KEY = 'offgridflow_tenant_id';
  * @param baseUrl - Override base URL (defaults to config.apiBaseUrl)
  */
 export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
-  const getAuthToken = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
-  };
-
   const getTenantId = (): string | null => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(TENANT_ID_KEY);
@@ -56,10 +51,6 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
   const buildHeaders = (): Headers => {
     const headers = new Headers();
     headers.set('Content-Type', 'application/json');
-    const token = getAuthToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
     const tenantId = getTenantId();
     if (tenantId) {
       headers.set('X-Tenant-ID', tenantId);

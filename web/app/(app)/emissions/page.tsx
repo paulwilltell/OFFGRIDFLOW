@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { getCSRFToken, CSRF_HEADER_NAME } from '@/lib/csrf';
 import type { Scope2Emission, Scope2Summary, PaginatedResponse, PageInfo } from '@/lib/types';
 import { useRequireAuth } from '@/lib/session';
 import { EmissionsTrendChart, ScopeBreakdownChart, EmissionsHeatmap } from '@/components/emissions';
@@ -520,16 +521,14 @@ function EmptyState() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      const csrfToken = await getCSRFToken();
 
-      const token = localStorage.getItem('offgridflow_access_token');
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_OFFGRIDFLOW_API_URL || 'https://offgridflow-api-production.up.railway.app'}/api/ingestion/upload/csv`,
-        {
-          method: 'POST',
-          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: formData,
-        }
-      );
+      const res = await fetch('/api/ingestion/upload/csv', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { [CSRF_HEADER_NAME]: csrfToken },
+        body: formData,
+      });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

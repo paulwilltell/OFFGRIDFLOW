@@ -174,12 +174,12 @@ export default function CSRDPage() {
           marginBottom: '1.5rem',
         }}
       >
-        <MetricCard label="Scope 1 (Direct)" value={report?.totals.scope1Tons ?? 0} unit="tCO2e" />
-        <MetricCard label="Scope 2 (Energy)" value={report?.totals.scope2Tons ?? 0} unit="tCO2e" />
-        <MetricCard label="Scope 3 (Value Chain)" value={report?.totals.scope3Tons ?? 0} unit="tCO2e" />
+        <MetricCard label="Scope 1 (Direct)" value={report?.totals?.scope1Tons ?? 0} unit="tCO2e" />
+        <MetricCard label="Scope 2 (Energy)" value={report?.totals?.scope2Tons ?? 0} unit="tCO2e" />
+        <MetricCard label="Scope 3 (Value Chain)" value={report?.totals?.scope3Tons ?? 0} unit="tCO2e" />
         <MetricCard
           label="Total GHG Emissions"
-          value={report?.totals.totalTons ?? 0}
+          value={report?.totals?.totalTons ?? 0}
           unit="tCO2e"
           highlight
         />
@@ -216,7 +216,7 @@ export default function CSRDPage() {
         <DisclosureItem
           code="E1-6"
           title="Gross Scope 1, 2, 3 and Total GHG emissions"
-          status={(report?.totals.totalTons ?? 0) > 0}
+          status={(report?.totals?.totalTons ?? 0) > 0}
         />
         <DisclosureItem
           code="E1-7"

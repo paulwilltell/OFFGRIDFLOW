@@ -1,3 +1,5 @@
+const apiOrigin = process.env.OFFGRIDFLOW_API_ORIGIN || 'https://offgridflow-api-v2-production.up.railway.app';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -51,11 +53,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://googleads.g.doubleclick.net https://www.googleadservices.com https://googleadservices.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://offgridflow-api-v2-production.up.railway.app https://*.stripe.com",
+              "img-src 'self' data: blob: https: https://googleads.g.doubleclick.net https://www.google.com https://www.googleadservices.com",
+              `connect-src 'self' ${apiOrigin} https://*.stripe.com https://googleads.g.doubleclick.net https://www.google.com https://google.com https://www.googleadservices.com https://googleadservices.com`,
               "frame-src 'self' https://*.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",
@@ -65,6 +67,17 @@ const nextConfig = {
         ],
       },
     ];
+  },
+
+  async rewrites() {
+    return {
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: `${apiOrigin}/api/:path*`,
+        },
+      ],
+    };
   },
 };
 

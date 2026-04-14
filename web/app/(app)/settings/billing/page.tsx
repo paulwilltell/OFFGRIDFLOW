@@ -122,6 +122,8 @@ function BillingContent() {
   }
 
   const planGroups = groupPlans(plans);
+  const hasMonthlyPlans = planGroups.some((group) => group.monthly);
+  const hasManagedSubscription = Boolean(subscription?.subscribed && subscription?.plan_id && subscription?.status);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -183,13 +185,19 @@ function BillingContent() {
                 <dd className="font-medium text-gray-900 dark:text-white">{formatPeriodEnd(subscription.current_period_end)}</dd>
               </div>
             </dl>
-            <button
-              onClick={handleManageSubscription}
-              disabled={portalLoading}
-              className="mt-5 w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
-            >
-              {portalLoading ? 'Loading…' : 'Manage Subscription'}
-            </button>
+            {hasManagedSubscription ? (
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="mt-5 w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+              >
+                {portalLoading ? 'Loading…' : 'Manage Subscription'}
+              </button>
+            ) : (
+              <p className="mt-5 text-sm text-gray-500 dark:text-gray-400">
+                No active subscription yet. Choose a plan below to start checkout.
+              </p>
+            )}
           </div>
         )}
 
@@ -198,29 +206,26 @@ function BillingContent() {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             {subscription ? 'Change Plan' : 'Choose Your Plan'}
           </h2>
-          <div className="flex items-center gap-3 mt-2">
-            <span className={`text-sm font-medium ${billingInterval === 'month' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-              Monthly
-            </span>
-            <button
-              onClick={() => setBillingInterval(billingInterval === 'month' ? 'year' : 'month')}
-              className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
-                billingInterval === 'year' ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
-              }`}
-            >
-              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                billingInterval === 'year' ? 'translate-x-8' : 'translate-x-1'
-              }`} />
-            </button>
-            <span className={`text-sm font-medium ${billingInterval === 'year' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-              Annual
-            </span>
-            {billingInterval === 'year' && (
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-                2 months free
+          {hasMonthlyPlans && (
+            <div className="flex items-center gap-3 mt-2">
+              <span className={`text-sm font-medium ${billingInterval === 'month' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                Monthly
               </span>
-            )}
-          </div>
+              <button
+                onClick={() => setBillingInterval(billingInterval === 'month' ? 'year' : 'month')}
+                className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
+                  billingInterval === 'year' ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  billingInterval === 'year' ? 'translate-x-8' : 'translate-x-1'
+                }`} />
+              </button>
+              <span className={`text-sm font-medium ${billingInterval === 'year' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                Annual
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Plan cards */}
@@ -232,7 +237,6 @@ function BillingContent() {
               <PlanCard
                 key={group.name}
                 plan={plan}
-                interval={billingInterval}
                 currentPlanId={subscription?.plan_id ?? null}
                 loading={checkoutLoading === plan.id}
                 onSubscribe={() => handleSubscribe(plan.id)}
@@ -263,19 +267,16 @@ function BillingContent() {
 
 interface PlanCardProps {
   plan: BillingPlan;
-  interval: 'month' | 'year';
   currentPlanId: string | null;
   loading: boolean;
   onSubscribe: () => void;
   onEliteInquiry?: () => void;
 }
 
-function PlanCard({ plan, interval, currentPlanId, loading, onSubscribe, onEliteInquiry }: PlanCardProps) {
-  const isElite = plan.id === 'enterprise';
-  const isCommand = plan.name === 'Carbon Command';
-  const isCurrent = currentPlanId === plan.id ||
-    (interval === 'month' && currentPlanId === plan.id.replace('_annual', '_monthly')) ||
-    (interval === 'year' && currentPlanId === plan.id.replace('_monthly', '_annual'));
+function PlanCard({ plan, currentPlanId, loading, onSubscribe, onEliteInquiry }: PlanCardProps) {
+  const isCustomQuote = plan.id === 'global' || plan.amount_cents === 0;
+  const isCommand = plan.name === 'Compliance Pro';
+  const isCurrent = currentPlanId === plan.id;
 
   return (
     <div className={`relative rounded-2xl border bg-white dark:bg-gray-800 p-8 flex flex-col shadow-sm transition-shadow hover:shadow-md ${
@@ -294,21 +295,17 @@ function PlanCard({ plan, interval, currentPlanId, loading, onSubscribe, onElite
       <div className="text-center mb-6">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
         <div className="mt-4">
-          {isElite ? (
+          {isCustomQuote ? (
             <div>
               <span className="text-3xl font-extrabold text-gray-900 dark:text-white">Contact Us</span>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Custom pricing for enterprise</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Custom pricing for complex multi-region deployments</p>
             </div>
           ) : (
             <div>
               <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
                 {formatPrice(plan.amount_cents, plan.interval)}
               </span>
-              {interval === 'year' && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  billed annually · saves ${((plan.amount_cents / 100) * (2/12)).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                </p>
-              )}
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">billed annually</p>
             </div>
           )}
         </div>
@@ -332,12 +329,12 @@ function PlanCard({ plan, interval, currentPlanId, loading, onSubscribe, onElite
           <button disabled className="w-full py-3 px-4 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
             Current Plan
           </button>
-        ) : isElite ? (
+        ) : isCustomQuote ? (
           <button
             onClick={onEliteInquiry}
             className="w-full py-3 px-4 rounded-xl text-sm font-medium text-white bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors"
           >
-            Request Enterprise Pricing
+            Request Global Pricing
           </button>
         ) : (
           <button

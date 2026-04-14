@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, useRequireAuth } from '@/lib/session';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const navItems = [
   {
@@ -159,8 +160,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="ml-60 flex-1 p-6">{children}</main>
+      {/* Main content — wrapped in an ErrorBoundary so that a crash in any
+          child page displays a recoverable fallback UI instead of white-screening
+          the entire authenticated shell or kicking the user to login. */}
+      <main className="ml-60 flex-1 p-6">
+        <ErrorBoundary componentName="App Page" resetKeys={[pathname]}>
+          {children}
+        </ErrorBoundary>
+      </main>
     </div>
   );
 }

@@ -57,21 +57,6 @@ const ACCESS_KEY = ACCESS_TOKEN_KEY;
 const REFRESH_KEY = REFRESH_TOKEN_KEY;
 const TENANT_KEY = TENANT_ID_KEY;
 
-function persistTokens(access?: string, refresh?: string) {
-  if (typeof window === 'undefined') return;
-  if (access) {
-    localStorage.setItem(ACCESS_KEY, access);
-  } else {
-    localStorage.removeItem(ACCESS_KEY);
-  }
-
-  if (refresh) {
-    localStorage.setItem(REFRESH_KEY, refresh);
-  } else {
-    localStorage.removeItem(REFRESH_KEY);
-  }
-}
-
 function persistTenant(tenantId?: string | null) {
   if (typeof window === 'undefined') return;
   if (tenantId) {
@@ -81,17 +66,17 @@ function persistTenant(tenantId?: string | null) {
   }
 }
 
-function getStoredTokens() {
-  if (typeof window === 'undefined') return { access: null, refresh: null };
-  return {
-    access: localStorage.getItem(ACCESS_KEY),
-    refresh: localStorage.getItem(REFRESH_KEY),
-  };
-}
-
 function getStoredTenant() {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(TENANT_KEY);
+}
+
+function clearLegacyTokens() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('offgridflow_session');
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -109,19 +94,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   });
 
   const setSession = useCallback((payload: LoginResponse) => {
-    const { token, user, tenant } = payload;
+    const { user, tenant } = payload;
     const storedTenant = getStoredTenant();
     const resolvedTenant =
       tenant?.id || user.default_tenant_id || storedTenant || user.tenants?.[0]?.id || null;
 
-    persistTokens(token, undefined);
+    clearLegacyTokens();
     persistTenant(resolvedTenant);
 
     setState({
       user,
       currentTenantId: resolvedTenant,
       tenants: user.tenants ?? [],
-      accessToken: token,
+      accessToken: null,
       refreshToken: null,
       loading: false,
       isAuthenticated: true,
@@ -129,7 +114,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearSession = useCallback(() => {
-    persistTokens(undefined, undefined);
+    clearLegacyTokens();
     persistTenant(null);
     setState({
       user: null,
@@ -143,12 +128,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const { access } = getStoredTokens();
-    if (!access) {
-      clearSession();
-      return;
-    }
-
     try {
       const res = await api.get<LoginResponse>('/api/auth/me');
       const resolvedTenant =
@@ -165,8 +144,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         user: res.user ?? null,
         currentTenantId: resolvedTenant,
         tenants: res.user?.tenants ?? [],
-        accessToken: access,
-        refreshToken: prev.refreshToken,
+        accessToken: null,
+        refreshToken: null,
         loading: false,
         isAuthenticated: true,
       }));
@@ -186,9 +165,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setState((prev) => ({
           ...prev,
           loading: false,
-          // If we already had a user from a prior refresh, keep it.
-          // If not (cold start), leave isAuthenticated false — but the token
-          // is still in localStorage, so a future refresh will try again.
           isAuthenticated: Boolean(prev.user),
         }));
       }
@@ -277,13 +253,6 @@ export function useRequireAuth() {
   useEffect(() => {
     if (session.loading) return;
     if (session.isAuthenticated) return;
-
-    // Only redirect to login if there is no stored access token at all.
-    // If a token exists but the refresh call failed transiently, stay put —
-    // the user hasn't logged out, the API just didn't respond this time.
-    if (typeof window === 'undefined') return;
-    const hasToken = Boolean(localStorage.getItem(ACCESS_TOKEN_KEY));
-    if (hasToken) return;
 
     const returnTo = encodeURIComponent(pathname || '/');
     router.replace(`/login?returnTo=${returnTo}`);

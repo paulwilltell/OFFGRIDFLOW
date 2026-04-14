@@ -1,11 +1,13 @@
 /**
  * Activities API Client
- * 
+ *
  * Production-grade API client for managing emission activities
  * with full error handling, retry logic, and TypeScript types.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+import { config } from '../config';
+
+const API_BASE = config.apiBaseUrl;
 
 /**
  * Activity data structure
@@ -77,29 +79,12 @@ export interface GetActivitiesOptions extends RequestOptions {
 }
 
 /**
- * Get authentication token from storage
+ * Build request headers
  */
-const getAuthToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
-};
-
-/**
- * Build request headers with authentication
- */
-const buildHeaders = (includeAuth = true): HeadersInit => {
-  const headers: HeadersInit = {
+const buildHeaders = (): HeadersInit => {
+  return {
     'Content-Type': 'application/json',
   };
-
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
-  return headers;
 };
 
 /**
@@ -147,6 +132,7 @@ const makeRequest = async <T>(
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
+      credentials: 'include',
       signal: finalSignal,
     });
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { SiteNav } from '../components/SiteNav';
+import { DEFAULT_API_ORIGIN } from '@/lib/config';
 
 interface ServiceStatus {
   name: string;
@@ -11,7 +12,7 @@ interface ServiceStatus {
   lastChecked?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_OFFGRIDFLOW_API_URL || 'https://offgridflow-api-v2-production.up.railway.app';
+const API_URL = DEFAULT_API_ORIGIN;
 
 export default function StatusPage() {
   const [services, setServices] = useState<ServiceStatus[]>([

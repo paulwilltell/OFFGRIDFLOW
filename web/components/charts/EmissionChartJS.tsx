@@ -69,50 +69,11 @@ export const EmissionChartJS: React.FC<EmissionChartProps> = memo(({
   const chartRef = useRef<ChartJS | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Generate mock historical data if only current data provided
+  // Return only real data. Never fabricate historical points — showing a
+  // customer 12 months of randomly-generated emissions values is a direct
+  // compliance and legal liability in a carbon reporting tool.
   const chartData = useCallback((): EmissionData[] => {
-    if (data.length > 1) return data;
-    
-    // Generate 12 months of historical data based on current value
-    const baseEmission = data[0] || {
-      id: '0',
-      tenantId: 'default',
-      total: 12450,
-      scope1: 3200,
-      scope2: 5800,
-      scope3: 3450,
-      intensity: 249,
-      timeframe: 'monthly' as Timeframe,
-      dataSources: [],
-      updatedAt: new Date(),
-      methodology: 'ghg_protocol' as const,
-      uncertainty: 5,
-      region: 'north_america' as const,
-    };
-
-    const months = 12;
-    const historicalData: EmissionData[] = [];
-    
-    for (let i = months - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      
-      // Add some variance to make it look realistic
-      const variance = 1 + (Math.random() - 0.5) * 0.2;
-      const trend = 1 - (i * 0.01); // Slight downward trend
-      
-      historicalData.push({
-        ...baseEmission,
-        id: `hist-${i}`,
-        total: Math.round(baseEmission.total * variance * trend),
-        scope1: Math.round(baseEmission.scope1 * variance * trend),
-        scope2: Math.round(baseEmission.scope2 * variance * trend),
-        scope3: Math.round(baseEmission.scope3 * variance * trend),
-        updatedAt: date,
-      });
-    }
-    
-    return historicalData;
+    return Array.isArray(data) ? data : [];
   }, [data]);
 
   useEffect(() => {
@@ -382,18 +343,32 @@ export const EmissionChartJS: React.FC<EmissionChartProps> = memo(({
       </div>
       
       <div style={{ position: 'relative', height: `${height}px` }}>
-        <canvas 
+        <canvas
           ref={canvasRef}
           style={{ width: '100%', height: '100%' }}
           role="img"
           aria-labelledby="chart-title"
           aria-describedby="chart-description"
         />
+        {/* Empty-state overlay — shown when there is insufficient real data
+            to plot a trend. We do not fabricate historical points. */}
+        {data.length < 2 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="pointer-events-auto max-w-sm rounded-xl border border-gray-700 bg-gray-900/80 backdrop-blur-sm px-5 py-4 text-center">
+              <div className="text-sm font-medium text-white">
+                Historical trends will appear once you have multiple reporting periods
+              </div>
+              <div className="mt-1 text-xs text-gray-400">
+                Upload additional monthly or quarterly data to see emissions over time.
+              </div>
+            </div>
+          </div>
+        )}
         {/* Screen reader accessible data summary */}
         <div id="chart-description" className="sr-only">
-          Line chart showing carbon emission trends over time. 
-          Displays Scope 1 (direct emissions), Scope 2 (energy), and Scope 3 (value chain) emissions.
-          Use keyboard to navigate data points. Scroll to zoom, drag to pan.
+          {data.length < 2
+            ? 'Not enough data to display a trend chart. Upload additional reporting periods to view historical emissions.'
+            : 'Line chart showing carbon emission trends over time. Displays Scope 1 (direct emissions), Scope 2 (energy), and Scope 3 (value chain) emissions. Use keyboard to navigate data points. Scroll to zoom, drag to pan.'}
         </div>
       </div>
 

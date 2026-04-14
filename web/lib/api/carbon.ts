@@ -1,19 +1,20 @@
-import { 
-  EmissionData, 
-  CarbonMetrics, 
-  ApiResponse, 
+import {
+  EmissionData,
+  CarbonMetrics,
+  ApiResponse,
   ApiError,
   Timeframe,
   QueryOptions,
   ComplianceReport,
   ReportFormat
 } from '@/types/carbon';
+import { config } from '../config';
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+const API_BASE_URL = config.apiBaseUrl;
 const API_VERSION = 'v1';
 
 interface RequestConfig extends RequestInit {
@@ -28,7 +29,6 @@ interface RequestConfig extends RequestInit {
 export class CarbonApi {
   private static instance: CarbonApi;
   private baseUrl: string;
-  private token: string | null = null;
 
   private constructor() {
     this.baseUrl = `${API_BASE_URL}/api/${API_VERSION}`;
@@ -45,13 +45,9 @@ export class CarbonApi {
   // Authentication
   // ============================================================================
 
-  setToken(token: string): void {
-    this.token = token;
-  }
+  setToken(): void {}
 
-  clearToken(): void {
-    this.token = null;
-  }
+  clearToken(): void {}
 
   // ============================================================================
   // HTTP Methods
@@ -84,10 +80,6 @@ export class CarbonApi {
       ...fetchConfig.headers,
     };
 
-    if (this.token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
-    }
-
     // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -96,6 +88,7 @@ export class CarbonApi {
       const response = await fetch(url, {
         ...fetchConfig,
         headers,
+        credentials: 'include',
         signal: controller.signal,
       });
 

@@ -21,18 +21,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for auth token in cookies or Authorization header
-  // The client stores the token in localStorage which we can't read server-side,
-  // but we can check for the session cookie set by the CSRF flow
-  const token = request.cookies.get('offgridflow_session')?.value;
+  const token =
+    request.cookies.get('offgrid_session')?.value ||
+    request.cookies.get('offgridflow_session')?.value;
 
-  // If no server-side cookie, let the client-side useRequireAuth handle redirect.
-  // This middleware mainly prevents search engines and direct URL scrapers from
-  // seeing authenticated page structures.
-  // We add a header so the client knows to check auth immediately.
-  const response = NextResponse.next();
-  response.headers.set('x-offgridflow-auth-required', 'true');
-  return response;
+  if (token) {
+    return NextResponse.next();
+  }
+
+  const loginUrl = new URL('/login', request.url);
+  loginUrl.searchParams.set('returnTo', pathname);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

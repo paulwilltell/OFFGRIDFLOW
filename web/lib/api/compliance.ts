@@ -5,8 +5,9 @@
  */
 
 import { APIError, RequestOptions } from './activities';
+import { config } from '../config';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+const API_BASE = config.apiBaseUrl;
 
 /**
  * Compliance report types
@@ -50,27 +51,12 @@ export interface ComplianceSummary {
 }
 
 /**
- * Get auth token
- */
-const getAuthToken = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
-};
-
-/**
  * Build headers
  */
 const buildHeaders = (): HeadersInit => {
-  const headers: HeadersInit = {
+  return {
     'Content-Type': 'application/json',
   };
-
-  const token = getAuthToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
 };
 
 /**
@@ -105,6 +91,7 @@ export const generateCSRDReport = async (
   const response = await fetch(`${API_BASE}/api/compliance/csrd`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(params),
     signal: options.signal,
   });
@@ -125,6 +112,7 @@ export const generateSECReport = async (
   const response = await fetch(`${API_BASE}/api/compliance/sec`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(params),
     signal: options.signal,
   });
@@ -145,6 +133,7 @@ export const generateCaliforniaReport = async (
   const response = await fetch(`${API_BASE}/api/compliance/california`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(params),
     signal: options.signal,
   });
@@ -165,6 +154,7 @@ export const generateCBAMReport = async (
   const response = await fetch(`${API_BASE}/api/compliance/cbam`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(params),
     signal: options.signal,
   });
@@ -185,6 +175,7 @@ export const generateIFRSReport = async (
   const response = await fetch(`${API_BASE}/api/compliance/ifrs`, {
     method: 'POST',
     headers: buildHeaders(),
+    credentials: 'include',
     body: JSON.stringify(params),
     signal: options.signal,
   });
@@ -201,6 +192,7 @@ export const getComplianceSummary = async (
   const response = await fetch(`${API_BASE}/api/compliance/summary`, {
     method: 'GET',
     headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 
@@ -220,6 +212,7 @@ export const exportComplianceReport = async (
     {
       method: 'GET',
       headers: buildHeaders(),
+      credentials: 'include',
       signal: options.signal,
     }
   );
@@ -253,6 +246,7 @@ export const getComplianceReports = async (
   const response = await fetch(`${API_BASE}${url}`, {
     method: 'GET',
     headers: buildHeaders(),
+    credentials: 'include',
     signal: options.signal,
   });
 

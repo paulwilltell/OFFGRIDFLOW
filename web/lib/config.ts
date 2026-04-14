@@ -1,13 +1,22 @@
 /**
  * Configuration helper for OffGridFlow frontend.
- * Reads API base URL from environment variables with sensible defaults.
+ *
+ * Browser requests should stay same-origin so the frontend can own the
+ * authenticated session cookie. Server-side code can still call the Railway API
+ * origin directly.
  */
 
+export const DEFAULT_API_ORIGIN = 'https://offgridflow-api-v2-production.up.railway.app';
+
+export function resolveApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return '';
+  }
+
+  return process.env.OFFGRIDFLOW_API_ORIGIN || DEFAULT_API_ORIGIN;
+}
+
 export const config = {
-  /**
-   * Base URL for the OffGridFlow API.
-   * Set NEXT_PUBLIC_OFFGRIDFLOW_API_URL in your environment for production.
-   * Defaults to http://localhost:8090 for local development.
-   */
-  apiBaseUrl: process.env.NEXT_PUBLIC_OFFGRIDFLOW_API_URL || 'https://offgridflow-api-v2-production.up.railway.app',
+  apiBaseUrl: resolveApiBaseUrl(),
+  apiOrigin: process.env.OFFGRIDFLOW_API_ORIGIN || DEFAULT_API_ORIGIN,
 };

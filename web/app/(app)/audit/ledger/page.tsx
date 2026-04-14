@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, ApiRequestError } from '@/lib/api';
 import { useRequireAuth } from '@/lib/session';
 
 interface LedgerEntry {
@@ -33,15 +33,25 @@ export default function LedgerPage() {
   const [loading, setLoading] = useState(true);
   const [scopeFilter, setScopeFilter] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
+      setApiError(null);
       try {
         const params = scopeFilter ? `?scope=${scopeFilter}` : '';
         const res = await api.get<{ entries: LedgerEntry[]; count: number }>(`/api/audit/ledger${params}`);
         setEntries(res.entries || []);
-      } catch {
+      } catch (err) {
         setEntries([]);
+        if (err instanceof ApiRequestError && err.status === 404) {
+          setApiError('Audit ledger service is not available in this environment yet.');
+        } else if (err instanceof ApiRequestError && err.status === 403) {
+          setApiError('Your account does not currently have access to the audit ledger.');
+        } else {
+          setApiError('The audit ledger could not be loaded. Try again in a moment.');
+        }
       } finally {
         setLoading(false);
       }
@@ -75,6 +85,18 @@ export default function LedgerPage() {
 
       {loading ? (
         <div className="py-20 text-center text-gray-500">Loading ledger...</div>
+      ) : apiError ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-12 text-center">
+          <div className="mb-3 text-3xl">&#9888;</div>
+          <h3 className="mb-2 text-base font-semibold text-white">Audit Ledger Unavailable</h3>
+          <p className="mb-4 text-sm text-amber-100/80">{apiError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-block rounded-lg bg-white/10 px-5 py-2 text-sm font-medium text-white hover:bg-white/20"
+          >
+            Retry
+          </button>
+        </div>
       ) : entries.length === 0 ? (
         <div className="rounded-xl border border-gray-800 bg-gray-800/30 p-12 text-center">
           <div className="mb-3 text-3xl">&#128220;</div>

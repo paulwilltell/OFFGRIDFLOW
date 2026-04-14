@@ -10,7 +10,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/dashboard/carbon';
-  const { login } = useSession();
+  const { login, refreshSession } = useSession();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +36,7 @@ function LoginForm() {
         return;
       }
       
-      if (res?.token) {
+      if (res?.user) {
         router.push(returnTo);
       }
     } catch (err) {
@@ -67,17 +67,14 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await api.post<{ token: string; user: any }>('/api/auth/verify-2fa', {
+      await api.post('/api/auth/verify-2fa', {
         email,
         code: otpCode,
         temp_token: tempToken,
       });
-      
-      if (res?.token) {
-        // Store token and redirect
-        localStorage.setItem('offgridflow_access_token', res.token);
-        router.push(returnTo);
-      }
+
+      await refreshSession();
+      router.push(returnTo);
     } catch (err) {
       if (err instanceof ApiRequestError) {
         setError(err.message);
