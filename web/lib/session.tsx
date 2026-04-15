@@ -13,6 +13,7 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  company?: string;
   firstName?: string;
   lastName?: string;
   role: string;

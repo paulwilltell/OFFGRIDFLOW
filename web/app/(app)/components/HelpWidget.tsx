@@ -18,6 +18,12 @@ export function HelpWidget() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
+  function reopenSetupAssistant() {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('offgridflow:open-setup-assistant'));
+    setOpen(false);
+  }
+
   // Close on Escape and on outside click.
   useEffect(() => {
     if (!open) return;
@@ -130,6 +136,13 @@ Please describe what you were trying to do and what went wrong.
             >
               <span>Getting started checklist</span>
             </a>
+            <button
+              type="button"
+              onClick={reopenSetupAssistant}
+              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-gray-300 hover:bg-gray-800 hover:text-white"
+            >
+              <span>Open setup assistant</span>
+            </button>
           </div>
 
           <div className="mt-4 space-y-2 border-t border-gray-800 pt-3">

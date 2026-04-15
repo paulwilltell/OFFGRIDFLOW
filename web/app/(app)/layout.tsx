@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useSession, useRequireAuth } from '@/lib/session';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { HelpWidget } from './components/HelpWidget';
+import { SetupAssistant } from './components/SetupAssistant';
 
 const navItems = [
   {
@@ -171,6 +172,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </ErrorBoundary>
       </main>
+
+      <SetupAssistant />
 
       {/* Floating help widget — provides every authenticated page with a
           self-service escalation path to reduce chargeback risk. */}

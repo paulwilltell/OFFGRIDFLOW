@@ -137,7 +137,7 @@ function ComplianceTracker({ status }: { status: Record<string, ComplianceStatus
   };
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
+    <div className="dashboard-compliance-status rounded-xl border border-gray-800 bg-gray-800/40 p-5">
       <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Compliance Status</h3>
       <div className="space-y-2.5">
         {frameworks.map((fw) => {
@@ -204,7 +204,7 @@ function ActivityLedger({ dataSources }: { dataSources: DataSource[] }) {
 
 function QuickActions() {
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
+    <div className="dashboard-quick-actions rounded-xl border border-gray-800 bg-gray-800/40 p-5">
       <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-gray-500">Quick Actions</h3>
       <div className="grid grid-cols-2 gap-2">
         {[
@@ -542,7 +542,7 @@ const DashboardHeader = memo(function DashboardHeader({
   };
 
   return (
-    <div className="mb-6 flex items-center justify-between">
+    <div className="dashboard-header mb-6 flex items-center justify-between">
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-white">Carbon Dashboard</h1>
@@ -773,7 +773,7 @@ const DashboardContent = memo(function DashboardContent({
       {role === 'executive' && (
         <>
           {/* Top KPI Row */}
-          <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="dashboard-kpi-grid mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <MetricCard
               label="Total Emissions"
               value={total}
@@ -809,7 +809,7 @@ const DashboardContent = memo(function DashboardContent({
           <div className="grid gap-6 lg:grid-cols-12">
             {/* Chart — 8 cols */}
             <div className="lg:col-span-8">
-              <div className="rounded-xl border border-gray-800 bg-gray-800/40 p-5">
+              <div className="dashboard-chart rounded-xl border border-gray-800 bg-gray-800/40 p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">Emissions Trend</h3>
                   <span className="text-[10px] text-gray-600">GHG Protocol methodology</span>
