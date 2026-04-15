@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AppProviders } from "./providers";
 import { CookieConsent } from "./components/CookieConsent";
+import { JsonLd, organizationSchema, softwareApplicationSchema } from "@/components/JsonLd";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -63,6 +64,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="font-sans antialiased">
+        {/* Site-wide entity markup. Both schemas appear on every page so that
+            search engines consistently associate OffGridFlow LLC as the
+            publisher and the platform as the SoftwareApplication product. */}
+        <JsonLd id="ld-global-organization" data={organizationSchema()} />
+        <JsonLd id="ld-global-software" data={softwareApplicationSchema()} />
         <AppProviders>{children}</AppProviders>
         <CookieConsent />
       </body>
