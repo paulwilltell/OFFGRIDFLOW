@@ -292,9 +292,9 @@ func (s *Service) GenerateReport(ctx context.Context, tenantID, userID string, f
 
 		pdf.SetFont("Arial", "", 10)
 		pdf.CellFormat(30, 6, "Severity", "1", 0, "L", false, 0, "")
-		pdf.CellFormat(45, 6, strings.Title(string(risk.Severity)), "1", 0, "L", false, 0, "")
+		pdf.CellFormat(45, 6, titleCase(string(risk.Severity)), "1", 0, "L", false, 0, "")
 		pdf.CellFormat(30, 6, "Priority", "1", 0, "L", false, 0, "")
-		pdf.CellFormat(45, 6, strings.Title(string(risk.Priority)), "1", 1, "L", false, 0, "")
+		pdf.CellFormat(45, 6, titleCase(string(risk.Priority)), "1", 1, "L", false, 0, "")
 		pdf.CellFormat(30, 6, "Completed", "1", 0, "L", false, 0, "")
 		pdf.CellFormat(45, 6, yesNo(risk.Completed), "1", 0, "L", false, 0, "")
 		pdf.CellFormat(30, 6, "Self-certified", "1", 0, "L", false, 0, "")
@@ -336,7 +336,7 @@ func (s *Service) GenerateReport(ctx context.Context, tenantID, userID string, f
 		if risk.EngineStatus != "" {
 			statusLabel = strings.ReplaceAll(string(risk.EngineStatus), "_", " ")
 		}
-		pdf.MultiCell(0, 5, fmt.Sprintf("Status: %s", strings.Title(statusLabel)), "", "L", false)
+		pdf.MultiCell(0, 5, fmt.Sprintf("Status: %s", titleCase(statusLabel)), "", "L", false)
 		if strings.TrimSpace(risk.EngineFeedback) != "" {
 			pdf.MultiCell(0, 5, risk.EngineFeedback, "", "L", false)
 		}
@@ -365,8 +365,8 @@ func (s *Service) GenerateReport(ctx context.Context, tenantID, userID string, f
 	return buf.Bytes(), filename, nil
 }
 
-func (s *Service) GetEvidence(ctx context.Context, tenantID, evidenceID string) (*StoredEvidence, error) {
-	return s.store.GetEvidence(ctx, tenantID, evidenceID)
+func (s *Service) GetEvidence(ctx context.Context, tenantID, evidenceID string, framework Framework) (*StoredEvidence, error) {
+	return s.store.GetEvidence(ctx, tenantID, evidenceID, framework)
 }
 
 func (s *Service) buildRiskFacts(ctx context.Context, tenantID string, framework Framework, year int, activities []ingestion.Activity) (RiskFacts, error) {
@@ -642,4 +642,19 @@ func yesNo(value bool) string {
 		return "Yes"
 	}
 	return "No"
+}
+
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	parts := strings.Fields(s)
+	for i, part := range parts {
+		runes := []rune(strings.ToLower(part))
+		if len(runes) > 0 {
+			runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+		}
+		parts[i] = string(runes)
+	}
+	return strings.Join(parts, " ")
 }

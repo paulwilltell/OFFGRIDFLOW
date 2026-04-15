@@ -54,7 +54,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case suffix == "/report" && r.Method == http.MethodGet:
 		h.handleReport(w, r, tenant.ID, user.ID, framework)
 	case strings.HasPrefix(suffix, "/evidence/") && r.Method == http.MethodGet:
-		h.handleEvidence(w, r, tenant.ID)
+		h.handleEvidence(w, r, tenant.ID, framework, suffix)
 	default:
 		responders.MethodNotAllowed(w, http.MethodGet, http.MethodPost)
 	}
@@ -116,19 +116,19 @@ func (h *Handler) handleReport(w http.ResponseWriter, r *http.Request, tenantID,
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	w.Header().Set("Content-Length", strconv.Itoa(len(content)))
+	w.Header().Set("Cache-Control", "no-store, max-age=0")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
 }
 
-func (h *Handler) handleEvidence(w http.ResponseWriter, r *http.Request, tenantID string) {
-	evidenceID := strings.TrimPrefix(r.URL.Path, "/api/abatement/")
-	parts := strings.Split(evidenceID, "/")
-	if len(parts) < 3 {
+func (h *Handler) handleEvidence(w http.ResponseWriter, r *http.Request, tenantID string, framework Framework, suffix string) {
+	evidenceID := strings.TrimPrefix(suffix, "/evidence/")
+	evidenceID = strings.Trim(evidenceID, "/")
+	if evidenceID == "" || strings.Contains(evidenceID, "/") {
 		responders.NotFound(w, "abatement evidence")
 		return
 	}
-	evidenceID = parts[len(parts)-1]
-	record, err := h.service.GetEvidence(r.Context(), tenantID, evidenceID)
+	record, err := h.service.GetEvidence(r.Context(), tenantID, evidenceID, framework)
 	if err != nil {
 		responders.NotFound(w, err.Error())
 		return
@@ -136,6 +136,7 @@ func (h *Handler) handleEvidence(w http.ResponseWriter, r *http.Request, tenantI
 	w.Header().Set("Content-Type", record.MimeType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", record.FileName))
 	w.Header().Set("Content-Length", strconv.FormatInt(record.SizeBytes, 10))
+	w.Header().Set("Cache-Control", "no-store, max-age=0")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(record.Content)
 }

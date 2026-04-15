@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS approval_workflow CASCADE;
+DROP TABLE IF EXISTS factor_snapshots CASCADE;

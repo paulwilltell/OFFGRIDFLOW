@@ -2,7 +2,6 @@ package abatement
 
 import (
 	"regexp"
-	"slices"
 	"strings"
 )
 
@@ -348,19 +347,3 @@ func hasEvidence(evidence []EvidenceUpload) bool {
 	return false
 }
 
-func evidenceTypes(evidence []EvidenceUpload) []string {
-	kinds := make([]string, 0, len(evidence))
-	for _, file := range evidence {
-		switch {
-		case strings.HasPrefix(strings.ToLower(file.MimeType), "application/pdf"):
-			kinds = append(kinds, "pdf")
-		case strings.HasPrefix(strings.ToLower(file.MimeType), "text/csv"):
-			kinds = append(kinds, "csv")
-		case strings.HasPrefix(strings.ToLower(file.MimeType), "image/"):
-			kinds = append(kinds, "image")
-		default:
-			kinds = append(kinds, strings.ToLower(file.MimeType))
-		}
-	}
-	return slices.Compact(kinds)
-}

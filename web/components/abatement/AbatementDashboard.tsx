@@ -319,8 +319,12 @@ export function AbatementDashboard({ framework }: AbatementDashboardProps) {
               isSelfCertifying={
                 selfCertifyMutation.isPending && activeSelfCertifyCheckId === risk.complianceCheckId
               }
-              onEvaluate={(payload) => evaluateMutation.mutateAsync(payload)}
-              onSelfCertify={(payload) => selfCertifyMutation.mutateAsync(payload)}
+              onEvaluate={async (payload) => {
+                await evaluateMutation.mutateAsync(payload);
+              }}
+              onSelfCertify={async (payload) => {
+                await selfCertifyMutation.mutateAsync(payload);
+              }}
             />
           ))}
         </section>

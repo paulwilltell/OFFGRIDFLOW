@@ -255,7 +255,7 @@ WHERE tenant_id = $1
 	return item, nil
 }
 
-func (s *Store) GetEvidence(ctx context.Context, tenantID, evidenceID string) (*StoredEvidence, error) {
+func (s *Store) GetEvidence(ctx context.Context, tenantID, evidenceID string, framework Framework) (*StoredEvidence, error) {
 	tx, err := s.beginTenantTx(ctx, tenantID)
 	if err != nil {
 		return nil, err
@@ -265,9 +265,9 @@ func (s *Store) GetEvidence(ctx context.Context, tenantID, evidenceID string) (*
 	query := `
 SELECT id, tenant_id, action_item_id, framework, storage_path, file_name, mime_type, file_size_bytes, file_bytes, created_at
 FROM abatement_evidence
-WHERE tenant_id = $1 AND id = $2`
+WHERE tenant_id = $1 AND id = $2 AND framework = $3`
 	var record StoredEvidence
-	if err := tx.QueryRowContext(ctx, query, tenantID, evidenceID).Scan(
+	if err := tx.QueryRowContext(ctx, query, tenantID, evidenceID, string(framework)).Scan(
 		&record.ID,
 		&record.TenantID,
 		&record.ActionID,
