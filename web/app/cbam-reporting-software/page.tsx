@@ -48,6 +48,11 @@ export default function CbamPage() {
       slug="cbam-reporting-software"
       ctaUtm="cbam_reporting"
       faqs={faqs}
+      relatedPages={[
+        { href: '/carbon-accounting-software', label: 'Carbon accounting software', description: 'See the wider calculation platform behind CBAM outputs.' },
+        { href: '/for-procurement', label: 'For procurement teams', description: 'Coordinate supplier and customs data collection.' },
+        { href: '/sap-carbon-reporting', label: 'SAP carbon reporting', description: 'Use ERP data as the CBAM source system.' },
+      ]}
     >
       <p>
         CBAM is the EU&apos;s tariff on embedded carbon in imports of cement, iron and steel,
@@ -73,14 +78,6 @@ export default function CbamPage() {
         compliance tool, or the CBAM Registry portal handles filing and certificate surrender.
       </p>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/carbon-accounting-software" className="text-primary-400 hover:underline">Carbon accounting software</Link>
-        {' · '}
-        <Link href="/for-procurement" className="text-primary-400 hover:underline">For procurement teams</Link>
-        {' · '}
-        <Link href="/methodology" className="text-primary-400 hover:underline">Methodology library</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

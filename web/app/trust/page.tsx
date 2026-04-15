@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SiteNav } from '../components/SiteNav';
+import { SiteFooter } from '../components/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Trust Center | OffGridFlow',
@@ -314,6 +315,27 @@ export default function TrustCenterPage() {
           </div>
         </section>
 
+        <section className="mb-10 rounded-2xl border border-gray-800 bg-gray-800/20 p-6">
+          <h2 className="text-xl font-semibold text-white">Framework and Role Pages</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Procurement and finance reviewers often start here, then branch into the framework-specific buying pages below.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { href: '/sb-253-reporting-software', label: 'SB 253 reporting software' },
+              { href: '/csrd-reporting-software', label: 'CSRD reporting software' },
+              { href: '/ifrs-s2-reporting-software', label: 'IFRS S2 reporting software' },
+              { href: '/for-cfos', label: 'For CFOs' },
+              { href: '/for-sustainability-managers', label: 'For sustainability managers' },
+              { href: '/for-procurement', label: 'For procurement' },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="rounded-xl border border-gray-800/70 bg-gray-900/40 p-4 text-sm text-white transition hover:border-primary-600/40">
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* Contact */}
         <section className="rounded-xl border border-primary-600/20 bg-primary-600/5 p-6 text-center">
           <h3 className="text-lg font-semibold text-white">Need more detail?</h3>
@@ -328,6 +350,7 @@ export default function TrustCenterPage() {
           </a>
         </section>
       </div>
+      <SiteFooter />
     </div>
   );
 }

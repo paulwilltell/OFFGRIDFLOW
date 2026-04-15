@@ -53,6 +53,11 @@ export default function CsrdPage() {
       slug="csrd-reporting-software"
       ctaUtm="csrd_reporting"
       faqs={faqs}
+      relatedPages={[
+        { href: '/csrd-vs-ifrs-s2-carbon-reporting', label: 'CSRD vs IFRS S2', description: 'Compare double materiality with financial materiality.' },
+        { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting', description: 'Understand the underlying emissions workflow.' },
+        { href: '/for-sustainability-managers', label: 'For sustainability managers', description: 'See the operating model for ongoing reporting cycles.' },
+      ]}
     >
       <p>
         CSRD is the most comprehensive sustainability reporting regime ever imposed on EU
@@ -96,14 +101,6 @@ export default function CsrdPage() {
         <li>Self-serve onboarding means the assurance team sees the data before the audit starts</li>
       </ul>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/csrd-vs-ifrs-s2-carbon-reporting" className="text-primary-400 hover:underline">CSRD vs IFRS S2</Link>
-        {' · '}
-        <Link href="/scope-1-2-3-reporting-software" className="text-primary-400 hover:underline">Scope 1, 2, 3 reporting</Link>
-        {' · '}
-        <Link href="/methodology" className="text-primary-400 hover:underline">Methodology library</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

@@ -53,6 +53,11 @@ export default function ScopeReportingPage() {
       slug="scope-1-2-3-reporting-software"
       ctaUtm="scope_1_2_3_reporting"
       faqs={faqs}
+      relatedPages={[
+        { href: '/carbon-accounting-software', label: 'Carbon accounting software', description: 'The broader platform view across calculation and reporting.' },
+        { href: '/scope-3-supplier-emissions-software', label: 'Scope 3 supplier emissions', description: 'Go deeper on supplier data collection and upgrades.' },
+        { href: '/methodology', label: 'Methodology library', description: 'Inspect factor sources and scope-specific methods.' },
+      ]}
     >
       <p>
         OffGridFlow implements the GHG Protocol Corporate Standard, the Scope 2 Guidance, and the
@@ -94,14 +99,6 @@ export default function ScopeReportingPage() {
         <li>Export reconciliation checksum proving exported numbers match the ledger</li>
       </ul>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/carbon-accounting-software" className="text-primary-400 hover:underline">Carbon accounting software</Link>
-        {' · '}
-        <Link href="/scope-3-supplier-emissions-software" className="text-primary-400 hover:underline">Scope 3 supplier emissions</Link>
-        {' · '}
-        <Link href="/methodology" className="text-primary-400 hover:underline">Methodology library</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

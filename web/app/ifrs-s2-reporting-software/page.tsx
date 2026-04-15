@@ -53,6 +53,11 @@ export default function IfrsS2Page() {
       slug="ifrs-s2-reporting-software"
       ctaUtm="ifrs_s2_reporting"
       faqs={faqs}
+      relatedPages={[
+        { href: '/csrd-vs-ifrs-s2-carbon-reporting', label: 'CSRD vs IFRS S2', description: 'Compare adoption patterns, assurance, and filing differences.' },
+        { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting', description: 'Review the underlying emissions data model.' },
+        { href: '/methodology', label: 'Methodology library', description: 'Inspect factor sources and standards alignment.' },
+      ]}
     >
       <p>
         IFRS S2 is the ISSB&apos;s climate-related financial disclosure standard. Adopted or
@@ -84,14 +89,6 @@ export default function IfrsS2Page() {
         <li>Evidence pack for assurance providers</li>
       </ul>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/csrd-vs-ifrs-s2-carbon-reporting" className="text-primary-400 hover:underline">CSRD vs IFRS S2 comparison</Link>
-        {' · '}
-        <Link href="/scope-1-2-3-reporting-software" className="text-primary-400 hover:underline">Scope 1, 2, 3 reporting</Link>
-        {' · '}
-        <Link href="/methodology" className="text-primary-400 hover:underline">Methodology library</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

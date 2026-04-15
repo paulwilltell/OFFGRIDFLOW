@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SiteNav } from '../components/SiteNav';
+import { SiteFooter } from '../components/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Methodology Library | OffGridFlow',
@@ -276,6 +277,27 @@ export default function MethodologyPage() {
           </div>
         </section>
 
+        <section className="mt-12 rounded-2xl border border-gray-800 bg-gray-800/20 p-6">
+          <h2 className="text-lg font-semibold text-white">Framework Pages Using This Methodology</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            These pages apply the same published calculation basis to specific reporting programs and buyer roles.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { href: '/sb-253-reporting-software', label: 'SB 253 reporting software' },
+              { href: '/csrd-reporting-software', label: 'CSRD reporting software' },
+              { href: '/ifrs-s2-reporting-software', label: 'IFRS S2 reporting software' },
+              { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting software' },
+              { href: '/carbon-accounting-software-for-finance-teams', label: 'Carbon accounting for finance teams' },
+              { href: '/audit-ready-carbon-accounting', label: 'Audit-ready carbon accounting' },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="rounded-xl border border-gray-800/70 bg-gray-900/40 p-4 text-sm text-white transition hover:border-primary-600/40">
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <div className="mt-10 text-center">
           <Link href="/evidence" className="text-sm text-primary-400 hover:underline">Redacted Evidence Pack</Link>
           <span className="mx-3 text-gray-700">|</span>
@@ -286,6 +308,7 @@ export default function MethodologyPage() {
           <Link href="/about" className="text-sm text-primary-400 hover:underline">About OffGridFlow</Link>
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }

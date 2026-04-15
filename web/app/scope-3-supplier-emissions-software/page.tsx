@@ -48,6 +48,11 @@ export default function Scope3SupplierPage() {
       slug="scope-3-supplier-emissions-software"
       ctaUtm="scope_3_supplier"
       faqs={faqs}
+      relatedPages={[
+        { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting', description: 'See how supplier data fits into the overall emissions program.' },
+        { href: '/for-procurement', label: 'For procurement teams', description: 'Operational guidance for supplier collection workflows.' },
+        { href: '/sap-carbon-reporting', label: 'SAP carbon reporting', description: 'Feed supplier and spend data from ERP systems.' },
+      ]}
     >
       <p>
         Scope 3 is where carbon accounting gets hard. Activity data sits in supplier emails,
@@ -82,14 +87,6 @@ export default function Scope3SupplierPage() {
         <li>Year-over-year tier progression view so you can demonstrate data quality improvement</li>
       </ul>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/scope-1-2-3-reporting-software" className="text-primary-400 hover:underline">Scope 1, 2, 3 reporting</Link>
-        {' · '}
-        <Link href="/for-procurement" className="text-primary-400 hover:underline">For procurement teams</Link>
-        {' · '}
-        <Link href="/sap-carbon-reporting" className="text-primary-400 hover:underline">SAP carbon reporting</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

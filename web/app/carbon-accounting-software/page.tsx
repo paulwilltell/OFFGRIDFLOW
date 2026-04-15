@@ -53,6 +53,11 @@ export default function CarbonAccountingSoftwarePage() {
       slug="carbon-accounting-software"
       ctaUtm="carbon_accounting_software"
       faqs={faqs}
+      relatedPages={[
+        { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting', description: 'See the full multi-scope reporting workflow.' },
+        { href: '/audit-ready-carbon-accounting', label: 'Audit-ready carbon accounting', description: 'Focus on assurance-grade controls and evidence.' },
+        { href: '/methodology', label: 'Methodology library', description: 'Review factor sources and calculation methods.' },
+      ]}
     >
       <p>
         Carbon accounting is the discipline of measuring, recording, and reporting greenhouse gas
@@ -113,14 +118,6 @@ export default function CarbonAccountingSoftwarePage() {
         <li>Self-serve pricing that does not punish healthy product usage</li>
       </ul>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/scope-1-2-3-reporting-software" className="text-primary-400 hover:underline">Scope 1, 2, 3 reporting</Link>
-        {' · '}
-        <Link href="/audit-ready-carbon-accounting" className="text-primary-400 hover:underline">Audit-ready carbon accounting</Link>
-        {' · '}
-        <Link href="/methodology" className="text-primary-400 hover:underline">Methodology library</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

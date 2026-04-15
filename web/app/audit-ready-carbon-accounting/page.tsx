@@ -48,6 +48,11 @@ export default function AuditReadyPage() {
       slug="audit-ready-carbon-accounting"
       ctaUtm="audit_ready"
       faqs={faqs}
+      relatedPages={[
+        { href: '/architecture', label: 'Architecture & traceability chain', description: 'Inspect the underlying ledger and factor snapshot model.' },
+        { href: '/evidence', label: 'Sample evidence pack', description: 'Review a redacted audit packet end to end.' },
+        { href: '/sb-253-reporting-software', label: 'SB 253 reporting', description: 'See one of the highest-assurance disclosure use cases.' },
+      ]}
     >
       <p>
         Auditor-ready carbon accounting means the same thing as auditor-ready financial
@@ -93,14 +98,6 @@ export default function AuditReadyPage() {
         <li>Export reconciliation confirms final numbers match the locked ledger</li>
       </ol>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/architecture" className="text-primary-400 hover:underline">Architecture &amp; traceability chain</Link>
-        {' · '}
-        <Link href="/evidence" className="text-primary-400 hover:underline">Sample evidence pack</Link>
-        {' · '}
-        <Link href="/sb-253-reporting-software" className="text-primary-400 hover:underline">SB 253 reporting</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

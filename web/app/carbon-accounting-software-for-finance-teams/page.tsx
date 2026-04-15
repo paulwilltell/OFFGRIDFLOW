@@ -53,6 +53,11 @@ export default function FinanceTeamsPage() {
       slug="finance-teams"
       ctaUtm="for_finance"
       faqs={faqs}
+      relatedPages={[
+        { href: '/for-cfos', label: 'For CFOs', description: 'See the leadership-level control model and close process.' },
+        { href: '/audit-ready-carbon-accounting', label: 'Audit-ready carbon accounting', description: 'Focus on defensibility and assurance evidence.' },
+        { href: '/sb-253-reporting-software', label: 'SB 253 reporting', description: 'Map finance ownership to a concrete disclosure regime.' },
+      ]}
     >
       <p>
         When climate disclosures entered the 10-K (SEC Climate), the annual report (CSRD), and
@@ -86,14 +91,6 @@ export default function FinanceTeamsPage() {
         audit-ready draft outputs — with a published methodology auditors can reference.
       </p>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/for-cfos" className="text-primary-400 hover:underline">For CFOs</Link>
-        {' · '}
-        <Link href="/audit-ready-carbon-accounting" className="text-primary-400 hover:underline">Audit-ready carbon accounting</Link>
-        {' · '}
-        <Link href="/sb-253-reporting-software" className="text-primary-400 hover:underline">SB 253 reporting</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

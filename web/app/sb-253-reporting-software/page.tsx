@@ -53,6 +53,11 @@ export default function Sb253Page() {
       slug="sb-253-reporting-software"
       ctaUtm="sb253_reporting"
       faqs={faqs}
+      relatedPages={[
+        { href: '/sb-253-readiness-checklist', label: 'SB 253 readiness checklist', description: 'Map the filing program before the first disclosure cycle.' },
+        { href: '/audit-ready-carbon-accounting', label: 'Audit-ready carbon accounting', description: 'See the controls that support limited assurance.' },
+        { href: '/carbon-accounting-software-for-finance-teams', label: 'Carbon accounting for finance teams', description: 'Translate SB 253 into a controllership workflow.' },
+      ]}
     >
       <p>
         California Senate Bill 253 (Climate Corporate Data Accountability Act) makes annual
@@ -103,14 +108,6 @@ export default function Sb253Page() {
         result chain for every reported figure, in seconds.
       </p>
 
-      <p className="mt-8 text-sm text-gray-500">
-        Related reading:{' '}
-        <Link href="/sb-253-readiness-checklist" className="text-primary-400 hover:underline">SB 253 readiness checklist</Link>
-        {' · '}
-        <Link href="/audit-ready-carbon-accounting" className="text-primary-400 hover:underline">Audit-ready carbon accounting</Link>
-        {' · '}
-        <Link href="/carbon-accounting-software-for-finance-teams" className="text-primary-400 hover:underline">Carbon accounting for finance teams</Link>
-      </p>
     </MoneyPageLayout>
   );
 }

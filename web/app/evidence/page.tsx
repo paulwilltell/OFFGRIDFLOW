@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SiteNav } from '../components/SiteNav';
+import { SiteFooter } from '../components/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'Evidence Pack | OffGridFlow',
@@ -380,6 +381,27 @@ export default function EvidencePage() {
           </div>
         </section>
 
+        <section className="mt-16 rounded-2xl border border-gray-800 bg-gray-800/20 p-6">
+          <h2 className="text-lg font-semibold text-white">Pages That Reuse This Evidence Pattern</h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Each of these pages routes buyers back to the same public proof assets before they ever start a trial.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { href: '/sb-253-reporting-software', label: 'SB 253 reporting software' },
+              { href: '/csrd-reporting-software', label: 'CSRD reporting software' },
+              { href: '/audit-ready-carbon-accounting', label: 'Audit-ready carbon accounting' },
+              { href: '/persefoni-alternative', label: 'Persefoni alternative' },
+              { href: '/watershed-alternative', label: 'Watershed alternative' },
+              { href: '/for-cfos', label: 'For CFOs' },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="rounded-xl border border-gray-800/70 bg-gray-900/40 p-4 text-sm text-white transition hover:border-primary-600/40">
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <div className="mt-14 flex flex-wrap gap-4 text-sm">
           <Link href="/case-study" className="text-primary-400 hover:underline">Case Study</Link>
           <Link href="/methodology" className="text-primary-400 hover:underline">Methodology</Link>
@@ -388,6 +410,7 @@ export default function EvidencePage() {
           <Link href="/operations" className="text-primary-400 hover:underline">Operations Proof</Link>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

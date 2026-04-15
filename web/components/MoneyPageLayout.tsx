@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SiteNav } from '../app/components/SiteNav';
+import { SiteFooter } from '../app/components/SiteFooter';
+import { RelatedPages, type RelatedPageLink } from './RelatedPages';
 import {
   JsonLd,
   breadcrumbListSchema,
@@ -27,6 +29,8 @@ interface MoneyPageLayoutProps {
   /** Secondary CTA shown alongside the primary button. */
   secondaryCtaText?: string;
   secondaryCtaHref?: string;
+  /** Related pages to reinforce internal topical clusters. */
+  relatedPages?: RelatedPageLink[];
   /** Page body content. */
   children: ReactNode;
 }
@@ -55,6 +59,7 @@ export function MoneyPageLayout({
   ctaText = 'Start Free Trial',
   secondaryCtaText = 'Review the workflow',
   secondaryCtaHref = '/demo',
+  relatedPages = [],
   children,
 }: MoneyPageLayoutProps) {
   const utmParam = ctaUtm ? `&utm_source=organic&utm_medium=money_page&utm_campaign=${ctaUtm}` : '';
@@ -131,7 +136,7 @@ export function MoneyPageLayout({
             {[
               { label: 'Methodology', href: '/methodology', desc: '5 factor sources, 5 methods, versioned' },
               { label: 'Evidence Pack', href: '/evidence', desc: 'Redacted sample audit packet' },
-              { label: 'Architecture', href: '/architecture', desc: 'Data model + traceability chain' },
+              { label: 'Security', href: '/security', desc: 'Controls, tenancy, and access model' },
               { label: 'Live Status', href: '/status', desc: 'Real-time health endpoint' },
             ].map((item) => (
               <Link
@@ -166,6 +171,8 @@ export function MoneyPageLayout({
           </section>
         )}
 
+        <RelatedPages items={relatedPages} />
+
         {/* Closing CTA */}
         <section className="mt-16 rounded-2xl border border-primary-600/20 bg-primary-600/5 p-8 text-center">
           <h2 className="text-2xl font-bold text-white">Ready to see it with your data?</h2>
@@ -196,6 +203,8 @@ export function MoneyPageLayout({
           </p>
         </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }
