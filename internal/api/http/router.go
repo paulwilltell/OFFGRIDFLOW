@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/example/offgridflow/internal/abatement"
 	"github.com/example/offgridflow/internal/ai"
 	"github.com/example/offgridflow/internal/audit"
 	"github.com/example/offgridflow/internal/api/http/handlers"
@@ -454,6 +455,15 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 		protectedMux.Handle("/api/compliance/ifrs", requireProPlan(handlers.NewIFRSComplianceHandler(complianceDeps)))
 		protectedMux.HandleFunc("/api/compliance/summary", handlers.NewComplianceSummaryHandler(complianceDeps))
 		protectedMux.HandleFunc("/api/compliance/export", handlers.NewComplianceExportHandler(complianceDeps))
+	}
+
+	if r.cfg.DB != nil && r.cfg.ActivityStore != nil {
+		abatementService := abatement.NewService(
+			r.cfg.DB.DB,
+			r.cfg.ActivityStore,
+			compliance.NewService(r.cfg.ActivityStore, r.cfg.Scope1Calculator, r.cfg.Scope2Calculator, r.cfg.Scope3Calculator),
+		)
+		protectedMux.Handle("/api/abatement/", requireProPlan(http.HandlerFunc(abatement.NewHandler(abatementService).ServeHTTP)))
 	}
 
 	// Audit endpoints (calculation ledger, approval workflow, change log)
