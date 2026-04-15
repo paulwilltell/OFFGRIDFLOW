@@ -664,7 +664,7 @@ const DashboardContent = memo(function DashboardContent({
     });
 
     try {
-      const report = await CarbonApi.getInstance().generateComplianceReport(tenantId, format, ['scope1', 'scope2', 'scope3']);
+      const report = await CarbonApi.getInstance().generateComplianceReport(tenantId, format, [1, 2, 3]);
       if (report?.url) {
         window.open(report.url, '_blank');
       } else {

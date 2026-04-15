@@ -191,7 +191,7 @@ async function proxyRequest(request: NextRequest, segments: string[]) {
 }
 
 type RouteContext = {
-  params: Promise<{ path: string[] }> | { path: string[] };
+  params: Promise<{ path: string[] }>;
 };
 
 async function resolveSegments(context: RouteContext): Promise<string[]> {
