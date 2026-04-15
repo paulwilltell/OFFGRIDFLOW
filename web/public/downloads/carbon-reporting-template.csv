@@ -1,0 +1,10 @@
+meter_id,location,period_start,period_end,quantity,unit,scope,category,source,notes
+CAMX-HQ-01,CAMX,2026-01-01,2026-01-31,3112,kWh,2,electricity,utility_bill_csv,HQ main meter
+CAMX-HQ-01,CAMX,2026-02-01,2026-02-28,2984,kWh,2,electricity,utility_bill_csv,
+NWPP-DC-01,NWPP,2026-01-01,2026-01-31,18420,kWh,2,electricity,utility_bill_csv,Primary data center
+FLEET-DIESEL-03,US-WEST,2026-01-01,2026-01-31,842,L,1,diesel,fleet,Company fleet consolidated
+NATGAS-HQ-01,CAMX,2026-01-01,2026-01-31,612,m3,1,natural_gas,stationary_combustion,HQ heating
+REFR-HQ-01,GLOBAL,2026-01-01,2026-03-31,1.2,kg,1,r_134a,fugitive,HVAC refrigerant leak quarterly estimate
+TRAVEL-AIR-01,GLOBAL,2026-01-01,2026-01-31,18400,pax-km,3,flight_domestic,business_travel,Corporate travel tool export
+COMMUTE-01,US-WEST,2026-01-01,2026-01-31,12400,pax-km,3,car_petrol,commuting,Employee commute survey Q1 2026
+SPEND-GOODS-01,GLOBAL,2026-01-01,2026-03-31,245000,USD,3,spend_services,purchased_goods,Professional services spend Q1

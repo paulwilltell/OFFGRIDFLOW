@@ -1,0 +1,24 @@
+factor_id,scope,region,source,category,unit,value_kg_co2e_per_unit,method,data_source,vintage,notes
+grid-us-west,2,US-WEST,electricity,electricity,kWh,0.298,location-based,EPA eGRID 2023 (WECC),2023,US Western Interconnection
+grid-us-east,2,US-EAST,electricity,electricity,kWh,0.388,location-based,EPA eGRID 2023 (NPCC/RFC/SERC),2023,US Eastern Interconnection
+grid-us-texas,2,US-TEXAS,electricity,electricity,kWh,0.395,location-based,EPA eGRID 2023 (ERCOT),2023,Texas ERCOT grid
+grid-us-midwest,2,US-MIDWEST,electricity,electricity,kWh,0.452,location-based,EPA eGRID 2023 (MRO),2023,Midwest Reliability Organization
+grid-us-average,2,US-AVERAGE,electricity,electricity,kWh,0.386,location-based,EPA eGRID 2023 (US Average),2023,National average for mixed portfolios
+grid-camx,2,CAMX,electricity,electricity,kWh,0.225,location-based,EPA eGRID 2023 (CAMX),2023,California grid (CAMX subregion)
+grid-nwpp,2,NWPP,electricity,electricity,kWh,0.252,location-based,EPA eGRID 2023 (NWPP),2023,Northwest Power Pool
+grid-uk,2,UK,electricity,electricity,kWh,0.193,location-based,UK DEFRA 2024,2024,UK national grid average
+grid-germany,2,DE,electricity,electricity,kWh,0.366,location-based,EEA 2023 (Germany),2023,German national grid
+grid-france,2,FR,electricity,electricity,kWh,0.056,location-based,EEA 2023 (France),2023,Nuclear-heavy mix
+grid-india,2,IN,electricity,electricity,kWh,0.708,location-based,IEA 2023 (India),2023,India national grid
+grid-china,2,CN,electricity,electricity,kWh,0.681,location-based,IEA 2023 (China),2023,China national grid
+grid-eu-central,2,EU-CENTRAL,electricity,electricity,kWh,0.350,location-based,EEA 2023 (DE/PL),2023,Central Europe mix
+grid-eu-north,2,EU-NORTH,electricity,electricity,kWh,0.150,location-based,EEA 2023 (Nordic),2023,Nordic grid
+grid-eu-west,2,EU-WEST,electricity,electricity,kWh,0.185,location-based,EEA 2023 (FR/BE),2023,Western Europe
+grid-eu-south,2,EU-SOUTH,electricity,electricity,kWh,0.295,location-based,EEA 2023 (IT/ES),2023,Southern Europe
+grid-eu-average,2,EU-AVERAGE,electricity,electricity,kWh,0.276,location-based,EEA 2023 (EU Average),2023,EU27 average
+grid-asia-pacific,2,ASIA-PACIFIC,electricity,electricity,kWh,0.550,location-based,IEA 2023 (APAC Average),2023,Asia-Pacific regional average
+grid-asia-japan,2,ASIA-JAPAN,electricity,electricity,kWh,0.470,location-based,IEA 2023 (Japan),2023,Japan national grid
+grid-asia-australia,2,ASIA-AUSTRALIA,electricity,electricity,kWh,0.656,location-based,IEA 2023 (Australia),2023,Australia NEM and WEM combined
+grid-canada,2,CANADA,electricity,electricity,kWh,0.130,location-based,IEA 2023 (Canada),2023,Canada national average
+grid-latam-brazil,2,LATAM-BRAZIL,electricity,electricity,kWh,0.075,location-based,IEA 2023 (Brazil),2023,Hydro-dominated mix
+thermal-steam-global,2,GLOBAL,steam,steam,kWh,0.0501,location-based,Default district steam (14.7 kgCO2e/MMBtu),2024,Generic district steam
