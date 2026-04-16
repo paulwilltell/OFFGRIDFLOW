@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SiteNav } from '../components/SiteNav';
+import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 
 export const metadata: Metadata = {
   title: 'Demo | OffGridFlow',
@@ -249,18 +250,23 @@ export default function DemoPage() {
               Start Free Trial
             </Link>
             <Link
-              href="mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Demo%20Request"
-              className="rounded-lg border border-gray-700 px-8 py-3 text-base font-medium text-gray-300 hover:border-gray-500 hover:text-white"
-            >
-              Contact Sales
-            </Link>
-            <Link
               href="/login"
               className="text-sm text-gray-500 hover:text-white"
             >
               Already have an account? Log in
             </Link>
           </div>
+        </section>
+
+        {/* Lead capture form — replaces raw mailto with a structured form that
+            routes enterprise inquiries to sales and tracks via gtag. */}
+        <section className="mt-16 rounded-2xl border border-gray-800 bg-gray-800/20 p-8">
+          <h2 className="mb-2 text-xl font-bold text-white">Talk to us about your reporting needs</h2>
+          <p className="mb-6 text-sm text-gray-400">
+            Enterprise teams, multi-framework filers, and SAP integration requests — fill out the
+            form below and we&apos;ll respond within one business day.
+          </p>
+          <LeadCaptureForm source="demo_page" />
         </section>
       </main>
     </div>
