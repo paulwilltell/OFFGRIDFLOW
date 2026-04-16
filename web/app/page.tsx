@@ -4,6 +4,7 @@ import { SiteNav } from './components/SiteNav';
 import { SiteFooter } from './components/SiteFooter';
 import { FadeIn } from './components/FadeIn';
 import { DashboardPreview } from './components/DashboardPreview';
+import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 
 export const metadata: Metadata = {
   title: 'OffGridFlow | Carbon Compliance Without the Big 4 Price Tag',
@@ -207,22 +208,31 @@ export default function HomePage() {
       <section className="border-t border-gray-800/50 px-6 py-20">
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-16 text-center text-3xl font-bold text-white">Built for your role</h2>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {[
               {
                 role: 'CFOs & Finance',
                 headline: 'Close your audit without open questions',
+                href: '/for-cfos',
                 points: ['Audit-ready reports that pass third-party review', 'Cost control: 90% less than Big 4 engagements', 'Full calculation transparency for investor confidence'],
               },
               {
                 role: 'Sustainability Managers',
                 headline: 'Accurate data without the manual work',
+                href: '/for-sustainability-managers',
                 points: ['EPA eGRID, DEFRA, IEA factors — no manual lookups', 'Scope 1, 2, 3 in one platform', 'Track progress against reduction targets'],
               },
               {
-                role: 'Operations & IT',
-                headline: 'Cloud emissions tracked automatically',
-                points: ['AWS, Azure, GCP carbon data via API connectors', 'SAP and utility bill integration', 'CSV bulk import for historical data'],
+                role: 'Procurement',
+                headline: 'Turn supplier data into Scope 3 coverage',
+                href: '/for-procurement',
+                points: ['Supplier requests and CSV templates in one workflow', 'Spend-based to supplier-specific progression', 'CBAM and supplier-emissions reporting support'],
+              },
+              {
+                role: 'Compliance Owners',
+                headline: 'Run disclosure review with evidence, not email',
+                href: '/for-compliance-owners',
+                points: ['Framework-specific draft outputs mapped to one workspace', 'Review-ready evidence for finance, legal, and audit', 'Approval visibility before filing deadlines'],
               },
             ].map((p) => (
               <div key={p.role} className="rounded-xl border border-gray-800 bg-dark-800 p-7">
@@ -236,6 +246,13 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
+                <Link
+                  href={p.href}
+                  className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-primary-400 transition hover:text-primary-300"
+                >
+                  See the role page
+                  <span aria-hidden="true">&rarr;</span>
+                </Link>
               </div>
             ))}
           </div>
@@ -421,6 +438,22 @@ export default function HomePage() {
               Review the workflow &rarr;
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* LEAD CAPTURE — Enterprise + multi-framework inquiries               */}
+      {/* ================================================================== */}
+      <section className="border-t border-gray-800/50 px-6 py-20">
+        <div className="mx-auto max-w-2xl">
+          <h2 className="mb-2 text-center text-2xl font-bold text-white">
+            Need a tailored walkthrough?
+          </h2>
+          <p className="mb-8 text-center text-sm text-gray-400">
+            Enterprise teams, multi-framework filers, and SAP integration requests.
+            We respond within one business day.
+          </p>
+          <LeadCaptureForm source="homepage_bottom" compact />
         </div>
       </section>
 

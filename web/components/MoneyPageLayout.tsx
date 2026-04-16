@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { SiteNav } from '../app/components/SiteNav';
 import { SiteFooter } from '../app/components/SiteFooter';
 import { RelatedPages, type RelatedPageLink } from './RelatedPages';
+import { LeadCaptureForm } from './LeadCaptureForm';
 import {
   JsonLd,
   breadcrumbListSchema,
@@ -31,6 +32,10 @@ interface MoneyPageLayoutProps {
   secondaryCtaHref?: string;
   /** Related pages to reinforce internal topical clusters. */
   relatedPages?: RelatedPageLink[];
+  /** Show the lead capture form below the closing CTA. */
+  showLeadForm?: boolean;
+  /** Pre-fill framework in the lead form. */
+  leadFormFramework?: string;
   /** Page body content. */
   children: ReactNode;
 }
@@ -60,6 +65,8 @@ export function MoneyPageLayout({
   secondaryCtaText = 'Review the workflow',
   secondaryCtaHref = '/demo',
   relatedPages = [],
+  showLeadForm = false,
+  leadFormFramework,
   children,
 }: MoneyPageLayoutProps) {
   const utmParam = ctaUtm ? `&utm_source=organic&utm_medium=money_page&utm_campaign=${ctaUtm}` : '';
@@ -203,6 +210,20 @@ export function MoneyPageLayout({
           </p>
         </section>
       </main>
+
+      {showLeadForm && (
+        <section className="border-t border-gray-800/50 px-6 py-16">
+          <div className="mx-auto max-w-2xl">
+            <h2 className="mb-2 text-center text-xl font-bold text-white">
+              Questions? Talk to us.
+            </h2>
+            <p className="mb-6 text-center text-sm text-gray-400">
+              Enterprise teams, multi-framework filers, and integration requests.
+            </p>
+            <LeadCaptureForm source={`money_${slug}`} framework={leadFormFramework} compact />
+          </div>
+        </section>
+      )}
 
       <SiteFooter />
     </div>

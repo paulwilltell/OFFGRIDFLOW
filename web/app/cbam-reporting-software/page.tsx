@@ -48,6 +48,8 @@ export default function CbamPage() {
       slug="cbam-reporting-software"
       ctaUtm="cbam_reporting"
       faqs={faqs}
+      showLeadForm
+      leadFormFramework="cbam"
       relatedPages={[
         { href: '/carbon-accounting-software', label: 'Carbon accounting software', description: 'See the wider calculation platform behind CBAM outputs.' },
         { href: '/for-procurement', label: 'For procurement teams', description: 'Coordinate supplier and customs data collection.' },

@@ -48,6 +48,7 @@ export default function ForCfosPage() {
       slug="for-cfos"
       ctaUtm="for_cfos"
       faqs={faqs}
+      showLeadForm
     >
       <p>
         When Scope 1, 2, and 3 emissions appear on the 10-K, the annual report, and the SB 253

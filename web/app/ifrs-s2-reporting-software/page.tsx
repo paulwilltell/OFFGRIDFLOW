@@ -53,6 +53,8 @@ export default function IfrsS2Page() {
       slug="ifrs-s2-reporting-software"
       ctaUtm="ifrs_s2_reporting"
       faqs={faqs}
+      showLeadForm
+      leadFormFramework="ifrs_s2"
       relatedPages={[
         { href: '/csrd-vs-ifrs-s2-carbon-reporting', label: 'CSRD vs IFRS S2', description: 'Compare adoption patterns, assurance, and filing differences.' },
         { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting', description: 'Review the underlying emissions data model.' },

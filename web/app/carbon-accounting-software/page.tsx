@@ -53,6 +53,7 @@ export default function CarbonAccountingSoftwarePage() {
       slug="carbon-accounting-software"
       ctaUtm="carbon_accounting_software"
       faqs={faqs}
+      showLeadForm
       relatedPages={[
         { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting', description: 'See the full multi-scope reporting workflow.' },
         { href: '/audit-ready-carbon-accounting', label: 'Audit-ready carbon accounting', description: 'Focus on assurance-grade controls and evidence.' },

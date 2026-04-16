@@ -53,6 +53,8 @@ export default function CsrdPage() {
       slug="csrd-reporting-software"
       ctaUtm="csrd_reporting"
       faqs={faqs}
+      showLeadForm
+      leadFormFramework="csrd"
       relatedPages={[
         { href: '/csrd-vs-ifrs-s2-carbon-reporting', label: 'CSRD vs IFRS S2', description: 'Compare double materiality with financial materiality.' },
         { href: '/scope-1-2-3-reporting-software', label: 'Scope 1, 2, 3 reporting', description: 'Understand the underlying emissions workflow.' },

@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SiteNav } from '../components/SiteNav';
+import { SiteFooter } from '../components/SiteFooter';
+import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 
 export const metadata: Metadata = {
   title: 'Pricing | OffGridFlow',
@@ -187,6 +189,21 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+
+      {/* Lead capture for enterprise/custom inquiries */}
+      <section className="border-t border-gray-800/50 px-6 py-20">
+        <div className="mx-auto max-w-2xl">
+          <h2 className="mb-2 text-center text-2xl font-bold text-white">
+            Need a custom plan or implementation support?
+          </h2>
+          <p className="mb-8 text-center text-sm text-gray-400">
+            Multi-site, SAP integration, or custom SLA — tell us what you need.
+          </p>
+          <LeadCaptureForm source="pricing_page" compact />
+        </div>
+      </section>
+
+      <SiteFooter />
     </div>
   );
 }

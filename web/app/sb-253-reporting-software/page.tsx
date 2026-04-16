@@ -53,6 +53,8 @@ export default function Sb253Page() {
       slug="sb-253-reporting-software"
       ctaUtm="sb253_reporting"
       faqs={faqs}
+      showLeadForm
+      leadFormFramework="sb253"
       relatedPages={[
         { href: '/sb-253-readiness-checklist', label: 'SB 253 readiness checklist', description: 'Map the filing program before the first disclosure cycle.' },
         { href: '/audit-ready-carbon-accounting', label: 'Audit-ready carbon accounting', description: 'See the controls that support limited assurance.' },
