@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/example/offgridflow/internal/auth"
 	"github.com/example/offgridflow/internal/ratelimit"
@@ -118,18 +119,17 @@ func getTierLimit(tier string) string {
 }
 
 func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header
-	forwarded := r.Header.Get("X-Forwarded-For")
-	if forwarded != "" {
-		return forwarded
+	// Only trust the leftmost (client) IP from X-Forwarded-For
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		if idx := strings.IndexByte(forwarded, ','); idx != -1 {
+			return strings.TrimSpace(forwarded[:idx])
+		}
+		return strings.TrimSpace(forwarded)
 	}
 
-	// Check X-Real-IP header
-	realIP := r.Header.Get("X-Real-IP")
-	if realIP != "" {
-		return realIP
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		return strings.TrimSpace(realIP)
 	}
 
-	// Fallback to RemoteAddr
 	return r.RemoteAddr
 }

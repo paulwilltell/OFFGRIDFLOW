@@ -212,15 +212,15 @@ func (m *AuthMiddleware) hydrateTenantContext(r *http.Request) *http.Request {
 		return r
 	}
 
+	// Only accept tenant context from authenticated sessions — never from
+	// unauthenticated headers or query params, which would allow tenant spoofing.
+	if _, ok := auth.UserFromContext(ctx); !ok {
+		return r
+	}
+
 	tenantID := strings.TrimSpace(r.Header.Get(tenantIDHeader))
 	if tenantID == "" {
 		tenantID = strings.TrimSpace(r.Header.Get(orgIDHeader))
-	}
-	if tenantID == "" {
-		tenantID = strings.TrimSpace(r.URL.Query().Get("tenant_id"))
-	}
-	if tenantID == "" {
-		tenantID = strings.TrimSpace(r.URL.Query().Get("org_id"))
 	}
 	if tenantID == "" {
 		return r

@@ -29,7 +29,12 @@ export function RichTextInput({
     }
 
     if (editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value;
+      const sanitized = value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/&amp;lt;(\/?(b|i|strong|em|ul|ol|li|br))&amp;gt;/gi, '<$1>');
+      editorRef.current.innerHTML = sanitized;
     }
   }, [value]);
 

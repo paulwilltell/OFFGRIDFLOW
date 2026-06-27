@@ -450,7 +450,14 @@ func run() (err error) {
 		log.Printf("[offgridflow] authentication OPTIONAL (set OFFGRIDFLOW_REQUIRE_AUTH=true to enforce)")
 	}
 
-	if err := http.ListenAndServe(addr, router); err != nil {
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		return fmt.Errorf("http server: %w", err)
 	}
 

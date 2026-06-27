@@ -5,6 +5,7 @@ import (
     "flag"
     "fmt"
     "log"
+    "os"
 
     "github.com/example/offgridflow/internal/db"
 )
@@ -13,7 +14,10 @@ func main() {
     email := flag.String("email", "test@offgridflow.com", "email to lookup")
     flag.Parse()
 
-    dsn := "postgresql://offgridflow:changeme@localhost:5432/offgridflow?sslmode=disable"
+    dsn := os.Getenv("OFFGRIDFLOW_DB_DSN")
+    if dsn == "" {
+        log.Fatal("OFFGRIDFLOW_DB_DSN environment variable is required")
+    }
     database, err := db.Connect(context.Background(), db.Config{DSN: dsn})
     if err != nil {
         log.Fatalf("connect failed: %v", err)

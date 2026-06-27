@@ -964,12 +964,11 @@ func corsMiddleware(next http.Handler, allowedOrigins, allowedMethods, allowedHe
 
 		if allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
+			w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Max-Age", "86400")
 		}
-
-		w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ", "))
-		w.Header().Set("Access-Control-Allow-Headers", strings.Join(allowedHeaders, ", "))
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		// Security headers on every response
 		w.Header().Set("X-Frame-Options", "DENY")

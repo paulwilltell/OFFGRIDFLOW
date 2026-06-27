@@ -15,7 +15,11 @@ func main() {
 		os.Exit(1)
 	}
 	org := os.Args[1]
-	dsn := "postgresql://offgridflow:changeme@localhost:5432/offgridflow?sslmode=disable"
+	dsn := os.Getenv("OFFGRIDFLOW_DB_DSN")
+	if dsn == "" {
+		fmt.Println("OFFGRIDFLOW_DB_DSN environment variable is required")
+		os.Exit(1)
+	}
 	database, err := db.Connect(context.Background(), db.Config{DSN: dsn})
 	if err != nil {
 		fmt.Printf("connect error: %v\n", err)

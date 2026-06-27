@@ -361,18 +361,21 @@ function RichText({ lines }: { lines: string[] }) {
         if (typeof line !== "string") return null;
 
         const isBq = line.startsWith("> ");
-        const processed = line
-          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-          .replace(/^> (.+)/, "$1");
+        const text = isBq ? line.replace(/^> /, "") : line;
+        const parts = text.split(/\*\*(.+?)\*\*/g);
+
+        const rendered = parts.map((part, j) =>
+          j % 2 === 1 ? <strong key={j}>{part}</strong> : <span key={j}>{part}</span>
+        );
 
         if (isBq) {
           return (
             <div key={i} className="ta-quote">
-              <span dangerouslySetInnerHTML={{ __html: processed }} />
+              <span>{rendered}</span>
             </div>
           );
         }
-        return <p key={i} dangerouslySetInnerHTML={{ __html: processed }} />;
+        return <p key={i}>{rendered}</p>;
       })}
     </div>
   );

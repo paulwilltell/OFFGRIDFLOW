@@ -42,13 +42,7 @@ const assessmentTone = {
 };
 
 function stripHtml(input: string): string {
-  if (typeof window === 'undefined') {
-    return input.replace(/<[^>]+>/g, ' ');
-  }
-
-  const container = document.createElement('div');
-  container.innerHTML = input;
-  return container.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  return input.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function formatBytes(bytes: number): string {
@@ -203,7 +197,8 @@ export function RiskCard({
             {risk.evidence.map((evidence) => (
               <a
                 key={evidence.id}
-                href={evidence.url}
+                href={evidence.url?.startsWith('https://') || evidence.url?.startsWith('http://') ? evidence.url : '#'}
+                rel="noopener noreferrer"
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-200 transition hover:border-emerald-400"
               >
                 <span className="font-medium">{evidence.fileName}</span>

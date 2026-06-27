@@ -22,6 +22,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const esc = (s: string | undefined | null): string =>
+      (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const safeContactName = esc(contact_name);
+    const safeFrom = esc(from);
+    const safeCompanyName = esc(company_name);
+    const safeCompanySize = esc(company_size);
+    const safeIndustry = esc(industry);
+    const safeRegions = esc(regions_of_operation);
+    const safeTimeline = esc(implementation_timeline);
+    const safeCurrentPlan = esc(current_plan);
+    const safeNotes = esc(additional_notes);
+    const safeFrameworks = compliance_frameworks?.length ? compliance_frameworks.map(esc).join(', ') : '—';
+
     const emailBody = `
 NEW CARBON COMMAND ELITE INQUIRY
 =================================
@@ -72,20 +86,20 @@ Reply directly to: ${from}
   </div>
   <div style="background:#f9fafb;border:1px solid #e5e7eb;border-top:none;padding:24px 32px;border-radius:0 0 12px 12px;">
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
-      <tr><td style="padding:8px 0;color:#6b7280;width:160px;">Contact</td><td style="padding:8px 0;font-weight:600;">${contact_name}</td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Email</td><td style="padding:8px 0;"><a href="mailto:${from}" style="color:#059669;">${from}</a></td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Company</td><td style="padding:8px 0;font-weight:600;">${company_name}</td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Size</td><td style="padding:8px 0;">${company_size || '—'}</td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Industry</td><td style="padding:8px 0;">${industry || '—'}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;width:160px;">Contact</td><td style="padding:8px 0;font-weight:600;">${safeContactName}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Email</td><td style="padding:8px 0;"><a href="mailto:${safeFrom}" style="color:#059669;">${safeFrom}</a></td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Company</td><td style="padding:8px 0;font-weight:600;">${safeCompanyName}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Size</td><td style="padding:8px 0;">${safeCompanySize || '—'}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Industry</td><td style="padding:8px 0;">${safeIndustry || '—'}</td></tr>
       <tr><td style="padding:8px 0;color:#6b7280;">Sites / Facilities</td><td style="padding:8px 0;font-weight:600;">${number_of_sites}</td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Regions</td><td style="padding:8px 0;">${regions_of_operation || '—'}</td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Timeline</td><td style="padding:8px 0;">${implementation_timeline || '—'}</td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Frameworks</td><td style="padding:8px 0;">${compliance_frameworks?.length ? compliance_frameworks.join(', ') : '—'}</td></tr>
-      <tr><td style="padding:8px 0;color:#6b7280;">Current Plan</td><td style="padding:8px 0;">${current_plan || 'Free / Not subscribed'}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Regions</td><td style="padding:8px 0;">${safeRegions || '—'}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Timeline</td><td style="padding:8px 0;">${safeTimeline || '—'}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Frameworks</td><td style="padding:8px 0;">${safeFrameworks}</td></tr>
+      <tr><td style="padding:8px 0;color:#6b7280;">Current Plan</td><td style="padding:8px 0;">${safeCurrentPlan || 'Free / Not subscribed'}</td></tr>
     </table>
-    ${additional_notes ? `<div style="margin-top:20px;padding:16px;background:white;border:1px solid #e5e7eb;border-radius:8px;"><p style="margin:0 0 8px;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;">Additional Notes</p><p style="margin:0;font-size:14px;line-height:1.6;">${additional_notes}</p></div>` : ''}
+    ${safeNotes ? `<div style="margin-top:20px;padding:16px;background:white;border:1px solid #e5e7eb;border-radius:8px;"><p style="margin:0 0 8px;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;">Additional Notes</p><p style="margin:0;font-size:14px;line-height:1.6;">${safeNotes}</p></div>` : ''}
     <div style="margin-top:24px;padding:16px;background:#ecfdf5;border-radius:8px;font-size:13px;color:#065f46;">
-      Reply directly to this email to respond to ${contact_name}.
+      Reply directly to this email to respond to ${safeContactName}.
     </div>
   </div>
 </body>
