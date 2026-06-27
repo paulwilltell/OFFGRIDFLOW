@@ -202,13 +202,19 @@ export default function DataQualityPage() {
 
       {/* Scan result banner */}
       {scanResult && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-green-500/20 bg-green-500/5 px-4 py-3">
+        <div className={`mb-4 flex items-center justify-between rounded-lg border px-4 py-3 ${
+          scanResult.detected > 0
+            ? 'border-amber-500/20 bg-amber-500/5'
+            : 'border-green-500/20 bg-green-500/5'
+        }`}>
           <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`h-4 w-4 ${scanResult.detected > 0 ? 'text-amber-400' : 'text-green-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span className="text-sm text-green-400">
-              Scan complete &mdash; {scanResult.detected} anomal{scanResult.detected === 1 ? 'y' : 'ies'} detected
+            <span className={`text-sm ${scanResult.detected > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+              {scanResult.detected > 0
+                ? `Scan complete — ${scanResult.detected} anomal${scanResult.detected === 1 ? 'y' : 'ies'} detected. Review flagged items below.`
+                : 'Scan complete — no anomalies detected. Your emissions data passed all quality checks (outlier analysis, duplicate detection, sudden changes, and negative values).'}
             </span>
           </div>
           <button
