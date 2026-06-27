@@ -28,6 +28,9 @@ func NewIngestionStatusHandler(cfg IngestionHandlerConfig) http.HandlerFunc {
 				limit = v
 			}
 		}
+		if limit > 1000 {
+			limit = 1000
+		}
 
 		logs, err := cfg.LogStore.List(r.Context(), limit)
 		if err != nil {

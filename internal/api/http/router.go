@@ -284,6 +284,9 @@ func (r *router) build() http.Handler {
 		handler = r.cfg.CSRFMiddleware.Wrap(handler)
 	}
 
+	// Global request body size limit (1MB for JSON endpoints)
+	handler = maxBodyMiddleware(handler, 1<<20)
+
 	// Apply CORS middleware for cross-origin requests
 	handler = corsMiddleware(handler, r.cfg.AllowedOrigins, r.cfg.AllowedMethods, r.cfg.AllowedHeaders)
 
@@ -315,16 +318,17 @@ func (r *router) registerPublicRoutes(mux *http.ServeMux) {
 			AllowDevVerificationToken: r.cfg.AllowDevVerificationToken,
 		})
 
-		mux.HandleFunc("/api/auth/register", authHandlers.Register)
-		mux.HandleFunc("/api/auth/login", authHandlers.Login)
+		authRL := middleware.NewIPRateLimiter(20, 5*time.Minute)
+		mux.HandleFunc("/api/auth/register", authRL.Wrap(authHandlers.Register))
+		mux.HandleFunc("/api/auth/login", authRL.Wrap(authHandlers.Login))
 		mux.HandleFunc("/api/auth/verify-email", authHandlers.VerifyEmail)
 		if r.cfg.CSRFMiddleware != nil {
 			mux.HandleFunc("/api/auth/csrf-token", r.csrfTokenHandler())
 		}
 		mux.HandleFunc("/api/auth/logout", authHandlers.Logout)
 		if r.authSvc != nil {
-			mux.HandleFunc("/api/auth/password/forgot", handlers.NewPasswordForgotHandler(r.authSvc, r.logger))
-			mux.HandleFunc("/api/auth/password/reset", handlers.NewPasswordResetHandler(r.authSvc, r.logger))
+			mux.HandleFunc("/api/auth/password/forgot", authRL.Wrap(handlers.NewPasswordForgotHandler(r.authSvc, r.logger)))
+			mux.HandleFunc("/api/auth/password/reset", authRL.Wrap(handlers.NewPasswordResetHandler(r.authSvc, r.logger)))
 		}
 	}
 
@@ -924,6 +928,16 @@ func Router(handlers map[string]http.Handler) http.Handler {
 		mux.Handle(path, handler)
 	}
 	return mux
+}
+
+// maxBodyMiddleware limits the size of request bodies to prevent memory exhaustion.
+func maxBodyMiddleware(next http.Handler, maxBytes int64) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil && r.ContentLength != 0 {
+			r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // corsMiddleware adds CORS headers to all responses and handles preflight requests.

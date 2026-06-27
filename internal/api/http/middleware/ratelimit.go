@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/example/offgridflow/internal/auth"
 	"github.com/example/offgridflow/internal/ratelimit"
@@ -132,4 +134,46 @@ func getClientIP(r *http.Request) string {
 	}
 
 	return r.RemoteAddr
+}
+
+// IPRateLimiter provides simple per-IP rate limiting for public endpoints.
+type IPRateLimiter struct {
+	mu      sync.Mutex
+	counts  map[string]int
+	resets  map[string]time.Time
+	limit   int
+	window  time.Duration
+}
+
+// NewIPRateLimiter creates a rate limiter that allows limit requests per IP per window.
+func NewIPRateLimiter(limit int, window time.Duration) *IPRateLimiter {
+	return &IPRateLimiter{
+		counts: make(map[string]int),
+		resets: make(map[string]time.Time),
+		limit:  limit,
+		window: window,
+	}
+}
+
+// Wrap wraps an http.HandlerFunc with IP-based rate limiting.
+func (rl *IPRateLimiter) Wrap(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip := getClientIP(r)
+		rl.mu.Lock()
+		resetAt, exists := rl.resets[ip]
+		if !exists || time.Now().After(resetAt) {
+			rl.counts[ip] = 0
+			rl.resets[ip] = time.Now().Add(rl.window)
+		}
+		rl.counts[ip]++
+		count := rl.counts[ip]
+		rl.mu.Unlock()
+
+		if count > rl.limit {
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(rl.window.Seconds())))
+			http.Error(w, `{"error":"rate_limit_exceeded","message":"too many requests"}`, http.StatusTooManyRequests)
+			return
+		}
+		next(w, r)
+	}
 }
