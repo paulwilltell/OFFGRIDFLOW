@@ -94,13 +94,10 @@ func NewUtilityBillUploadHandler(cfg UtilityBillsHandlerConfig) http.HandlerFunc
 			return
 		}
 
-		// Get organization ID from form or JWT
-		orgID := r.FormValue("org_id")
-		if orgID == "" {
-			// Try to get from JWT context (if auth middleware is enabled)
-			if org, ok := r.Context().Value("org_id").(string); ok {
-				orgID = org
-			}
+		// Get organization ID from authenticated context only
+		var orgID string
+		if org, ok := r.Context().Value("org_id").(string); ok {
+			orgID = org
 		}
 
 		// Get strict mode flag
@@ -286,12 +283,10 @@ func NewUtilityBillListHandler(cfg UtilityBillsHandlerConfig) http.HandlerFunc {
 			return
 		}
 
-		// Get organization ID
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			if org, ok := r.Context().Value("org_id").(string); ok {
-				orgID = org
-			}
+		// Get organization ID from authenticated context only
+		var orgID string
+		if org, ok := r.Context().Value("org_id").(string); ok {
+			orgID = org
 		}
 
 		if orgID == "" {

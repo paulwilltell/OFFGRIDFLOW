@@ -73,6 +73,11 @@ func NewUsersHandler(cfg UsersHandlerConfig) http.Handler {
 				responders.BadRequest(w, "missing_id", "user id required")
 				return
 			}
+			existing, err := cfg.Store.GetUser(r.Context(), req.ID)
+			if err != nil || existing == nil || existing.TenantID != tenantID {
+				responders.NotFound(w, "user_not_found", "user not found")
+				return
+			}
 			req.TenantID = tenantID
 			if err := cfg.Store.UpdateUser(r.Context(), &req); err != nil {
 				responders.InternalError(w, "failed to update user")
@@ -88,6 +93,11 @@ func NewUsersHandler(cfg UsersHandlerConfig) http.Handler {
 			id := r.URL.Query().Get("id")
 			if id == "" {
 				responders.BadRequest(w, "missing_id", "user id required")
+				return
+			}
+			target, err := cfg.Store.GetUser(r.Context(), id)
+			if err != nil || target == nil || target.TenantID != tenantID {
+				responders.NotFound(w, "user_not_found", "user not found")
 				return
 			}
 			if err := cfg.Store.DeleteUser(r.Context(), id); err != nil {

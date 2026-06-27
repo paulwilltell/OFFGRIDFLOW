@@ -27,14 +27,11 @@ func NewComplianceExportHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			tenantID, ok := middleware.MustGetTenantID(w, r)
-			if !ok {
-				return
-			}
-			orgID = tenantID
+		tenantID, ok := middleware.MustGetTenantID(w, r)
+		if !ok {
+			return
 		}
+		orgID := tenantID
 
 		year := time.Now().Year()
 		if yearParam := r.URL.Query().Get("year"); yearParam != "" {

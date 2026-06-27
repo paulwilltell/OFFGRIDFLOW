@@ -857,12 +857,10 @@ func NewPasswordForgotHandler(authSvc *auth.Service, logger *slog.Logger) http.H
 			return
 		}
 
-		token, user, err := authSvc.CreatePasswordResetToken(r.Context(), strings.TrimSpace(req.Email))
+		_, user, err := authSvc.CreatePasswordResetToken(r.Context(), strings.TrimSpace(req.Email))
 		if err == nil {
 			logger.Info("password reset token generated",
 				"userId", user.ID,
-				"email", user.Email,
-				"token", token,
 			)
 		}
 

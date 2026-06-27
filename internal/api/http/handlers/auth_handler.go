@@ -158,10 +158,18 @@ func (h *APIKeyHandler) createAPIKey(w http.ResponseWriter, r *http.Request, ten
 		return
 	}
 
-	// Get user ID from context if available
+	// Get user ID from context and enforce role-based scope limits
 	var userID string
 	if user, ok := auth.UserFromContext(r.Context()); ok && user != nil {
 		userID = user.ID
+		if !user.HasRole("admin") {
+			for _, scope := range scopes {
+				if scope == "admin" || scope == "write:users" || scope == "delete:users" {
+					responders.Forbidden(w, "scope_escalation", "admin role required for elevated scopes")
+					return
+				}
+			}
+		}
 	}
 
 	rawKey, apiKey, err := h.authService.CreateAPIKey(r.Context(), tenantID, userID, req.Name, scopes, expiresIn)

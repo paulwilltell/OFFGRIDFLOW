@@ -33,15 +33,11 @@ func NewCSRDComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		// Parse query parameters
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			tenantID, ok := middleware.MustGetTenantID(w, r)
-			if !ok {
-				return
-			}
-			orgID = tenantID
+		tenantID, ok := middleware.MustGetTenantID(w, r)
+		if !ok {
+			return
 		}
+		orgID := tenantID
 
 		year := time.Now().Year()
 		// Allow year via query param (GET) or JSON body (POST)
@@ -95,15 +91,11 @@ func NewSECComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		// Parse query parameters
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			tenantID, ok := middleware.MustGetTenantID(w, r)
-			if !ok {
-				return
-			}
-			orgID = tenantID
+		tenantID, ok := middleware.MustGetTenantID(w, r)
+		if !ok {
+			return
 		}
+		orgID := tenantID
 
 		orgName := r.URL.Query().Get("org_name")
 		if orgName == "" {
@@ -148,15 +140,11 @@ func NewCaliforniaComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFun
 
 		ctx := r.Context()
 
-		// Parse query parameters
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			tenantID, ok := middleware.MustGetTenantID(w, r)
-			if !ok {
-				return
-			}
-			orgID = tenantID
+		tenantID, ok := middleware.MustGetTenantID(w, r)
+		if !ok {
+			return
 		}
+		orgID := tenantID
 
 		orgName := r.URL.Query().Get("org_name")
 		if orgName == "" {
@@ -196,15 +184,11 @@ func NewCBAMComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		// Parse query parameters
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			tenantID, ok := middleware.MustGetTenantID(w, r)
-			if !ok {
-				return
-			}
-			orgID = tenantID
+		tenantID, ok := middleware.MustGetTenantID(w, r)
+		if !ok {
+			return
 		}
+		orgID := tenantID
 
 		year := time.Now().Year()
 		if yearStr := r.URL.Query().Get("year"); yearStr != "" {
@@ -246,15 +230,11 @@ func NewIFRSComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		// Parse query parameters
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			tenantID, ok := middleware.MustGetTenantID(w, r)
-			if !ok {
-				return
-			}
-			orgID = tenantID
+		tenantID, ok := middleware.MustGetTenantID(w, r)
+		if !ok {
+			return
 		}
+		orgID := tenantID
 
 		orgName := r.URL.Query().Get("org_name")
 		if orgName == "" {
@@ -294,15 +274,11 @@ func NewComplianceSummaryHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 
 		ctx := r.Context()
 
-		// Parse query parameters
-		orgID := r.URL.Query().Get("org_id")
-		if orgID == "" {
-			tenantID, ok := middleware.MustGetTenantID(w, r)
-			if !ok {
-				return
-			}
-			orgID = tenantID
+		tenantID, ok := middleware.MustGetTenantID(w, r)
+		if !ok {
+			return
 		}
+		orgID := tenantID
 
 		year := time.Now().Year()
 		if yearStr := r.URL.Query().Get("year"); yearStr != "" {

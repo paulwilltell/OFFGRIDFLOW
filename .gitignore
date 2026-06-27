@@ -14,6 +14,17 @@ web/.next/
 .env
 .env.local
 .env.*.local
+.env.production.template
+.env.railway.*
+others/.env.*
+others/.env.staging
+others/.env.production
+
+# Terraform state
+**/*.tfstate
+**/*.tfstate.backup
+*.tfvars
+!*.tfvars.example
 
 # IDE
 .idea/

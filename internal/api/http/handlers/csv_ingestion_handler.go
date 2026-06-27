@@ -69,23 +69,15 @@ func NewCSVIngestionHandler(cfg CSVIngestionHandlerConfig) http.HandlerFunc {
 
 // resolveOrgID determines the target org/tenant for the upload.
 func resolveOrgID(r *http.Request, defaultOrg string) string {
-	// Query params override defaults
-	orgID := strings.TrimSpace(r.URL.Query().Get("org_id"))
-	if orgID == "" {
-		orgID = strings.TrimSpace(r.URL.Query().Get("tenant_id"))
+	if tenant, ok := auth.TenantFromContext(r.Context()); ok && tenant != nil && tenant.ID != "" {
+		return tenant.ID
 	}
 
-	if orgID == "" {
-		if tenant, ok := auth.TenantFromContext(r.Context()); ok && tenant != nil && tenant.ID != "" {
-			orgID = tenant.ID
-		}
+	if defaultOrg != "" {
+		return strings.TrimSpace(defaultOrg)
 	}
 
-	if orgID == "" {
-		orgID = strings.TrimSpace(defaultOrg)
-	}
-
-	return orgID
+	return ""
 }
 
 // extractCSVReader retrieves the CSV data from either multipart upload or raw body.

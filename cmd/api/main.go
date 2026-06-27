@@ -365,8 +365,7 @@ func run() (err error) {
 	var sessionManager *auth.SessionManager
 	jwtSecret := cfg.Auth.JWTSecret
 	if jwtSecret == "" {
-		jwtSecret = "dev-secret-change-in-production-32chars"
-		log.Printf("[offgridflow] WARNING: using dev JWT secret, set OFFGRIDFLOW_JWT_SECRET in production")
+		return fmt.Errorf("OFFGRIDFLOW_JWT_SECRET is required — refusing to start without a secure JWT secret")
 	}
 	sessionManager, err = auth.NewSessionManager(jwtSecret)
 	if err != nil {
