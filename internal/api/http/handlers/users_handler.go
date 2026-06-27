@@ -75,7 +75,7 @@ func NewUsersHandler(cfg UsersHandlerConfig) http.Handler {
 			}
 			existing, err := cfg.Store.GetUser(r.Context(), req.ID)
 			if err != nil || existing == nil || existing.TenantID != tenantID {
-				responders.NotFound(w, "user_not_found", "user not found")
+				responders.NotFound(w, "user not found")
 				return
 			}
 			req.TenantID = tenantID
@@ -97,7 +97,7 @@ func NewUsersHandler(cfg UsersHandlerConfig) http.Handler {
 			}
 			target, err := cfg.Store.GetUser(r.Context(), id)
 			if err != nil || target == nil || target.TenantID != tenantID {
-				responders.NotFound(w, "user_not_found", "user not found")
+				responders.NotFound(w, "user not found")
 				return
 			}
 			if err := cfg.Store.DeleteUser(r.Context(), id); err != nil {
