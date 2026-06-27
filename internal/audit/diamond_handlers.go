@@ -188,7 +188,7 @@ func (h *Handlers) RunAnomalyDetectionHandler(w http.ResponseWriter, r *http.Req
 
 	detected, err := h.store.RunAnomalyDetection(r.Context(), tenant.ID)
 	if err != nil {
-		responders.InternalError(w, "anomaly detection failed: "+err.Error())
+		responders.InternalError(w, "anomaly detection failed")
 		return
 	}
 

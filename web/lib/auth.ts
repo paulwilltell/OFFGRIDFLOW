@@ -129,15 +129,13 @@ export function getToken(): string | null {
  */
 function storeSession(auth: AuthResponse): void {
   if (typeof window === 'undefined') return;
-  
+
   const session: Session = {
     user: auth.user,
     tenant: auth.tenant ?? null,
-    token: auth.token,
   };
-  
+
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  localStorage.setItem(ACCESS_TOKEN_KEY, auth.token);
   if (auth.user.default_tenant_id) {
     localStorage.setItem(TENANT_ID_KEY, auth.user.default_tenant_id);
   }

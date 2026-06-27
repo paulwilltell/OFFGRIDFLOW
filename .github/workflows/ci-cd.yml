@@ -34,7 +34,7 @@ on:
           - production
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.24'
   NODE_VERSION: '20'
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -269,7 +269,7 @@ jobs:
       - name: Go vulnerability check
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./... || true
+          govulncheck ./...
 
   # ===========================================================================
   # E2E Tests (Optional)
@@ -366,12 +366,10 @@ jobs:
           # Add your production deployment commands here
 
       - name: Create release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
           body: |
             ## Changes in this release
             - Automated release from CI/CD pipeline

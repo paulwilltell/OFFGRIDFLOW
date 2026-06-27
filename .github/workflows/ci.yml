@@ -32,7 +32,7 @@ jobs:
       - run: go fmt ./...
       - run: go vet ./...
       - run: go test -v -race -coverprofile=coverage.out ./...
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           file: ./coverage.out
           flags: backend
@@ -69,7 +69,7 @@ jobs:
       - name: Run gosec
         run: $HOME/go/bin/gosec ./...
       - name: Semgrep (auto)
-        uses: returntocorp/semgrep-action@v1
+        uses: semgrep/semgrep-action@v1
         with:
           config: auto
           auditOn: push

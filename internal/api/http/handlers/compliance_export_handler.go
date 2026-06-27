@@ -47,7 +47,7 @@ func NewComplianceExportHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 
 		summary, err := deps.ComplianceService.GenerateSummary(ctx, orgID, year)
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "export_summary_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "export_summary_failed", "failed to generate summary")
 			return
 		}
 
@@ -67,7 +67,7 @@ func NewComplianceExportHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		}
 
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "export_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "export_failed", "export generation failed")
 			return
 		}
 

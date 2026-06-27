@@ -33,7 +33,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     ./cmd/worker
 
 # Stage 2: Worker runtime (named target — use with --target worker)
-FROM alpine:3.18 AS worker
+FROM alpine:3.21 AS worker
 
 RUN apk add --no-cache ca-certificates tzdata curl
 RUN addgroup -g 1000 offgridflow && \
@@ -48,7 +48,7 @@ ENTRYPOINT ["/app/offgridflow-worker"]
 CMD []
 
 # Stage 3: API runtime (default — last stage, used by Railway)
-FROM alpine:3.18
+FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata curl
 RUN addgroup -g 1000 offgridflow && \

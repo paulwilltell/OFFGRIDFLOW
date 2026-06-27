@@ -358,7 +358,7 @@ type AzureIngestionConfig struct {
 	Enabled        bool   `json:"enabled"`
 	TenantID       string `json:"tenant_id"`
 	ClientID       string `json:"client_id"`
-	ClientSecret   string `json:"client_secret"`
+	ClientSecret   string `json:"-"`
 	SubscriptionID string `json:"subscription_id"`
 	OrgID          string `json:"org_id"`
 }
@@ -370,7 +370,7 @@ type GCPIngestionConfig struct {
 	BillingAccountID  string `json:"billing_account_id"`
 	BigQueryDataset   string `json:"bigquery_dataset"`
 	BigQueryTable     string `json:"bigquery_table"`
-	ServiceAccountKey string `json:"service_account_key"`
+	ServiceAccountKey string `json:"-"`
 	OrgID             string `json:"org_id"`
 }
 

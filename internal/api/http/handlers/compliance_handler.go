@@ -61,7 +61,7 @@ func NewCSRDComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		// Generate CSRD report
 		report, err := deps.ComplianceService.GenerateCSRDReport(ctx, orgID, year)
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "csrd_report_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "csrd_report_failed", "report generation failed")
 			return
 		}
 
@@ -117,7 +117,7 @@ func NewSECComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		// Generate SEC report
 		report, err := deps.ComplianceService.GenerateSECReport(ctx, orgID, orgName, cik, year)
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "sec_report_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "sec_report_failed", "report generation failed")
 			return
 		}
 
@@ -161,7 +161,7 @@ func NewCaliforniaComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFun
 		// Generate California report
 		report, err := deps.ComplianceService.GenerateCaliforniaReport(ctx, orgID, orgName, year)
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "california_report_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "california_report_failed", "report generation failed")
 			return
 		}
 
@@ -207,7 +207,7 @@ func NewCBAMComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		// Generate CBAM report
 		report, err := deps.ComplianceService.GenerateCBAMReport(ctx, orgID, quarter, year)
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "cbam_report_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "cbam_report_failed", "report generation failed")
 			return
 		}
 
@@ -251,7 +251,7 @@ func NewIFRSComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		// Generate IFRS report
 		report, err := deps.ComplianceService.GenerateIFRSReport(ctx, orgID, orgName, year)
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "ifrs_report_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "ifrs_report_failed", "report generation failed")
 			return
 		}
 
@@ -290,7 +290,7 @@ func NewComplianceSummaryHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		// Generate compliance summary
 		summary, err := deps.ComplianceService.GenerateSummary(ctx, orgID, year)
 		if err != nil {
-			responders.Error(w, http.StatusInternalServerError, "summary_failed", err.Error())
+			responders.Error(w, http.StatusInternalServerError, "summary_failed", "report generation failed")
 			return
 		}
 

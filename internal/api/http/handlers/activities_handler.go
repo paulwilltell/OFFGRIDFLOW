@@ -108,6 +108,23 @@ func (h *ActivitiesHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if payload.Value < 0 {
+		responders.BadRequest(w, "invalid_value", "value must be non-negative")
+		return
+	}
+	if payload.Value > 1e12 {
+		responders.BadRequest(w, "invalid_value", "value exceeds maximum")
+		return
+	}
+	if len(payload.Name) > 500 || len(payload.Type) > 200 || len(payload.Unit) > 100 || len(payload.Location) > 500 {
+		responders.BadRequest(w, "field_too_long", "one or more fields exceed maximum length")
+		return
+	}
+	if len(payload.Metadata) > 50 {
+		responders.BadRequest(w, "too_many_metadata", "metadata cannot exceed 50 entries")
+		return
+	}
+
 	// Parse date (YYYY-MM-DD) as period start
 	var periodStart time.Time
 	periodStartRaw := payload.PeriodStart
