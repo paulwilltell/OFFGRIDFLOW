@@ -36,12 +36,14 @@ resource "aws_security_group" "alb" {
   description = "Security group for application load balancer"
   vpc_id      = var.vpc_id
 
+  # HTTP kept for redirect to HTTPS only (see aws_lb_listener.http).
+  # HSTS headers in the application layer handle downgrade prevention.
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTP from internet"
+    description = "HTTP from internet (redirect-only)"
   }
 
   ingress {
@@ -156,7 +158,7 @@ resource "aws_lb_listener" "https" {
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/offgridflow-${var.environment}-api"
-  retention_in_days = 7
+  retention_in_days = 365
 
   tags = {
     Name        = "offgridflow-${var.environment}-api-logs"
@@ -237,6 +239,8 @@ resource "aws_ecs_task_definition" "api" {
         name  = "OFFGRIDFLOW_SERVER_PORT"
         value = tostring(var.container_port)
       },
+      # TODO: Migrate DB credentials to AWS Secrets Manager (via "secrets" block)
+      # instead of passing db_password as a plaintext environment variable.
       {
         name  = "OFFGRIDFLOW_DB_DSN"
         value = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}/${var.db_name}?sslmode=require"

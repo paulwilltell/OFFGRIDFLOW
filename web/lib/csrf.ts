@@ -4,7 +4,10 @@ const CSRF_ENDPOINT = `${config.apiBaseUrl}/api/auth/csrf-token`;
 export const CSRF_HEADER_NAME = 'X-CSRF-Token';
 
 let cachedToken: string | null = null;
+let cachedTokenExpiry: number = 0;
 let tokenPromise: Promise<string> | null = null;
+
+const CACHE_TTL_MS = 23 * 60 * 60 * 1000; // 23 hours
 
 async function requestToken(): Promise<string> {
   const response = await fetch(CSRF_ENDPOINT, {
@@ -25,14 +28,18 @@ async function requestToken(): Promise<string> {
 }
 
 export async function getCSRFToken(): Promise<string> {
-  if (cachedToken) {
+  if (cachedToken && Date.now() < cachedTokenExpiry) {
     return cachedToken;
   }
+
+  // Cache expired or empty — clear stale value
+  cachedToken = null;
 
   if (!tokenPromise) {
     tokenPromise = requestToken()
       .then((token) => {
         cachedToken = token;
+        cachedTokenExpiry = Date.now() + CACHE_TTL_MS;
         return token;
       })
       .finally(() => {
@@ -45,6 +52,7 @@ export async function getCSRFToken(): Promise<string> {
 
 export function clearCSRFTokenCache(): void {
   cachedToken = null;
+  cachedTokenExpiry = 0;
   tokenPromise = null;
 }
 

@@ -68,6 +68,7 @@ exporters:
       environment: ${env:ENV}
 
   # OTLP exporter for Jaeger (traces)
+  # NOTE: TLS disabled — dev-only config. In production, use proper TLS certificates.
   otlp/jaeger:
     endpoint: jaeger:4317
     tls:

@@ -146,7 +146,7 @@ function RegisterPageContent() {
           </div>
 
           {/* Dev mode: Show verification link */}
-          {verificationToken && (
+          {process.env.NODE_ENV === 'development' && verificationToken && (
             <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium mb-2">
                 🔧 Development Mode

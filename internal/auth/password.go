@@ -22,7 +22,7 @@ MinPasswordLength = 8
 MaxPasswordLength = 64
 
 // DefaultBcryptCost is the bcrypt work factor (2^12 iterations).
-DefaultBcryptCost = bcrypt.DefaultCost
+DefaultBcryptCost = 12
 )
 
 // Password policy errors.

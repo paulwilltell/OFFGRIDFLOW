@@ -13,6 +13,11 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
+variable "vpc_cidr" {
+  description = "CIDR block of the VPC for database security group ingress"
+  type        = string
+}
+
 variable "db_instance_class" {
   description = "RDS instance class"
   type        = string

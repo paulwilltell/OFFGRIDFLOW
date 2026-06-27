@@ -18,6 +18,11 @@ spec:
           image: ghcr.io/example/offgridflow-worker:latest
           command: ["/app/offgridflow-worker"]
           args: []
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
           env:
             - name: OFFGRIDFLOW_ENV
               valueFrom:

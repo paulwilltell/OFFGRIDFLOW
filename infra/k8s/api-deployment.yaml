@@ -38,6 +38,11 @@ spec:
         - name: api
           image: ghcr.io/example/offgridflow-api:latest
           command: ["/app/offgridflow-api"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 8080
               name: http

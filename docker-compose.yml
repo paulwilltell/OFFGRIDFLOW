@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: changeme
       POSTGRES_DB: offgridflow
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
@@ -24,12 +24,13 @@ services:
   redis:
     image: redis:7-alpine
     container_name: offgridflow-redis
+    command: redis-server --requirepass changeme_redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "changeme_redis", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -101,11 +102,11 @@ services:
     image: grafana/grafana:latest
     container_name: offgridflow-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./deployments/grafana/dashboards:/etc/grafana/provisioning/dashboards
@@ -127,7 +128,7 @@ services:
     container_name: offgridflow-api
     environment:
       - OFFGRIDFLOW_DB_DSN=postgresql://offgridflow:changeme@postgres:5432/offgridflow?sslmode=disable
-      - OFFGRIDFLOW_REDIS_URL=redis://redis:6379/0
+      - OFFGRIDFLOW_REDIS_URL=redis://:changeme_redis@redis:6379/0
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
       - OTEL_SERVICE_NAME=offgridflow-api
       - OTEL_SERVICE_VERSION=1.0.0
@@ -162,7 +163,7 @@ services:
     command: ["/app/offgridflow-worker"]
     environment:
       - OFFGRIDFLOW_DB_DSN=postgresql://offgridflow:changeme@postgres:5432/offgridflow?sslmode=disable
-      - OFFGRIDFLOW_REDIS_URL=redis://redis:6379/0
+      - OFFGRIDFLOW_REDIS_URL=redis://:changeme_redis@redis:6379/0
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
       - OTEL_SERVICE_NAME=offgridflow-worker
       - OTEL_SERVICE_VERSION=1.0.0

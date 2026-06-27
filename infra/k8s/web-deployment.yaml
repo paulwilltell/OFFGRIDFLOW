@@ -16,6 +16,11 @@ spec:
       containers:
         - name: web
           image: ghcr.io/example/offgridflow-web:latest
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 3000
               name: http

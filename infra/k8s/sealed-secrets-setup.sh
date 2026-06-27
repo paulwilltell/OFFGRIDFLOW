@@ -140,7 +140,7 @@ type: Opaque
 stringData:
   # Database
   postgres-password: "${POSTGRES_PASSWORD}"
-  database-url: "postgresql://offgridflow:${POSTGRES_PASSWORD}@postgres-service:5432/offgridflow?sslmode=disable"
+  database-url: "postgresql://offgridflow:${POSTGRES_PASSWORD}@postgres-service:5432/offgridflow?sslmode=require"
   
   # Redis
   redis-password: "${REDIS_PASSWORD}"

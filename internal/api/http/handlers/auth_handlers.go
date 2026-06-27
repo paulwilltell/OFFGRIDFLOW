@@ -830,7 +830,7 @@ func validatePasswordStrength(password string) []string {
 	}
 
 	// Check for at least one uppercase, lowercase, digit, and special char
-	var hasUpper, hasLower, hasDigit bool
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
 	for _, c := range password {
 		switch {
 		case unicode.IsUpper(c):
@@ -839,6 +839,8 @@ func validatePasswordStrength(password string) []string {
 			hasLower = true
 		case unicode.IsDigit(c):
 			hasDigit = true
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			hasSpecial = true
 		}
 	}
 
@@ -850,6 +852,9 @@ func validatePasswordStrength(password string) []string {
 	}
 	if !hasDigit {
 		errors = append(errors, "password must contain at least one digit")
+	}
+	if !hasSpecial {
+		errors = append(errors, "password must contain at least one special character")
 	}
 
 	return errors
