@@ -40,25 +40,16 @@ const navItems = [
       { label: 'California SB 253', href: '/compliance/california' },
       { label: 'CBAM', href: '/compliance/cbam' },
       { label: 'Scope 3 Categories', href: '/compliance/scope3' },
-      { label: 'Risk Abatement', href: '/compliance/abatement/sb253' },
     ],
   },
   {
     label: 'Audit',
-    href: '/audit/ledger',
+    href: '/audit/data-quality',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
       </svg>
     ),
-    children: [
-      { label: 'Calculation Ledger', href: '/audit/ledger' },
-      { label: 'Approvals', href: '/audit/approvals' },
-      { label: 'Factor Snapshots', href: '/audit/factor-snapshots' },
-      { label: 'Data Quality', href: '/audit/data-quality' },
-      { label: 'Alerts', href: '/audit/alerts' },
-      { label: 'Getting Started', href: '/onboarding' },
-    ],
   },
   {
     label: 'Settings',
@@ -69,15 +60,6 @@ const navItems = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
-    children: [
-      { label: 'Billing', href: '/settings/billing' },
-      { label: 'Data Sources', href: '/settings/data-sources' },
-      { label: 'Data Governance', href: '/settings/data-governance' },
-      { label: 'Organization', href: '/settings/organization' },
-      { label: 'Security', href: '/settings/security' },
-      { label: 'Users', href: '/settings/users' },
-      { label: 'Emission Factors', href: '/settings/factors' },
-    ],
   },
 ];
 

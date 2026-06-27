@@ -106,7 +106,7 @@ function RegisterPageContent() {
       } else {
         // Legacy flow - auto login if verification not required
         await login({ email, password });
-        router.push('/dashboard/carbon');
+        router.push('/emissions');
       }
     } catch (err) {
       if (err instanceof ApiRequestError) {

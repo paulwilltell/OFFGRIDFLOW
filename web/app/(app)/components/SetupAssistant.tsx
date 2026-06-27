@@ -180,7 +180,7 @@ export function SetupAssistant() {
 
   const [assistantVisible, setAssistantVisible] = useState(false);
   const [assistantCollapsed, setAssistantCollapsed] = useState(false);
-  const [assistantHidden, setAssistantHidden] = useState(false);
+  const [assistantHidden, setAssistantHidden] = useState(true);
   const [profileReviewed, setProfileReviewed] = useState(false);
   const [dashboardTourCompleted, setDashboardTourCompleted] = useState(false);
   const [health, setHealth] = useState<AuditHealth | null>(null);

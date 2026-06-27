@@ -9,8 +9,8 @@ import { useSession } from '@/lib/session';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const rawReturnTo = searchParams.get('returnTo') || '/dashboard/carbon';
-  const returnTo = rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : '/dashboard/carbon';
+  const rawReturnTo = searchParams.get('returnTo') || '/emissions';
+  const returnTo = rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : '/emissions';
   const { login, refreshSession } = useSession();
   
   const [email, setEmail] = useState('');
