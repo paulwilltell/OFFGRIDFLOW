@@ -28,7 +28,17 @@ export function middleware(request: NextRequest) {
     request.cookies.get('offgridflow_session')?.value;
 
   if (token) {
-    return NextResponse.next();
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      try {
+        const payload = JSON.parse(atob(parts[1]));
+        if (payload.exp && payload.exp * 1000 > Date.now()) {
+          return NextResponse.next();
+        }
+      } catch {
+        // malformed token — fall through to redirect
+      }
+    }
   }
 
   const loginUrl = new URL('/login', request.url);
