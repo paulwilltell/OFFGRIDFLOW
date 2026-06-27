@@ -94,7 +94,7 @@ function ScopeBreakdown({ scope1, scope2, scope3 }: { scope1: number; scope2: nu
       </div>
 
       {/* Scope rows */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {scopes.map((s) => (
           <div key={s.name} className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -178,9 +178,9 @@ function ActivityLedger({ dataSources }: { dataSources: DataSource[] }) {
           Manage
         </Link>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {dataSources.slice(0, 6).map((ds) => (
-          <div key={ds.id} className="flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2">
+          <div key={ds.id} className="flex items-center justify-between rounded-lg bg-gray-900/30 px-3 py-2.5">
             <div className="flex items-center gap-2.5">
               <span className={`h-2 w-2 rounded-full ${
                 ds.status === 'active' ? 'bg-green-500' : ds.status === 'error' ? 'bg-red-500' : 'bg-gray-500'

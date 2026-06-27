@@ -496,7 +496,7 @@ export function SetupAssistant() {
               <h2 className="mt-1 text-lg font-semibold text-white">
                 {progress.requiredPercentComplete === 100
                   ? 'Core setup complete'
-                  : `Get ${user?.firstName || user?.name || 'your workspace'} live faster`}
+                  : 'Get your Scope Calculations faster'}
               </h2>
               <p className="mt-1 text-sm leading-6 text-gray-400">
                 {loadingSummary

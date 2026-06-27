@@ -276,10 +276,29 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		verificationToken = generateVerificationToken()
 	}
 
-	// Build full name from first/last or use provided name
+	// Normalize name casing (capitalize first letter of each word)
+	normalizeName := func(s string) string {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return s
+		}
+		words := strings.Fields(s)
+		for i, w := range words {
+			if len(w) > 0 {
+				words[i] = strings.ToUpper(w[:1]) + strings.ToLower(w[1:])
+			}
+		}
+		return strings.Join(words, " ")
+	}
+
+	firstName := normalizeName(req.FirstName)
+	lastName := normalizeName(req.LastName)
+
 	fullName := strings.TrimSpace(req.Name)
-	if req.FirstName != "" || req.LastName != "" {
-		fullName = strings.TrimSpace(req.FirstName + " " + req.LastName)
+	if firstName != "" || lastName != "" {
+		fullName = strings.TrimSpace(firstName + " " + lastName)
+	} else {
+		fullName = normalizeName(fullName)
 	}
 
 	// Create user (first user is admin)
@@ -289,8 +308,8 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		TenantID:               tenantID,
 		Email:                  normalizedEmail,
 		Name:                   fullName,
-		FirstName:              strings.TrimSpace(req.FirstName),
-		LastName:               strings.TrimSpace(req.LastName),
+		FirstName:              firstName,
+		LastName:               lastName,
 		JobTitle:               strings.TrimSpace(req.JobTitle),
 		PasswordHash:           passwordHash,
 		Role:                   "admin",
