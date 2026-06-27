@@ -20,32 +20,18 @@ interface RegisterResponse {
     name: string;
   };
   requires_verification?: boolean;
-  verification_token?: string; // Only in dev mode
+  verification_token?: string;
 }
-
-const PLAN_INFO: Record<string, { name: string; price: string; desc: string }> = {
-  'audit_prep': { name: 'Audit Prep', price: '$6,500/year', desc: 'Scope 1 & 2 tracking, single compliance framework, CSV import' },
-  'compliance_pro': { name: 'Compliance Pro', price: '$10,800/year', desc: 'Full Scope 1, 2 & 3, cloud connectors, CSRD + SEC frameworks' },
-  'enterprise': { name: 'Enterprise', price: '$15,000/year', desc: 'All 5 frameworks, SAP integration, dedicated account manager' },
-  'starter': { name: 'Audit Prep', price: '$6,500/year', desc: 'Scope 1 & 2 tracking, single compliance framework, CSV import' },
-};
 
 function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useSession();
 
-  const planParam = searchParams.get('plan') || '';
-  const selectedPlan = PLAN_INFO[planParam] || null;
-
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [jobTitle, setJobTitle] = useState('');
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
@@ -55,13 +41,10 @@ function RegisterPageContent() {
     e.preventDefault();
     setError(null);
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
-    // Validate password requirements
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
@@ -75,36 +58,23 @@ function RegisterPageContent() {
       return;
     }
 
-    if (!acceptedTerms) {
-      setError('You must accept the Terms of Service and Privacy Policy to create an account.');
-      return;
-    }
-
     setLoading(true);
 
     try {
       const response = await api.post<RegisterResponse>('/api/auth/register', {
-        name: `${firstName} ${lastName}`.trim(),
-        first_name: firstName,
-        last_name: lastName,
         email,
         password,
         company_name: companyName || undefined,
-        job_title: jobTitle || undefined,
-        selected_plan: planParam || undefined,
         terms_accepted: true,
         terms_accepted_at: new Date().toISOString(),
       });
-      
-      // Check if email verification is required
+
       if (response.requires_verification) {
         setVerificationSent(true);
-        // In dev mode, we can show the verification token
-        if (response.verification_token) {
+        if (process.env.NODE_ENV === 'development' && response.verification_token) {
           setVerificationToken(response.verification_token);
         }
       } else {
-        // Legacy flow - auto login if verification not required
         await login({ email, password });
         router.push('/emissions');
       }
@@ -123,288 +93,130 @@ function RegisterPageContent() {
     }
   };
 
-  // Show verification success screen
   if (verificationSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-              <svg className="h-8 w-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">
-              Check Your Email
-            </h1>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">
-              We&apos;ve sent a verification link to <strong className="text-gray-900 dark:text-white">{email}</strong>
-            </p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-              Please click the link in the email to verify your account and continue.
-            </p>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: '#f7f8f6', fontFamily: "'Schibsted Grotesk', system-ui, sans-serif" }}>
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ background: '#e8f0ea' }}>
+            <span className="text-2xl">✉️</span>
           </div>
-
-          {/* Dev mode: Show verification link */}
+          <h1 className="text-2xl font-bold" style={{ color: '#16201b' }}>Check your email</h1>
+          <p className="text-[15px]" style={{ color: '#6a7a71' }}>
+            We sent a verification link to <strong style={{ color: '#16201b' }}>{email}</strong>. Click it to activate your workspace.
+          </p>
           {process.env.NODE_ENV === 'development' && verificationToken && (
-            <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium mb-2">
-                🔧 Development Mode
-              </p>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                Click below to verify your email:
-              </p>
-              <Link
-                href={`/verify-email?token=${verificationToken}`}
-                className="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-md transition-colors"
-              >
-                Verify Email Now
+            <div className="rounded-xl border p-4" style={{ background: '#fbf8ee', borderColor: '#efe6cc' }}>
+              <p className="mb-2 text-sm font-semibold">Dev mode</p>
+              <Link href={`/verify-email?token=${verificationToken}`} className="text-sm font-semibold" style={{ color: '#2f6b50' }}>
+                Verify now →
               </Link>
             </div>
           )}
-
-          <div className="mt-6 space-y-4">
-            <Link
-              href="/login"
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Go to Login
-            </Link>
-          </div>
+          <Link href="/login" className="block text-[13.5px] font-semibold" style={{ color: '#2f6b50' }}>
+            Back to sign in
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="flex min-h-screen" style={{ fontFamily: "'Schibsted Grotesk', system-ui, sans-serif", color: '#16201b' }}>
+      {/* Brand panel */}
+      <div className="hidden w-[486px] flex-col justify-between p-[52px_48px] lg:flex" style={{ background: '#1d3b2e', color: '#eaf2ec' }}>
+        <div className="flex items-center gap-[11px] text-[18px] font-bold tracking-[-0.01em]">
+          <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] text-[15px]" style={{ background: '#5fbf8e', color: '#10271d' }}>◇</span>
+          OffGridFlow
+        </div>
         <div>
-          <h1 className="text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            OffGridFlow
-          </h1>
-          <h2 className="mt-6 text-center text-xl font-bold text-gray-900 dark:text-white">
-            Create your account
-          </h2>
-          {selectedPlan && (
-            <div className="mt-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-center">
-              <div className="text-sm font-semibold text-green-800 dark:text-green-300">{selectedPlan.name} — {selectedPlan.price}</div>
-              <div className="text-xs text-green-600 dark:text-green-400 mt-0.5">{selectedPlan.desc}</div>
-            </div>
-          )}
-          <p className="mt-3 text-center text-sm text-gray-600 dark:text-gray-400">
-            Already have an account?{' '}
-            <Link
-              href="/login"
-              className="font-medium text-green-600 hover:text-green-500"
-            >
-              Sign in
-            </Link>
+          <div className="text-[38px] font-bold leading-[1.12] tracking-[-0.02em]">
+            Carbon accounting<br />without the busywork.
+          </div>
+          <p className="mt-[22px] max-w-[340px] text-[15.5px] leading-[1.6]" style={{ color: '#a9c6b6' }}>
+            Upload your activity data. We calculate Scope&nbsp;1, 2 and 3 and hand you an audit-ready report. That&apos;s the whole product.
           </p>
         </div>
+        <div className="flex flex-col gap-[18px]">
+          {['Upload your data', 'Review your footprint', 'Download the report'].map((label, i) => (
+            <div key={i} className="flex items-center gap-[14px]">
+              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border text-[13px]" style={{ borderColor: '#3f6b54', fontFamily: "'IBM Plex Mono', monospace", color: '#7fce9f' }}>
+                {i + 1}
+              </span>
+              <span className="text-[15px]" style={{ color: '#cfe2d6' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      {/* Form */}
+      <div className="flex flex-1 flex-col items-center justify-center p-8 lg:p-16" style={{ background: '#fff' }}>
+        <form onSubmit={handleSubmit} className="w-full max-w-[420px]">
+          <h1 className="mb-2 text-[27px] font-bold tracking-[-0.02em]">Create your workspace</h1>
+          <p className="mb-[34px] text-[15px]" style={{ color: '#6a7a71' }}>Free to set up. You only pay when you export a report.</p>
+
           {error && (
-            <div className="rounded-md bg-red-50 dark:bg-red-900/50 p-4">
-              <div className="text-sm text-red-700 dark:text-red-200">{error}</div>
+            <div className="mb-4 rounded-lg border p-3 text-[13.5px]" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+              {error}
             </div>
           )}
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  First Name
-                </label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  autoComplete="given-name"
-                  required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                  placeholder="John"
-                />
-              </div>
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Last Name
-                </label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  autoComplete="family-name"
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                  placeholder="Doe"
-                />
-              </div>
-            </div>
+          <label className="mb-[7px] block text-[12.5px] font-semibold" style={{ color: '#5b6b62' }}>Work email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            required
+            className="mb-[18px] block h-[46px] w-full rounded-[9px] border px-[14px] text-[14.5px] outline-none focus:border-[#2f6b50]"
+            style={{ borderColor: '#e2e7e3', color: '#16201b' }}
+          />
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Work Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                placeholder="john.doe@company.com"
-              />
-            </div>
+          <label className="mb-[7px] block text-[12.5px] font-semibold" style={{ color: '#5b6b62' }}>Company</label>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            placeholder="Acme Manufacturing Inc."
+            className="mb-[18px] block h-[46px] w-full rounded-[9px] border px-[14px] text-[14.5px] outline-none focus:border-[#2f6b50]"
+            style={{ borderColor: '#e2e7e3', color: '#16201b' }}
+          />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Company Name <span className="text-gray-500 text-xs">(optional)</span>
-                </label>
-                <input
-                  id="company"
-                  name="company"
-                  type="text"
-                  autoComplete="organization"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                  placeholder="Acme Corp"
-                />
-              </div>
-              <div>
-                <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Position/Title <span className="text-gray-500 text-xs">(optional)</span>
-                </label>
-                <input
-                  id="jobTitle"
-                  name="jobTitle"
-                  type="text"
-                  autoComplete="organization-title"
-                  value={jobTitle}
-                  onChange={(e) => setJobTitle(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                  placeholder="Sustainability Manager"
-                />
-              </div>
-            </div>
+          <label className="mb-[7px] block text-[12.5px] font-semibold" style={{ color: '#5b6b62' }}>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Min 8 chars, 1 uppercase, 1 number"
+            required
+            className="mb-[18px] block h-[46px] w-full rounded-[9px] border px-[14px] text-[14.5px] outline-none focus:border-[#2f6b50]"
+            style={{ borderColor: '#e2e7e3', color: '#16201b' }}
+          />
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                placeholder="Min 8 chars, 1 uppercase, 1 number"
-              />
-            </div>
+          <label className="mb-[7px] block text-[12.5px] font-semibold" style={{ color: '#5b6b62' }}>Confirm password</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm your password"
+            required
+            className="mb-[30px] block h-[46px] w-full rounded-[9px] border px-[14px] text-[14.5px] outline-none focus:border-[#2f6b50]"
+            style={{ borderColor: '#e2e7e3', color: '#16201b' }}
+          />
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                placeholder="Confirm your password"
-              />
-            </div>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex h-[48px] w-full items-center justify-center gap-2 rounded-[9px] text-[15px] font-semibold text-white disabled:opacity-60"
+            style={{ background: '#1d3b2e' }}
+          >
+            {loading ? 'Creating...' : 'Create workspace'} {!loading && <span className="text-[17px]">→</span>}
+          </button>
 
-          {/* Required Terms & Privacy acceptance. Per liability audit finding
-              #15: explicit acceptance creates an auditable trail at registration. */}
-          <div className="flex items-start gap-3 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-3">
-            <input
-              id="acceptedTerms"
-              type="checkbox"
-              checked={acceptedTerms}
-              onChange={(e) => setAcceptedTerms(e.target.checked)}
-              required
-              aria-required="true"
-              className="mt-0.5 h-4 w-4 rounded border-gray-400 text-green-600 focus:ring-green-500 focus:ring-offset-0"
-            />
-            <label htmlFor="acceptedTerms" className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-              I have read and agree to the{' '}
-              <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-500 underline">
-                Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-500 underline">
-                Privacy Policy
-              </a>
-              . I understand that OffGridFlow is a calculation and reporting tool,
-              that reports are drafts, and that I am solely responsible for verifying
-              outputs before submitting them to any regulatory body or third party.
-            </label>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading || !acceptedTerms}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Creating account...
-                </span>
-              ) : (
-                'Create account'
-              )}
-            </button>
-          </div>
+          <p className="mt-[18px] text-center text-[13.5px]" style={{ color: '#8a978f' }}>
+            Already have one?{' '}
+            <Link href="/login" className="font-semibold" style={{ color: '#2f6b50' }}>Sign in</Link>
+          </p>
         </form>
-      </div>
-    </div>
-  );
-}
-
-function RegisterPageFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-6 rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">OffGridFlow</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400">Loading registration form...</p>
       </div>
     </div>
   );
@@ -412,7 +224,7 @@ function RegisterPageFallback() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<RegisterPageFallback />}>
+    <Suspense>
       <RegisterPageContent />
     </Suspense>
   );
