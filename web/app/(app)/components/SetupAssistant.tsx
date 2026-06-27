@@ -109,7 +109,7 @@ function StepBadge({ step }: { step: AssistantStep }) {
 
   return (
     <span className="rounded-full bg-gray-700/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-300">
-      Pending
+      To do
     </span>
   );
 }
