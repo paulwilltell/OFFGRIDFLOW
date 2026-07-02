@@ -11,7 +11,7 @@ type Step = { num: number; label: string; href: string; paths: string[] };
 const STEPS: Step[] = [
   { num: 1, label: 'Upload', href: '/emissions', paths: ['/emissions'] },
   { num: 2, label: 'Review', href: '/dashboard/carbon', paths: ['/dashboard', '/audit'] },
-  { num: 3, label: 'Report', href: '/compliance/csrd', paths: ['/compliance'] },
+  { num: 3, label: 'Report', href: '/reports', paths: ['/reports', '/compliance'] },
 ];
 
 function getActiveStep(pathname: string | null): number {
