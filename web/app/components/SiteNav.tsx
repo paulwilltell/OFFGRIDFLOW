@@ -36,10 +36,10 @@ export function SiteNav() {
           {user ? (
             <>
               <Link
-                href="/dashboard/carbon"
+                href="/emissions"
                 className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
               >
-                Dashboard
+                Open app
               </Link>
               <button
                 onClick={() => logout()}
