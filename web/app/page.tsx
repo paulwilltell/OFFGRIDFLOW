@@ -9,7 +9,7 @@ import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 export const metadata: Metadata = {
   title: 'OffGridFlow | Carbon Compliance Without the Big 4 Price Tag',
   description:
-    'Automate Scope 1, 2, 3 emissions tracking and generate audit-ready compliance reports for CSRD, SEC, California SB 253, CBAM, and IFRS S2. Starting at $6,500/year.',
+    'Upload your utility data, see your carbon footprint calculated with GHG Protocol methodology for free, and export an audit-ready CSRD / SEC / SB 253 report for $149.',
   openGraph: {
     title: 'OffGridFlow | Carbon Compliance Without the Big 4 Price Tag',
     description:
@@ -49,19 +49,19 @@ export default function HomePage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-gray-400">
-            Big 4 firms charge $50,000&ndash;$200,000 for carbon audits. OffGridFlow calculates
-            Scope 1, 2, and 3 emissions using{' '}
+            Big 4 firms charge $50,000&ndash;$200,000 for carbon audits. Upload your
+            utility data, see your footprint calculated with{' '}
             <Link href="/trust" className="text-primary-400 hover:underline">GHG Protocol methodology</Link>{' '}
-            and generates compliance reports&mdash;starting
-            at <strong className="text-white">$6,500/year</strong>.
+            for free, and export an audit-ready report for{' '}
+            <strong className="text-white">$149</strong>.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/register?plan=starter"
+              href="/register"
               className="rounded-lg bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-500 hover:shadow-primary-500/30"
             >
-              Start Free Trial
+              Start free
             </Link>
             <Link
               href="/register"
@@ -293,25 +293,25 @@ export default function HomePage() {
               <div className="text-center">
                 <div className="text-xs text-gray-500">Big 4 Average</div>
                 <div className="mt-1 text-2xl font-bold text-gray-400 line-through">$75,000</div>
-                <div className="text-xs text-gray-600">per year</div>
+                <div className="text-xs text-gray-600">per report</div>
               </div>
               <div className="text-center">
-                <div className="text-xs text-primary-400">OffGridFlow Audit Prep</div>
-                <div className="mt-1 text-2xl font-bold text-white">$6,500</div>
-                <div className="text-xs text-gray-500">per year</div>
+                <div className="text-xs text-primary-400">OffGridFlow</div>
+                <div className="mt-1 text-2xl font-bold text-white">$149</div>
+                <div className="text-xs text-gray-500">per report</div>
               </div>
               <div className="text-center">
                 <div className="text-xs text-gray-500">Your Savings</div>
-                <div className="mt-1 text-2xl font-bold text-primary-400">$68,500</div>
-                <div className="text-xs text-primary-400/60">91% cost reduction</div>
+                <div className="mt-1 text-2xl font-bold text-primary-400">$74,851</div>
+                <div className="text-xs text-primary-400/60">99% cost reduction</div>
               </div>
             </div>
             <div className="mt-8 text-center">
               <Link
-                href="/register?plan=starter"
+                href="/register"
                 className="inline-block rounded-lg bg-primary-600 px-8 py-3 text-sm font-semibold text-white transition hover:bg-primary-500"
               >
-                Start Saving Today
+                Start free — upload your data
               </Link>
             </div>
           </div>
@@ -322,94 +322,58 @@ export default function HomePage() {
       {/* PRICING                                                             */}
       {/* ================================================================== */}
       <section id="pricing" className="border-t border-gray-800/50 px-6 py-20">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-4 text-center text-3xl font-bold text-white">Transparent pricing</h2>
-          <p className="mb-16 text-center text-gray-400">No hidden fees. No per-seat surprises.</p>
+        <div className="mx-auto max-w-3xl">
+          <h2 className="mb-4 text-center text-3xl font-bold text-white">Simple, honest pricing</h2>
+          <p className="mb-14 text-center text-gray-400">Free to upload and see your footprint. Pay only when you export a report.</p>
 
-          <div className="grid gap-6 md:grid-cols-4">
-            {[
-              {
-                name: 'Audit Prep',
-                price: '$6,500',
-                period: '/year',
-                monthly: '$540/mo equivalent',
-                desc: 'Scope 1 & 2 for your first audit',
-                features: ['Scope 1 & 2 tracking', 'CSV & utility bill import', 'Single framework (CSRD or SB 253)', 'PDF reports', 'Email support', 'Up to 5 users'],
-                cta: 'Get Started',
-                href: '/register?plan=basic',
-                highlight: false,
-              },
-              {
-                name: 'Compliance Pro',
-                price: '$10,800',
-                period: '/year',
-                monthly: '$900/mo equivalent',
-                desc: 'CSRD + SEC readiness with Scope 3',
-                features: ['Scope 1, 2 & basic Scope 3', 'CSRD + SEC frameworks', 'Cloud connectors (AWS, Azure, GCP)', 'PDF + XBRL exports', 'Priority support', 'Up to 15 users'],
-                cta: 'Get Started',
-                href: '/register?plan=pro',
-                highlight: true,
-              },
-              {
-                name: 'Enterprise',
-                price: '$15,000',
-                period: '/year',
-                monthly: '$1,250/mo equivalent',
-                desc: 'Full compliance for growing orgs',
-                features: ['Full Scope 1, 2 & 3', 'All 5 frameworks', 'Cloud + SAP connectors', 'XBRL/iXBRL exports', 'Account manager', 'Up to 25 users'],
-                cta: 'Get Started',
-                href: '/register?plan=enterprise',
-                highlight: false,
-              },
-              {
-                name: 'Global',
-                price: 'Custom',
-                period: '',
-                monthly: '',
-                desc: 'Multi-site, multi-jurisdiction',
-                features: ['Everything in Enterprise', 'Custom integrations', 'Multi-region compliance', 'On-site implementation', 'SLA guarantee', 'Unlimited users'],
-                cta: 'Contact Sales',
-                href: 'mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Global%20Plan%20Inquiry',
-                highlight: false,
-              },
-            ].map((tier) => (
-              <div
-                key={tier.name}
-                className={`relative rounded-xl border p-7 ${tier.highlight ? 'border-primary-600 bg-dark-800' : 'border-gray-800 bg-dark-800'}`}
-              >
-                {tier.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary-600 px-3 py-0.5 text-xs font-medium text-white">
-                    Most Popular
-                  </div>
-                )}
-                <h3 className="text-lg font-semibold text-white">{tier.name}</h3>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-white">{tier.price}</span>
-                  {tier.period && <span className="text-sm text-gray-500">{tier.period}</span>}
-                </div>
-                {tier.monthly && <div className="mt-1 text-xs text-gray-600">{tier.monthly}</div>}
-                <p className="mt-2 text-sm text-gray-500">{tier.desc}</p>
-                <ul className="mt-5 space-y-2.5">
-                  {tier.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                      <span className="mt-0.5 text-primary-400">&#10003;</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={tier.href}
-                  className={`mt-7 block rounded-lg py-2.5 text-center text-sm font-medium transition ${
-                    tier.highlight
-                      ? 'bg-primary-600 text-white hover:bg-primary-500'
-                      : 'border border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white'
-                  }`}
-                >
-                  {tier.cta}
-                </Link>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {/* Free */}
+            <div className="rounded-xl border border-gray-800 bg-dark-800 p-8">
+              <h3 className="text-lg font-semibold text-white">Free</h3>
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-bold text-white">$0</span>
               </div>
-            ))}
+              <p className="mt-2 text-sm text-gray-500">See your real footprint before you pay anything.</p>
+              <ul className="mt-6 space-y-2.5">
+                {['Upload utility & energy data', 'Automatic column mapping', 'Emission factors applied (EPA, DEFRA)', 'Full Scope 2 footprint dashboard', 'Data quality anomaly scan'].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                    <span className="mt-0.5 text-primary-400">&#10003;</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/register" className="mt-7 block rounded-lg border border-gray-700 py-2.5 text-center text-sm font-medium text-gray-300 transition hover:border-gray-500 hover:text-white">
+                Start free
+              </Link>
+            </div>
+
+            {/* Per report */}
+            <div className="relative rounded-xl border border-primary-600 bg-dark-800 p-8">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary-600 px-3 py-0.5 text-xs font-medium text-white">
+                Pay per report
+              </div>
+              <h3 className="text-lg font-semibold text-white">Audit-ready report</h3>
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-bold text-white">$149</span>
+                <span className="text-sm text-gray-500">/ report</span>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">One-time. Re-export free for 12 months.</p>
+              <ul className="mt-6 space-y-2.5">
+                {['Everything in Free', 'Audit-ready PDF & CSV export', 'GHG Protocol + CSRD / ESRS E1', 'Full methodology & source trail', 'Formatted to your framework', 'No subscription, no per-seat fees'].map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                    <span className="mt-0.5 text-primary-400">&#10003;</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/register" className="mt-7 block rounded-lg bg-primary-600 py-2.5 text-center text-sm font-medium text-white transition hover:bg-primary-500">
+                Upload data to start
+              </Link>
+            </div>
           </div>
+          <p className="mt-8 text-center text-xs text-gray-600">
+            Need multi-site or an enterprise agreement? <a href="mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Enterprise" className="text-primary-400 hover:underline">Talk to us</a>.
+          </p>
         </div>
       </section>
 
@@ -419,23 +383,23 @@ export default function HomePage() {
       <section className="border-t border-gray-800/50 px-6 py-24">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold text-white">
-            Ready to cut your compliance costs by 90%?
+            See your carbon footprint in minutes.
           </h2>
           <p className="mt-4 text-gray-400">
-            Join the companies replacing six-figure consulting engagements with audit-ready software.
+            Upload your data free. Export an audit-ready report for $149 when you&apos;re ready.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/register?plan=starter"
+              href="/register"
               className="rounded-lg bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-500"
             >
-              Start Free Trial
+              Start free
             </Link>
             <Link
-              href="/register"
+              href="/login"
               className="text-sm font-medium text-gray-400 transition hover:text-white"
             >
-              Review the workflow &rarr;
+              Sign in &rarr;
             </Link>
           </div>
         </div>

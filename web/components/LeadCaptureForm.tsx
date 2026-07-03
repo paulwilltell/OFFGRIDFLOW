@@ -95,7 +95,7 @@ export function LeadCaptureForm({
         <div className="text-lg font-semibold text-green-400">Received</div>
         <p className="mt-2 text-sm text-gray-400">
           We&apos;ll respond within one business day. In the meantime, you can{' '}
-          <Link href="/register?plan=starter" className="text-primary-400 hover:underline">
+          <Link href="/register" className="text-primary-400 hover:underline">
             start a free trial
           </Link>{' '}
           to explore the platform immediately.
@@ -239,7 +239,7 @@ export function LeadCaptureForm({
 
       <p className="text-center text-[10px] text-gray-600">
         Or{' '}
-        <Link href="/register?plan=starter" className="text-primary-400 hover:underline">
+        <Link href="/register" className="text-primary-400 hover:underline">
           start a free trial
         </Link>{' '}
         to explore the platform now. No credit card required for trial.

@@ -51,10 +51,10 @@ export function SiteNav() {
                 Sign In
               </Link>
               <Link
-                href="/register?plan=starter"
+                href="/register"
                 className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-500"
               >
-                Start Free Trial
+                Start free
               </Link>
             </>
           )}

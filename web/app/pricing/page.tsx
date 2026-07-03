@@ -6,99 +6,66 @@ import { LeadCaptureForm } from '@/components/LeadCaptureForm';
 
 export const metadata: Metadata = {
   title: 'Pricing | OffGridFlow',
-  description: 'OffGridFlow pricing — enterprise carbon compliance starting at $6,500/year.',
+  description: 'Free to upload and see your carbon footprint. Export an audit-ready report for $149 — one-time, no subscription.',
 };
 
 const tiers = [
   {
-    name: 'Audit Prep',
-    price: '$6,500',
-    period: '/year',
-    description: 'Scope 1 & 2 for your first audit',
-    features: [
-      'Scope 1 & 2 emissions tracking',
-      'CSV & utility bill import',
-      'Single compliance framework (CSRD or SB 253)',
-      'PDF compliance reports',
-      'EPA eGRID emission factors',
-      'Email support',
-      'Up to 5 users',
-    ],
-    cta: 'Get Started',
-    highlight: false,
-  },
-  {
-    name: 'Compliance Pro',
-    price: '$10,800',
-    period: '/year',
-    description: 'CSRD + SEC readiness with Scope 3',
-    features: [
-      'Scope 1, 2 & basic Scope 3 tracking',
-      'CSRD + SEC compliance frameworks',
-      'Cloud connectors (AWS, Azure, GCP)',
-      'PDF + XBRL exports',
-      'EPA eGRID + DEFRA + IEA factors',
-      'Priority email support',
-      'Up to 15 users',
-    ],
-    cta: 'Get Started',
-    highlight: true,
-  },
-  {
-    name: 'Enterprise',
-    price: '$15,000',
-    period: '/year',
-    description: 'Full compliance for growing organizations',
-    features: [
-      'Full Scope 1, 2 & 3 tracking',
-      'All 5 frameworks (CSRD, SEC, SB 253, CBAM, IFRS S2)',
-      'Cloud connectors + SAP integration',
-      'PDF + XBRL/iXBRL exports',
-      'Advanced analytics & forecasting',
-      'Dedicated account manager',
-      'Up to 25 users',
-    ],
-    cta: 'Get Started',
-    highlight: false,
-  },
-  {
-    name: 'Global',
-    price: 'Custom',
+    name: 'Free',
+    price: '$0',
     period: '',
-    description: 'Multi-site, multi-jurisdiction enterprises',
+    description: 'See your real footprint before you pay anything.',
     features: [
-      'Everything in Enterprise',
-      'Custom integrations & calculation methods',
-      'Multi-region compliance (EU, UK, CA & more)',
-      'On-site implementation support',
-      'SLA guarantee',
-      'Unlimited users',
+      'Upload utility & energy data (CSV)',
+      'Automatic column mapping',
+      'Emission factors applied (EPA eGRID, DEFRA)',
+      'Full Scope 2 footprint dashboard',
+      'Data quality anomaly scan',
+      'No credit card required',
     ],
-    cta: 'Contact Sales',
+    cta: 'Start free',
+    href: '/register',
     highlight: false,
+  },
+  {
+    name: 'Audit-ready report',
+    price: '$149',
+    period: '/ report',
+    description: 'One-time. Re-export free for 12 months.',
+    features: [
+      'Everything in Free',
+      'Audit-ready PDF & CSV export',
+      'GHG Protocol + CSRD / ESRS E1',
+      'Full methodology & source trail',
+      'Formatted to your framework',
+      'No subscription, no per-seat fees',
+    ],
+    cta: 'Upload data to start',
+    href: '/register',
+    highlight: true,
   },
 ];
 
 const faq = [
   {
-    q: 'What compliance frameworks are supported?',
-    a: 'CSRD/ESRS (EU), SEC Climate Disclosure (US), California SB 253, CBAM (EU Carbon Border Adjustment), and IFRS S2 (Global ISSB). Audit Prep includes one framework, Compliance Pro includes CSRD + SEC, Enterprise and Global include all five.',
+    q: 'Is it really free to see my footprint?',
+    a: 'Yes. Upload your utility data and we calculate your Scope 2 footprint, apply verified emission factors, and run a data-quality scan — all free. You only pay when you want to export the audit-ready report.',
   },
   {
-    q: 'How does data import work?',
-    a: 'You can import emissions data via CSV upload, utility bill upload, or automated cloud connectors. Enterprise plans include automated data pipelines from AWS, Azure, and GCP carbon footprint APIs.',
+    q: 'What do I get for $149?',
+    a: 'A complete, audit-ready report of your inventory in PDF and CSV, formatted to your chosen framework (GHG Protocol and CSRD / ESRS E1 today), with the full methodology and a per-line source trail an auditor can follow. It is a one-time purchase and re-exports are free for 12 months.',
+  },
+  {
+    q: 'Which scopes are supported?',
+    a: 'Today the engine calculates Scope 2 (purchased electricity and energy) from your utility data. Scope 1 (fuel) and Scope 3 (travel, suppliers) are on the roadmap — the dashboard shows them clearly as not yet populated so nothing is misrepresented.',
   },
   {
     q: 'Are reports audit-ready?',
-    a: 'Yes. Reports are generated using the calculation methods documented in our methodology library and verified emission-factor sources. Export formats include PDF, XBRL/iXBRL, and Excel. We recommend independent verification before regulatory submission.',
+    a: 'Reports use documented GHG Protocol methodology and verified emission-factor sources, with a full calculation trail. We recommend independent verification before regulatory submission — OffGridFlow does not guarantee regulatory acceptance.',
   },
   {
-    q: 'Can I try before I buy?',
-    a: 'Yes. Start a free trial to validate the workflow with your own data. Enterprise teams can also contact sales for implementation planning.',
-  },
-  {
-    q: 'What happens to my data if I cancel?',
-    a: 'You can export all data at any time. After cancellation, your data is retained for 30 days for export, then permanently deleted.',
+    q: 'What happens to my data?',
+    a: 'You can export your data at any time. If you delete your workspace, your data is removed. We never sell your data.',
   },
 ];
 
@@ -108,32 +75,30 @@ export default function PricingPage() {
       <SiteNav />
 
       <section className="px-6 py-24">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-3xl">
           <h1 className="mb-4 text-center text-4xl font-bold text-white">
-            Transparent Pricing
+            Simple, honest pricing
           </h1>
           <p className="mb-16 text-center text-gray-400">
-            Enterprise carbon compliance at a fraction of Big 4 cost. No hidden fees.
+            Free to upload and see your footprint. Pay only when you export a report.
           </p>
 
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-8 sm:grid-cols-2">
             {tiers.map((tier) => (
               <div
                 key={tier.name}
                 className={`relative rounded-xl border p-8 ${
-                  tier.highlight
-                    ? 'border-primary-600 bg-dark-800'
-                    : 'border-gray-800 bg-dark-800'
+                  tier.highlight ? 'border-primary-600 bg-dark-800' : 'border-gray-800 bg-dark-800'
                 }`}
               >
                 {tier.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary-600 px-3 py-0.5 text-xs font-medium text-white">
-                    Most Popular
+                    Pay per report
                   </div>
                 )}
                 <h3 className="text-lg font-semibold text-white">{tier.name}</h3>
                 <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-white">{tier.price}</span>
+                  <span className="text-4xl font-bold text-white">{tier.price}</span>
                   {tier.period && <span className="text-sm text-gray-500">{tier.period}</span>}
                 </div>
                 <p className="mt-2 text-sm text-gray-400">{tier.description}</p>
@@ -146,7 +111,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
                 <Link
-                  href={tier.name === 'Global' ? 'mailto:contact@off-grid-flow.com?subject=OffGridFlow%20Global%20Plan%20Inquiry' : `/register?plan=${tier.name.toLowerCase().replace(/\s+/g, '_')}`}
+                  href={tier.href}
                   className={`mt-8 block rounded-lg py-2.5 text-center text-sm font-medium transition ${
                     tier.highlight
                       ? 'bg-primary-600 text-white hover:bg-primary-500'
@@ -159,25 +124,22 @@ export default function PricingPage() {
             ))}
           </div>
 
-          {/* Refund policy + calculation disclaimer — required by liability audit findings #20 and #21 */}
           <div className="mx-auto mt-12 max-w-3xl space-y-4 text-center text-xs text-gray-500">
             <p>
-              <strong className="text-gray-300">Refund policy.</strong> Annual subscriptions include a 14-day refund window from initial purchase. After 14 days, annual subscriptions are non-refundable; cancel at any time and access continues through the end of the current billing period. See the{' '}
-              <Link href="/terms#section-4" className="text-primary-400 hover:underline">Terms</Link>{' '}for full detail.
+              <strong className="text-gray-300">Refund policy.</strong> Report purchases are one-time. If a report fails to generate, contact us for a full refund. See the{' '}
+              <Link href="/terms" className="text-primary-400 hover:underline">Terms</Link>{' '}for detail.
             </p>
             <p>
-              <strong className="text-gray-300">Calculations are drafts.</strong> OffGridFlow applies documented GHG Protocol methodology and verified emission factors. The Platform does not guarantee regulatory acceptance of any report. Customers are responsible for verification before submission to auditors, regulators, or stakeholders. See the{' '}
-              <Link href="/methodology" className="text-primary-400 hover:underline">Methodology Library</Link>.
+              <strong className="text-gray-300">Calculations are drafts.</strong> OffGridFlow applies documented GHG Protocol methodology and verified emission factors. The Platform does not guarantee regulatory acceptance of any report. Customers are responsible for verification before submission.
             </p>
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
       <section className="border-t border-gray-800/50 px-6 py-24">
         <div className="mx-auto max-w-3xl">
           <h2 className="mb-12 text-center text-3xl font-bold text-white">
-            Frequently Asked Questions
+            Frequently asked questions
           </h2>
           <div className="space-y-6">
             {faq.map((item) => (
@@ -190,14 +152,13 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Lead capture for enterprise/custom inquiries */}
       <section className="border-t border-gray-800/50 px-6 py-20">
         <div className="mx-auto max-w-2xl">
           <h2 className="mb-2 text-center text-2xl font-bold text-white">
-            Need a custom plan or implementation support?
+            Need multi-site or an enterprise agreement?
           </h2>
           <p className="mb-8 text-center text-sm text-gray-400">
-            Multi-site, SAP integration, or custom SLA — tell us what you need.
+            Tell us what you need and we&apos;ll put together a plan.
           </p>
           <LeadCaptureForm source="pricing_page" compact />
         </div>
