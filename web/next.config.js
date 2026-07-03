@@ -23,6 +23,19 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Revalidate HTML pages on every request so new deploys appear
+        // immediately instead of being masked by the edge's default 1-year
+        // static cache. Excludes _next/static + _next/image (content-hashed,
+        // safe to cache forever) and the /api proxy (sets its own caching).
+        source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: [
           {
