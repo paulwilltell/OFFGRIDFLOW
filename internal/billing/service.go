@@ -22,13 +22,83 @@ type Store interface {
 
 // Service provides high-level billing operations.
 type Service struct {
-	stripe *StripeClient
-	store  Store
+	stripe      *StripeClient
+	store       Store
+	reportStore ReportPurchaseStore
 }
 
 // NewService constructs a billing service.
 func NewService(stripeClient *StripeClient, store Store) *Service {
 	return &Service{stripe: stripeClient, store: store}
+}
+
+// SetReportStore wires the pay-per-report entitlement store. Optional; when
+// unset, report-payment checks fail closed (treated as unpaid).
+func (s *Service) SetReportStore(rs ReportPurchaseStore) {
+	if s != nil {
+		s.reportStore = rs
+	}
+}
+
+// StartReportCheckout creates a one-time $149 checkout to unlock report exports.
+// Reuses the tenant's Stripe customer (creating one if needed).
+func (s *Service) StartReportCheckout(ctx context.Context, tenantID, tenantName, email, successURL, cancelURL string) (string, error) {
+	if s == nil || s.stripe == nil || s.store == nil {
+		return "", errors.New("billing: service not configured")
+	}
+
+	sub, err := s.store.GetByTenantID(ctx, tenantID)
+	if err != nil {
+		return "", err
+	}
+
+	var customerID string
+	if sub != nil && sub.StripeCustomerID != "" {
+		customerID = sub.StripeCustomerID
+	} else {
+		customerID, err = s.stripe.CreateCustomer(email, tenantName, tenantID)
+		if err != nil {
+			return "", err
+		}
+		now := time.Now()
+		if sub == nil {
+			sub = &Subscription{ID: uuid.NewString(), TenantID: tenantID, CreatedAt: now}
+		}
+		sub.StripeCustomerID = customerID
+		sub.UpdatedAt = now
+		if err := s.store.Upsert(ctx, sub); err != nil {
+			return "", err
+		}
+	}
+
+	return s.stripe.CreateReportCheckoutSession(customerID, tenantID, successURL, cancelURL)
+}
+
+// HasPaidForReport reports whether the tenant has unlocked report exports.
+// Fails closed: any error or missing store returns false.
+func (s *Service) HasPaidForReport(ctx context.Context, tenantID string) bool {
+	if s == nil || s.reportStore == nil || tenantID == "" {
+		return false
+	}
+	paid, err := s.reportStore.HasPaid(ctx, tenantID)
+	if err != nil {
+		return false
+	}
+	return paid
+}
+
+// RecordReportPurchase grants the report entitlement for a tenant.
+func (s *Service) RecordReportPurchase(ctx context.Context, tenantID, stripeSessionID string) error {
+	if s == nil || s.reportStore == nil {
+		return errors.New("billing: report store not configured")
+	}
+	return s.reportStore.Record(ctx, &ReportPurchase{
+		TenantID:        tenantID,
+		StripeSessionID: stripeSessionID,
+		AmountCents:     ReportPriceCents,
+		Currency:        "usd",
+		Status:          "paid",
+	})
 }
 
 // StartSubscription initiates checkout and returns the Stripe-hosted URL.

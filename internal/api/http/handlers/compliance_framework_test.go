@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/example/offgridflow/internal/api/http/handlers"
+	"github.com/example/offgridflow/internal/auth"
 	"github.com/example/offgridflow/internal/compliance"
 	"github.com/example/offgridflow/internal/emissions"
 	"github.com/example/offgridflow/internal/ingestion"
@@ -460,7 +461,10 @@ func TestComplianceHandlersWithNoData(t *testing.T) {
 	}
 
 	handler := handlers.NewComplianceSummaryHandler(deps)
-	req := httptest.NewRequest(http.MethodGet, "/api/compliance/summary?org_id=org-empty&year=2024", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/compliance/summary?year=2024", nil)
+	// Tenant now comes from the authenticated context, not a query param
+	// (cross-tenant IDOR fix). Inject an empty-data tenant here.
+	req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-empty"}))
 	w := httptest.NewRecorder()
 
 	handler(w, req)

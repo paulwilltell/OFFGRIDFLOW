@@ -112,6 +112,45 @@ func (c *StripeClient) CreateCheckoutSession(customerID, plan, successURL, cance
 	return sess.URL, nil
 }
 
+// ReportPriceCents is the one-time price to unlock a report export ($149).
+const ReportPriceCents int64 = 14900
+
+// CreateReportCheckoutSession creates a one-time ($149) payment checkout for a
+// report export. Unlike CreateCheckoutSession (recurring subscription), this
+// uses payment mode with an inline price so no pre-configured Stripe Price is
+// required. Metadata carries the tenant and purchase type so the webhook can
+// grant the entitlement.
+func (c *StripeClient) CreateReportCheckoutSession(customerID, tenantID, successURL, cancelURL string) (string, error) {
+	params := &stripe.CheckoutSessionParams{
+		Customer: stripe.String(customerID),
+		Mode:     stripe.String(string(stripe.CheckoutSessionModePayment)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				Quantity: stripe.Int64(1),
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency:   stripe.String("usd"),
+					UnitAmount: stripe.Int64(ReportPriceCents),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name:        stripe.String("OffGridFlow audit-ready report"),
+						Description: stripe.String("One-time report export · re-export free for 12 months"),
+					},
+				},
+			},
+		},
+		Metadata: map[string]string{
+			"purchase_type": "report",
+			"tenant_id":     tenantID,
+		},
+		SuccessURL: stripe.String(successURL),
+		CancelURL:  stripe.String(cancelURL),
+	}
+	sess, err := session.New(params)
+	if err != nil {
+		return "", err
+	}
+	return sess.URL, nil
+}
+
 // CreateBillingPortalSession creates a Stripe billing portal session for customer self-service.
 func (c *StripeClient) CreateBillingPortalSession(customerID, returnURL string) (string, error) {
 	params := &stripe.BillingPortalSessionParams{

@@ -458,7 +458,10 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 		protectedMux.Handle("/api/compliance/cbam", requireProPlan(handlers.NewCBAMComplianceHandler(complianceDeps)))
 		protectedMux.Handle("/api/compliance/ifrs", requireProPlan(handlers.NewIFRSComplianceHandler(complianceDeps)))
 		protectedMux.HandleFunc("/api/compliance/summary", handlers.NewComplianceSummaryHandler(complianceDeps))
-		protectedMux.HandleFunc("/api/compliance/export", handlers.NewComplianceExportHandler(complianceDeps))
+		// Report export is the paid deliverable: gate it behind the one-time
+		// pay-per-report purchase. Users can view their footprint for free,
+		// but exporting the audit-ready report requires payment.
+		protectedMux.Handle("/api/compliance/export", r.requireReportPayment(handlers.NewComplianceExportHandler(complianceDeps)))
 	}
 
 	if r.cfg.DB != nil && r.cfg.ActivityStore != nil {
@@ -905,6 +908,29 @@ func (r *router) buildComplianceHandlerDeps() *handlers.ComplianceHandlerDeps {
 // Router builds HTTP mux for the API server (legacy version - kept for compatibility).
 // requireProPlan wraps a handler to require at least the "pro" plan.
 // Starter ("basic") users get a 402 Payment Required response.
+// requireReportPayment gates report exports behind the one-time pay-per-report
+// purchase. If billing is not configured, exports are allowed (dev/self-host).
+// Once billing exists, the tenant must have a paid report purchase.
+func (r *router) requireReportPayment(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if r.cfg == nil || r.cfg.BillingService == nil {
+			// Billing disabled — do not block exports (local/self-hosted).
+			next.ServeHTTP(w, req)
+			return
+		}
+		tenant, ok := auth.TenantFromContext(req.Context())
+		if !ok || tenant == nil {
+			responders.Unauthorized(w, "unauthorized", "authentication required")
+			return
+		}
+		if !r.cfg.BillingService.HasPaidForReport(req.Context(), tenant.ID) {
+			responders.PaymentRequired(w, "unlock your report to export it — a one-time $149 purchase includes free re-exports for 12 months")
+			return
+		}
+		next.ServeHTTP(w, req)
+	})
+}
+
 func requireProPlan(next http.HandlerFunc) http.Handler {
 	planLevel := map[string]int{"free": 0, "basic": 1, "pro": 2, "enterprise": 3}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -365,6 +365,23 @@ func (h *WebhookHandler) handleCheckoutCompleted(ctx context.Context, event *str
 		subscriptionID = session.Subscription.ID
 	}
 
+	// Pay-per-report: a one-time payment carries purchase_type=report metadata.
+	// Grant the report entitlement rather than activating a subscription.
+	if session.Metadata != nil && session.Metadata["purchase_type"] == "report" {
+		tenantID := session.Metadata["tenant_id"]
+		h.logger.Info("Report purchase completed",
+			"session_id", session.ID,
+			"customer_id", customerID,
+			"tenant_id", tenantID)
+		if tenantID == "" {
+			return fmt.Errorf("report checkout completed without tenant_id metadata (session %s)", session.ID)
+		}
+		if err := h.service.RecordReportPurchase(ctx, tenantID, session.ID); err != nil {
+			return fmt.Errorf("failed to record report purchase: %w", err)
+		}
+		return nil
+	}
+
 	h.logger.Info("Checkout completed",
 		"session_id", session.ID,
 		"customer_id", customerID,

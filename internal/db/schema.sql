@@ -218,6 +218,21 @@ CREATE TABLE IF NOT EXISTS billing_state (
     UNIQUE (tenant_id, usage_month)
 );
 
+-- report_purchases records one-time payments that unlock report exports.
+-- The pay-per-report model: a tenant pays $149 once to unlock report
+-- generation/export. Entitlement is checked per tenant on export endpoints.
+CREATE TABLE IF NOT EXISTS report_purchases (
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id          UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    stripe_session_id  TEXT NOT NULL,
+    amount_cents       INTEGER NOT NULL DEFAULT 14900,
+    currency           TEXT NOT NULL DEFAULT 'usd',
+    status             TEXT NOT NULL DEFAULT 'paid',
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (stripe_session_id)
+);
+CREATE INDEX IF NOT EXISTS idx_report_purchases_tenant_id ON report_purchases(tenant_id);
+
 CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_email_verification_token ON users(email_verification_token);

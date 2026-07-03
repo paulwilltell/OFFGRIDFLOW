@@ -257,6 +257,23 @@ func (h *BillingHandlers) CreateCheckoutSession(w http.ResponseWriter, r *http.R
 	}
 	plan = strings.ToLower(plan)
 
+	successURL := resolveRedirectURL(req.SuccessURL, h.successURL)
+	cancelURL := resolveRedirectURL(req.CancelURL, h.cancelURL)
+	ctx := r.Context()
+
+	// Pay-per-report: a one-time $149 checkout to unlock report exports.
+	if plan == "report_export" || plan == "report" {
+		url, err := h.service.StartReportCheckout(ctx, tenant.ID, tenant.Name, user.Email, successURL, cancelURL)
+		if err != nil {
+			h.logger.Error("failed to create report checkout session", "tenantId", tenant.ID, "error", err.Error())
+			responders.InternalError(w, "failed to create checkout session")
+			return
+		}
+		h.logger.Info("report checkout session created", "tenantId", tenant.ID, "userId", user.ID)
+		responders.JSON(w, http.StatusOK, CheckoutResponse{URL: url, CheckoutURL: url})
+		return
+	}
+
 	if !validPlans[plan] {
 		responders.BadRequest(w, "invalid_plan", "plan must be one of: basic, pro, enterprise")
 		return
@@ -265,11 +282,7 @@ func (h *BillingHandlers) CreateCheckoutSession(w http.ResponseWriter, r *http.R
 		plan = "pro"
 	}
 
-	successURL := resolveRedirectURL(req.SuccessURL, h.successURL)
-	cancelURL := resolveRedirectURL(req.CancelURL, h.cancelURL)
-
 	// Create Stripe checkout session
-	ctx := r.Context()
 	url, err := h.service.StartSubscription(ctx, tenant.ID, tenant.Name, user.Email, plan, successURL, cancelURL)
 	if err != nil {
 		h.logger.Error("failed to create checkout session",

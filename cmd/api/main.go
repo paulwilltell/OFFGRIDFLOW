@@ -389,13 +389,17 @@ func run() (err error) {
 			log.Printf("[offgridflow] WARNING: failed to create Stripe client: %v", err)
 		} else {
 			var billingStore billing.Store
+			var reportStore billing.ReportPurchaseStore
 			if database != nil {
 				billingStore = billing.NewPostgresStore(database.DB)
+				reportStore = billing.NewPostgresReportStore(database.DB)
 			} else {
 				billingStore = billing.NewInMemoryStore()
+				reportStore = billing.NewInMemoryReportStore()
 			}
 			billingService = billing.NewService(stripeClient, billingStore)
-			log.Printf("[offgridflow] billing service initialized with Stripe")
+			billingService.SetReportStore(reportStore)
+			log.Printf("[offgridflow] billing service initialized with Stripe (pay-per-report enabled)")
 		}
 	} else {
 		log.Printf("[offgridflow] no STRIPE_SECRET_KEY provided, billing disabled")
