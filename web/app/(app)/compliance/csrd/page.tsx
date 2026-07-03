@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, ApiRequestError } from '@/lib/api';
 import type { EmissionsTotals, ValidationInfo } from '@/lib/types';
 import { useRequireAuth } from '@/lib/session';
 
@@ -123,6 +123,7 @@ export default function CSRDPage() {
   const [report, setReport] = useState<NormalizedCSRDReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
   const currentYear = new Date().getFullYear();
   const yearOptions = buildYearOptions(currentYear);
   const [year, setYear] = useState(currentYear);
@@ -168,7 +169,11 @@ export default function CSRDPage() {
           setYear(resolvedYear);
         }
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load CSRD report');
+        if (err instanceof ApiRequestError && err.status === 402) {
+          setLocked(true);
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load CSRD report');
+        }
       } finally {
         setLoading(false);
       }
@@ -193,6 +198,21 @@ export default function CSRDPage() {
       <div style={{ padding: '2rem' }}>
         <h1>CSRD / ESRS E1 Report</h1>
         <p style={{ color: '#888' }}>Loading compliance data...</p>
+      </div>
+    );
+  }
+
+  if (locked) {
+    return (
+      <div className="mx-auto max-w-[520px] py-16 text-center" style={{ fontFamily: "'Schibsted Grotesk', system-ui, sans-serif", color: '#16201b' }}>
+        <div className="mx-auto mb-5 flex h-[52px] w-[52px] items-center justify-center rounded-full text-[22px]" style={{ background: '#1d3b2e', color: '#5fbf8e' }}>🔒</div>
+        <h1 className="mb-2 text-[22px] font-bold tracking-[-0.02em]">Report locked</h1>
+        <p className="mb-6 text-[15px]" style={{ color: '#6a7a71' }}>
+          Your footprint is calculated and ready. Unlock your audit-ready report to view and export it.
+        </p>
+        <Link href="/reports" className="inline-flex h-[44px] items-center rounded-[9px] px-6 text-[14.5px] font-semibold text-white" style={{ background: '#1d3b2e' }}>
+          Unlock report — $149 →
+        </Link>
       </div>
     );
   }

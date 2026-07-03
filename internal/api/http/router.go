@@ -449,18 +449,17 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 	}
 
 	// Compliance endpoints
-	// CSRD is available on all paid plans (Starter's "single framework").
-	// SEC, California, CBAM, IFRS require Enterprise (pro) plan.
+	// Pay-per-report model: generating or exporting any framework report is
+	// the paid deliverable. All report-content endpoints require the one-time
+	// $149 purchase. The free Scope 2 footprint dashboard uses
+	// /api/emissions/* (not these) and stays open.
 	if complianceDeps := r.buildComplianceHandlerDeps(); complianceDeps != nil {
-		protectedMux.HandleFunc("/api/compliance/csrd", handlers.NewCSRDComplianceHandler(complianceDeps))
-		protectedMux.Handle("/api/compliance/sec", requireProPlan(handlers.NewSECComplianceHandler(complianceDeps)))
-		protectedMux.Handle("/api/compliance/california", requireProPlan(handlers.NewCaliforniaComplianceHandler(complianceDeps)))
-		protectedMux.Handle("/api/compliance/cbam", requireProPlan(handlers.NewCBAMComplianceHandler(complianceDeps)))
-		protectedMux.Handle("/api/compliance/ifrs", requireProPlan(handlers.NewIFRSComplianceHandler(complianceDeps)))
-		protectedMux.HandleFunc("/api/compliance/summary", handlers.NewComplianceSummaryHandler(complianceDeps))
-		// Report export is the paid deliverable: gate it behind the one-time
-		// pay-per-report purchase. Users can view their footprint for free,
-		// but exporting the audit-ready report requires payment.
+		protectedMux.Handle("/api/compliance/csrd", r.requireReportPayment(handlers.NewCSRDComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/sec", r.requireReportPayment(handlers.NewSECComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/california", r.requireReportPayment(handlers.NewCaliforniaComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/cbam", r.requireReportPayment(handlers.NewCBAMComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/ifrs", r.requireReportPayment(handlers.NewIFRSComplianceHandler(complianceDeps)))
+		protectedMux.Handle("/api/compliance/summary", r.requireReportPayment(handlers.NewComplianceSummaryHandler(complianceDeps)))
 		protectedMux.Handle("/api/compliance/export", r.requireReportPayment(handlers.NewComplianceExportHandler(complianceDeps)))
 	}
 
