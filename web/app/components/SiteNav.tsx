@@ -16,20 +16,14 @@ export function SiteNav() {
           </span>
         </Link>
         <div className="hidden items-center gap-6 text-sm text-gray-400 md:flex">
-          <Link href="/demo" className="transition hover:text-white">
-            How It Works
-          </Link>
           <Link href="/pricing" className="transition hover:text-white">
             Pricing
           </Link>
-          <Link href="/evidence" className="transition hover:text-white">
-            Evidence
-          </Link>
-          <Link href="/methodology" className="transition hover:text-white">
-            Methodology
-          </Link>
           <Link href="/trust" className="transition hover:text-white">
             Trust
+          </Link>
+          <Link href="/security" className="transition hover:text-white">
+            Security
           </Link>
         </div>
         <div className="flex items-center gap-3">

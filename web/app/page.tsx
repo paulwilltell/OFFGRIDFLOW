@@ -51,7 +51,7 @@ export default function HomePage() {
           <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-gray-400">
             Big 4 firms charge $50,000&ndash;$200,000 for carbon audits. OffGridFlow calculates
             Scope 1, 2, and 3 emissions using{' '}
-            <Link href="/methodology" className="text-primary-400 hover:underline">GHG Protocol methodology</Link>{' '}
+            <Link href="/trust" className="text-primary-400 hover:underline">GHG Protocol methodology</Link>{' '}
             and generates compliance reports&mdash;starting
             at <strong className="text-white">$6,500/year</strong>.
           </p>
@@ -64,7 +64,7 @@ export default function HomePage() {
               Start Free Trial
             </Link>
             <Link
-              href="/demo"
+              href="/register"
               className="rounded-lg border border-gray-700 px-8 py-3.5 text-base font-medium text-gray-300 transition hover:border-gray-500 hover:text-white"
             >
               Review Workflow
@@ -137,7 +137,7 @@ export default function HomePage() {
               report&mdash;all without a sustainability consultant.
             </p>
             <Link
-              href="/case-study"
+              href="/pricing"
               className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-primary-400 transition hover:text-primary-300"
             >
               Read the full case study
@@ -145,7 +145,7 @@ export default function HomePage() {
             </Link>
             <div className="mt-3">
               <Link
-                href="/evidence"
+                href="/trust"
                 className="inline-flex items-center gap-1 text-sm font-medium text-gray-300 transition hover:text-white"
               >
                 Review the redacted evidence pack
@@ -432,7 +432,7 @@ export default function HomePage() {
               Start Free Trial
             </Link>
             <Link
-              href="/demo"
+              href="/register"
               className="text-sm font-medium text-gray-400 transition hover:text-white"
             >
               Review the workflow &rarr;
