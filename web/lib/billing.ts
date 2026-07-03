@@ -21,6 +21,7 @@ export interface SubscriptionResponse {
   seats_included?: number;
   is_trial?: boolean;
   subscribed?: boolean;
+  report_paid?: boolean;
 }
 
 export interface CheckoutResponse {
@@ -122,6 +123,7 @@ export async function getSubscription(): Promise<SubscriptionResponse> {
     plan?: string | null;
     status?: string | null;
     currentPeriodEnd?: string | null;
+    reportPaid?: boolean;
   }>('/api/billing/status');
 
   return {
@@ -129,6 +131,7 @@ export async function getSubscription(): Promise<SubscriptionResponse> {
     status: status.status ?? (status.subscribed ? 'active' : null),
     current_period_end: status.currentPeriodEnd ?? null,
     subscribed: status.subscribed,
+    report_paid: status.reportPaid,
   };
 }
 

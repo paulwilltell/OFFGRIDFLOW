@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRequireAuth } from '@/lib/session';
-import { getSubscription, SubscriptionResponse, formatSubscriptionStatus, formatPeriodEnd } from '@/lib/billing';
+import { getSubscription, SubscriptionResponse } from '@/lib/billing';
 
 export default function SettingsPage() {
   const session = useRequireAuth();
@@ -158,20 +158,15 @@ export default function SettingsPage() {
           )}
         </SettingsSection>
 
-        {/* Subscription Section */}
-        <SettingsSection title="Subscription">
+        {/* Billing Section */}
+        <SettingsSection title="Billing">
           {billingStatus ? (
             <>
               <SettingsRow
-                label="Plan"
-                value={billingStatus.plan_id ? billingStatus.plan_id : 'None'}
+                label="Reports"
+                value={billingStatus.report_paid ? 'Unlocked' : 'Locked — $149 per report'}
               />
-              <SettingsRow label="Status" value={formatSubscriptionStatus(billingStatus.status)} />
-              <SettingsRow label="Next billing date" value={formatPeriodEnd(billingStatus.current_period_end)} />
-              <SettingsRow
-                label="Seats"
-                value={`${billingStatus.seats_used ?? 0} / ${billingStatus.seats_included ?? '—'}`}
-              />
+              <SettingsRow label="Model" value="Pay per report · no subscription" />
               <div style={{ marginTop: '1rem' }}>
                 <Link
                   href="/settings/billing"
@@ -184,7 +179,7 @@ export default function SettingsPage() {
                     fontSize: '0.85rem',
                   }}
                 >
-                  Manage Subscription
+                  Manage billing
                 </Link>
               </div>
             </>

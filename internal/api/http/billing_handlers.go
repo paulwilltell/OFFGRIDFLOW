@@ -48,6 +48,9 @@ type SubscriptionStatusResponse struct {
 	Plan             *string `json:"plan,omitempty"`
 	Status           *string `json:"status,omitempty"`
 	CurrentPeriodEnd *string `json:"currentPeriodEnd,omitempty"`
+	// ReportPaid indicates the tenant has unlocked report exports via the
+	// one-time pay-per-report purchase.
+	ReportPaid bool `json:"reportPaid"`
 }
 
 // PortalResponse represents the response from portal session creation.
@@ -397,10 +400,13 @@ func (h *BillingHandlers) GetStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reportPaid := h.service.HasPaidForReport(ctx, tenant.ID)
+
 	// Return unsubscribed status if no subscription found
 	if sub == nil {
 		responders.JSON(w, http.StatusOK, SubscriptionStatusResponse{
 			Subscribed: false,
+			ReportPaid: reportPaid,
 		})
 		return
 	}
@@ -424,6 +430,7 @@ func (h *BillingHandlers) GetStatus(w http.ResponseWriter, r *http.Request) {
 		Plan:             planPtr,
 		Status:           &status,
 		CurrentPeriodEnd: periodEnd,
+		ReportPaid:       reportPaid,
 	}
 
 	// Cache subscription status briefly

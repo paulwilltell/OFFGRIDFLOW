@@ -1,58 +1,23 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import EliteInquiryModal from '@/components/EliteInquiryModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import {
-  BillingPlan,
-  BillingPlansResponse,
-  SubscriptionResponse,
-  getPlans,
-  getSubscription,
-  createCheckoutSession,
-  createPortalSession,
-  formatSubscriptionStatus,
-  formatPeriodEnd,
-  formatPrice,
-} from '@/lib/billing';
+import { getSubscription, createCheckoutSession, type SubscriptionResponse } from '@/lib/billing';
 import { useRequireAuth } from '@/lib/session';
 
-// Group plans by name so we can show monthly/annual side by side per tier
-type PlanGroup = {
-  name: string;
-  monthly: BillingPlan | null;
-  annual: BillingPlan | null;
-};
-
-function groupPlans(plans: BillingPlan[]): PlanGroup[] {
-  const map = new Map<string, PlanGroup>();
-  for (const plan of plans) {
-    if (!map.has(plan.name)) {
-      map.set(plan.name, { name: plan.name, monthly: null, annual: null });
-    }
-    const group = map.get(plan.name)!;
-    if (plan.interval === 'month') group.monthly = plan;
-    else group.annual = plan;
-  }
-  return Array.from(map.values());
-}
+const REPORT_PRICE = '$149';
 
 function BillingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = useRequireAuth();
 
-  const success = searchParams.get('success') === 'true';
-  const canceled = searchParams.get('canceled') === 'true';
+  const paid = searchParams.get('paid') === '1';
 
-  const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
-  const [plans, setPlans] = useState<BillingPlan[]>([]);
-  const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year');
+  const [status, setStatus] = useState<SubscriptionResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-  const [portalLoading, setPortalLoading] = useState(false);
-  const [eliteModalOpen, setEliteModalOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,321 +28,98 @@ function BillingContent() {
 
   useEffect(() => {
     if (!session.loading && session.isAuthenticated) {
-      void loadBilling();
+      getSubscription()
+        .then(setStatus)
+        .catch(() => setError('Failed to load billing status'))
+        .finally(() => setLoading(false));
     }
   }, [session.loading, session.isAuthenticated]);
 
-  const loadBilling = async () => {
-    setLoading(true);
+  const handleBuy = async () => {
+    setCheckoutLoading(true);
     setError(null);
     try {
-      const [subscriptionRes, plansRes] = await Promise.all([
-        getSubscription(),
-        getPlans(),
-      ]);
-      setSubscription(subscriptionRes);
-      setPlans((plansRes as BillingPlansResponse).plans ?? []);
-    } catch {
-      setError('Failed to load billing data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubscribe = async (planId: string) => {
-    setCheckoutLoading(planId);
-    setError(null);
-    try {
-      const baseUrl = window.location.origin;
-      const checkoutUrl = await createCheckoutSession(
-        planId,
-        `${baseUrl}/settings/billing?success=true`,
-        `${baseUrl}/settings/billing?canceled=true`,
+      const url = await createCheckoutSession(
+        'report_export',
+        `${window.location.origin}/settings/billing?paid=1`,
+        `${window.location.origin}/settings/billing`,
       );
-      window.location.href = checkoutUrl;
+      window.location.href = url;
     } catch {
-      setError('Failed to start checkout. Please try again.');
-      setCheckoutLoading(null);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    setPortalLoading(true);
-    setError(null);
-    try {
-      const portalUrl = await createPortalSession(`${window.location.origin}/settings/billing`);
-      window.location.href = portalUrl;
-    } catch {
-      setError('Failed to open billing portal. Please try again.');
-      setPortalLoading(false);
+      setError('Could not start checkout. Please try again.');
+      setCheckoutLoading(false);
     }
   };
 
   if (session.loading || !session.isAuthenticated || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500" />
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2" style={{ borderColor: '#2f6b50' }} />
       </div>
     );
   }
 
-  const planGroups = groupPlans(plans);
-  const hasMonthlyPlans = planGroups.some((group) => group.monthly);
-  const hasManagedSubscription = Boolean(subscription?.subscribed && subscription?.plan_id && subscription?.status);
+  const reportPaid = Boolean(status?.report_paid);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="mx-auto max-w-[640px]" style={{ fontFamily: "'Schibsted Grotesk', system-ui, sans-serif", color: '#16201b' }}>
+      <h1 className="mb-[6px] text-[24px] font-bold tracking-[-0.02em]">Billing</h1>
+      <p className="mb-8 text-[14.5px]" style={{ color: '#6a7a71' }}>
+        Free to upload and review your footprint. You only pay when you export a report.
+      </p>
 
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
-            Billing &amp; Subscription
-          </h1>
-          <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-            Transparent carbon accounting. Priced for value.
-          </p>
+      {paid && (
+        <div className="mb-5 flex items-center gap-[9px] rounded-lg border p-3 text-[13.5px]" style={{ background: '#e8f0ea', borderColor: '#bcd0c4', color: '#2f6b50' }}>
+          <span>✓</span> Payment received — your reports are unlocked.
         </div>
-
-        {/* Alerts */}
-        {success && (
-          <div className="mt-8 max-w-xl mx-auto rounded-md bg-green-50 dark:bg-green-900/50 p-4 flex items-start gap-3">
-            <svg className="h-5 w-5 text-green-400 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <p className="text-sm font-medium text-green-800 dark:text-green-200">Subscription activated successfully!</p>
-          </div>
-        )}
-        {canceled && (
-          <div className="mt-8 max-w-xl mx-auto rounded-md bg-yellow-50 dark:bg-yellow-900/50 p-4">
-            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Checkout canceled. No charges were made.</p>
-          </div>
-        )}
-        {error && (
-          <div className="mt-8 max-w-xl mx-auto rounded-md bg-red-50 dark:bg-red-900/50 p-4">
-            <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
-          </div>
-        )}
-
-        {/* Current subscription */}
-        {subscription && (
-          <div className="mt-10 max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Current Subscription</h2>
-            <dl className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-gray-500 dark:text-gray-400">Plan</dt>
-                <dd className="font-medium text-gray-900 dark:text-white capitalize">{subscription.plan_id?.replace('_', ' ') ?? '—'}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500 dark:text-gray-400">Status</dt>
-                <dd>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    subscription.status === 'active' || subscription.status === 'trialing'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-                  }`}>
-                    {formatSubscriptionStatus(subscription.status)}
-                  </span>
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500 dark:text-gray-400">Next billing date</dt>
-                <dd className="font-medium text-gray-900 dark:text-white">{formatPeriodEnd(subscription.current_period_end)}</dd>
-              </div>
-            </dl>
-            {hasManagedSubscription ? (
-              <>
-                <button
-                  onClick={handleManageSubscription}
-                  disabled={portalLoading}
-                  className="mt-5 w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
-                >
-                  {portalLoading ? 'Loading…' : 'Manage Subscription (Stripe Portal)'}
-                </button>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Use the Stripe Billing Portal to update payment methods, download invoices,
-                  or cancel your subscription. Changes take effect at the end of your current
-                  billing period.
-                </p>
-                <div className="mt-4 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-3 text-xs text-gray-600 dark:text-gray-400">
-                  <p className="mb-1 font-medium text-gray-900 dark:text-gray-100">
-                    Refund and cancellation policy
-                  </p>
-                  <p>
-                    Annual plans: 14-day refund window from initial purchase; after 14 days,
-                    non-refundable. Monthly plans: no refunds; cancel anytime with access
-                    continuing through the current period. Renewal charges are non-refundable.
-                    Full terms at{' '}
-                    <a href="/terms#section-4" className="text-green-600 dark:text-green-400 hover:underline" target="_blank" rel="noopener noreferrer">
-                      Section 4 of Terms
-                    </a>
-                    .
-                  </p>
-                  <p className="mt-2">
-                    Need help before cancelling? Email{' '}
-                    <a href="mailto:contact@off-grid-flow.com?subject=Help%20with%20OffGridFlow" className="text-green-600 dark:text-green-400 hover:underline">
-                      contact@off-grid-flow.com
-                    </a>
-                    {' '}— we&apos;ll respond within one business day.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <p className="mt-5 text-sm text-gray-500 dark:text-gray-400">
-                No active subscription yet. Choose a plan below to start checkout.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Monthly / Annual toggle */}
-        <div className="mt-12 flex flex-col items-center gap-3">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {subscription ? 'Change Plan' : 'Choose Your Plan'}
-          </h2>
-          {hasMonthlyPlans && (
-            <div className="flex items-center gap-3 mt-2">
-              <span className={`text-sm font-medium ${billingInterval === 'month' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-                Monthly
-              </span>
-              <button
-                onClick={() => setBillingInterval(billingInterval === 'month' ? 'year' : 'month')}
-                className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${
-                  billingInterval === 'year' ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              >
-                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                  billingInterval === 'year' ? 'translate-x-8' : 'translate-x-1'
-                }`} />
-              </button>
-              <span className={`text-sm font-medium ${billingInterval === 'year' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-                Annual
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Plan cards */}
-        <div className="mt-8 grid gap-8 lg:grid-cols-3 max-w-6xl mx-auto">
-          {planGroups.map((group) => {
-            const plan = billingInterval === 'month' ? (group.monthly ?? group.annual) : (group.annual ?? group.monthly);
-            if (!plan) return null;
-            return (
-              <PlanCard
-                key={group.name}
-                plan={plan}
-                currentPlanId={subscription?.plan_id ?? null}
-                loading={checkoutLoading === plan.id}
-                onSubscribe={() => handleSubscribe(plan.id)}
-                onEliteInquiry={() => setEliteModalOpen(true)}
-              />
-            );
-          })}
-        </div>
-
-        <div className="mt-12 text-center">
-          <Link href="/settings" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
-            ← Back to Settings
-          </Link>
-        </div>
-
-        <EliteInquiryModal
-          isOpen={eliteModalOpen}
-          onClose={() => setEliteModalOpen(false)}
-          userEmail={session.user?.email ?? ''}
-          userName={session.user?.name ?? ''}
-          companyName={session.user?.company ?? ''}
-          currentPlan={subscription?.plan_id ?? ''}
-        />
-      </div>
-    </div>
-  );
-}
-
-interface PlanCardProps {
-  plan: BillingPlan;
-  currentPlanId: string | null;
-  loading: boolean;
-  onSubscribe: () => void;
-  onEliteInquiry?: () => void;
-}
-
-function PlanCard({ plan, currentPlanId, loading, onSubscribe, onEliteInquiry }: PlanCardProps) {
-  const isCustomQuote = plan.id === 'global' || plan.amount_cents === 0;
-  const isCommand = plan.name === 'Compliance Pro';
-  const isCurrent = currentPlanId === plan.id;
-
-  return (
-    <div className={`relative rounded-2xl border bg-white dark:bg-gray-800 p-8 flex flex-col shadow-sm transition-shadow hover:shadow-md ${
-      isCommand
-        ? 'border-green-500 ring-2 ring-green-500 ring-offset-2 dark:ring-offset-gray-900'
-        : 'border-gray-200 dark:border-gray-700'
-    }`}>
-      {isCommand && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="bg-green-500 text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wide">
-            Most Popular
-          </span>
+      )}
+      {error && (
+        <div className="mb-5 rounded-lg border p-3 text-[13.5px]" style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+          {error}
         </div>
       )}
 
-      <div className="text-center mb-6">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{plan.name}</h3>
-        <div className="mt-4">
-          {isCustomQuote ? (
-            <div>
-              <span className="text-3xl font-extrabold text-gray-900 dark:text-white">Contact Us</span>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Custom pricing for complex multi-region deployments</p>
+      {/* Report entitlement card */}
+      <div className="rounded-[13px] border bg-white p-[26px]" style={{ borderColor: '#e8ece8' }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[15px] font-semibold">Audit-ready reports</div>
+            <div className="mt-1 text-[13.5px]" style={{ color: '#6a7a71' }}>
+              {reportPaid
+                ? 'Unlocked — export PDF & CSV any time. Re-exports are free for 12 months.'
+                : 'Locked. Unlock to export your audit-ready report as PDF & CSV.'}
             </div>
+          </div>
+          <span className="shrink-0 rounded-full px-[12px] py-[5px] text-[12px] font-semibold"
+            style={reportPaid ? { background: '#e8f0ea', color: '#2f6b50' } : { background: '#f1f2f0', color: '#8a978f' }}>
+            {reportPaid ? 'Unlocked' : 'Locked'}
+          </span>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between border-t pt-5" style={{ borderColor: '#f2f4f1' }}>
+          <div>
+            <span className="text-[26px] font-medium" style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{REPORT_PRICE}</span>
+            <span className="ml-2 text-[13px]" style={{ color: '#8a978f' }}>one-time per report</span>
+          </div>
+          {reportPaid ? (
+            <button onClick={() => router.push('/reports')} className="flex h-[44px] items-center rounded-[9px] px-5 text-[14px] font-semibold text-white" style={{ background: '#1d3b2e' }}>
+              Go to reports →
+            </button>
           ) : (
-            <div>
-              <span className="text-4xl font-extrabold text-gray-900 dark:text-white">
-                {formatPrice(plan.amount_cents, plan.interval)}
-              </span>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">billed annually</p>
-            </div>
+            <button onClick={handleBuy} disabled={checkoutLoading} className="flex h-[44px] items-center rounded-[9px] px-5 text-[14px] font-semibold text-white disabled:opacity-50" style={{ background: '#1d3b2e' }}>
+              {checkoutLoading ? 'Starting…' : `Unlock for ${REPORT_PRICE}`}
+            </button>
           )}
         </div>
       </div>
 
-      <ul className="space-y-3 flex-1 mb-8">
-        {plan.features.map((feature, i) => (
-          <li key={i} className="flex items-start gap-3">
-            <svg className="h-5 w-5 text-green-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className={`text-sm ${feature === '2 months free vs monthly' ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-300'}`}>
-              {feature}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <div className="mt-4 flex items-center gap-[9px] rounded-[11px] border bg-white p-4 text-[12.5px]" style={{ borderColor: '#e8ece8', color: '#8a978f' }}>
+        <span style={{ color: '#2f6b50' }}>🔒</span>
+        Payments are processed securely by Stripe. We never store your card details.
+      </div>
 
-      <div>
-        {isCurrent ? (
-          <button disabled className="w-full py-3 px-4 rounded-xl text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-            Current Plan
-          </button>
-        ) : isCustomQuote ? (
-          <button
-            onClick={onEliteInquiry}
-            className="w-full py-3 px-4 rounded-xl text-sm font-medium text-white bg-gray-800 dark:bg-gray-700 hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors"
-          >
-            Request Global Pricing
-          </button>
-        ) : (
-          <button
-            onClick={onSubscribe}
-            disabled={loading}
-            className={`w-full py-3 px-4 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${
-              isCommand
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
-            }`}
-          >
-            {loading ? 'Loading…' : `Get ${plan.name}`}
-          </button>
-        )}
+      <div className="mt-8">
+        <Link href="/settings" className="text-[13px]" style={{ color: '#8a978f' }}>← Back to settings</Link>
       </div>
     </div>
   );
@@ -386,8 +128,8 @@ function PlanCard({ plan, currentPlanId, loading, onSubscribe, onEliteInquiry }:
 export default function BillingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500" />
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-b-2" style={{ borderColor: '#2f6b50' }} />
       </div>
     }>
       <BillingContent />
