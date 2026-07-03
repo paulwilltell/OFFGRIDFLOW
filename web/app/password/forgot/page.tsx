@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
 
           <div className="space-y-4">
             <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-              Didn't receive an email? Check your spam folder or try again.
+              Didn&apos;t receive an email? Check your spam folder or try again.
             </p>
             
             <div className="flex flex-col space-y-3">
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
             Reset your password
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
         </div>
 

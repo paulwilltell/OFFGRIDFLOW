@@ -115,7 +115,7 @@ export default function EliteInquiryModal({
                 </div>
                 <h2 className="text-2xl font-bold text-white">Request Enterprise Pricing</h2>
                 <p className="text-gray-400 text-sm mt-1">
-                  We'll build a custom proposal tailored to your organization within 24 hours.
+                  We&apos;ll build a custom proposal tailored to your organization within 24 hours.
                 </p>
               </div>
               <button

@@ -232,7 +232,7 @@ export async function withSpan<T>(
   return Sentry.startSpan({ name }, callback);
 }
 
-export default {
+const sentryUtils = {
   initSentry,
   captureError,
   captureMessage,
@@ -241,3 +241,5 @@ export default {
   startTransaction,
   withSpan,
 };
+
+export default sentryUtils;

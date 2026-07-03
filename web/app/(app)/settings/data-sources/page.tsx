@@ -451,7 +451,7 @@ export default function DataSourcesPage() {
                 <h3 className="text-sm font-semibold text-red-700 dark:text-red-300">Unable to load connector status</h3>
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>
                 <p className="text-xs text-red-500/70 dark:text-red-400/60 mt-2">
-                  This usually means the API is still deploying or the connector service isn't configured yet.
+                  This usually means the API is still deploying or the connector service isn&apos;t configured yet.
                   You can still browse the available connectors below and configure credentials.
                 </p>
                 <button

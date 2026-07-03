@@ -441,7 +441,7 @@ export function getVisibleRange(
   return { startIndex, endIndex, offsetY };
 }
 
-export default {
+const performanceUtils = {
   lazyLoad,
   useDebounce,
   useDebouncedValue,
@@ -453,3 +453,5 @@ export default {
   useAnimationFrame,
   getVisibleRange,
 };
+
+export default performanceUtils;
