@@ -91,45 +91,113 @@ func TestRawDumpToAuditStructure(t *testing.T) {
 	fmt.Printf("===================================\n")
 }
 
-// TestRawDumpBoundary documents the ENGINE'S ACTUAL BOUNDARY: what happens
-// when a user dumps data that is not tidy utility/energy data. This is an
-// honest coverage probe, not a pass/fail on quality.
-func TestRawDumpBoundary(t *testing.T) {
-	cases := map[string]string{
-		"fuel_receipts": strings.Join([]string{
-			"date,vehicle,fuel_type,gallons,cost",
-			"2025-01-15,TRUCK-1,diesel,45.2,180.50",
-		}, "\n"),
-		"business_travel": strings.Join([]string{
-			"employee,origin,destination,miles,mode",
-			"J. Smith,SFO,JFK,2586,air",
-		}, "\n"),
-		"supplier_spend": strings.Join([]string{
-			"vendor,category,amount_usd,quarter",
-			"Acme Steel,raw_materials,45000,Q1",
-		}, "\n"),
+// TestRawDumpMultiScope proves the extended promise: a user can dump fuel
+// (Scope 1), business travel (Scope 3 cat 6), or supplier spend (Scope 3 cat 1)
+// and the engine classifies each dump into the correct scope, structures it,
+// and produces audit-complete emission records with the real calculators.
+//
+// This replaces the old TestRawDumpBoundary tripwire, which asserted these
+// dumps were REJECTED. Now that Scope 1/3 ingestion has landed, the boundary
+// has moved and the promise is that they are ACCEPTED and correctly scoped.
+func TestRawDumpMultiScope(t *testing.T) {
+	type expect struct {
+		csv         string
+		source      string // Source the parser must tag the activity with
+		scope       Scope  // scope the record must land in
+		calcFor     Scope  // which calculator to run
+		minCategory string // substring the record notes/category should reflect (optional)
+	}
+
+	cases := map[string]expect{
+		"fuel_receipts": {
+			csv: strings.Join([]string{
+				"date,vehicle,fuel_type,gallons,cost",
+				"2025-01-15,TRUCK-1,diesel,45.2,180.50",
+				"2025-01-20,TRUCK-2,gasoline,30.0,120.00",
+			}, "\n"),
+			source: "fleet",
+			scope:  Scope1,
+		},
+		"business_travel": {
+			csv: strings.Join([]string{
+				"employee,origin,destination,miles,mode,date",
+				"J. Smith,SFO,JFK,2586,air,2025-02-10",
+				"A. Lee,SFO,LAX,338,air,2025-02-12",
+			}, "\n"),
+			source: "travel",
+			scope:  Scope3,
+		},
+		"supplier_spend": {
+			csv: strings.Join([]string{
+				"vendor,category,amount_usd,quarter,year",
+				"Acme Steel,raw_materials,45000,Q1,2025",
+				"CloudCo,cloud-services,8000,Q1,2025",
+			}, "\n"),
+			source: "purchases",
+			scope:  Scope3,
+		},
 	}
 
 	p := parser.NewUtilityBillParser("test-org", "US-CA")
-	for name, csv := range cases {
-		result, err := p.Parse(context.Background(), name+".csv", strings.NewReader(csv))
-		status := "PARSED"
-		detail := ""
-		if err != nil {
-			status = "REJECTED"
-			detail = err.Error()
-		} else if result != nil {
-			detail = fmt.Sprintf("%d activities", len(result.Activities))
-		}
-		fmt.Printf("[boundary] %-16s -> %s (%s)\n", name, status, detail)
 
-		// Current engine boundary: only utility/energy (Scope 2) data is
-		// accepted. Fuel (Scope 1), travel and supplier spend (Scope 3) are
-		// rejected. When Scope 1/3 ingestion lands, THIS ASSERTION SHOULD FAIL
-		// and be updated — it is the tripwire that keeps the product's
-		// "Scope 1/2/3" promise honest.
-		if err == nil {
-			t.Errorf("boundary changed: %q now parses — update the Scope 1/2/3 coverage claim and this test", name)
+	scope1 := NewScope1Calculator(Scope1Config{})
+	scope3 := NewScope3Calculator(DefaultScope3Config())
+
+	fmt.Printf("\n=== RAW DUMP -> MULTI-SCOPE ===\n")
+	for name, exp := range cases {
+		result, err := p.Parse(context.Background(), name+".csv", strings.NewReader(exp.csv))
+		if err != nil {
+			t.Fatalf("%s: engine rejected a valid dump: %v", name, err)
 		}
+		if len(result.Activities) == 0 {
+			t.Fatalf("%s: parsed 0 activities (errors: %v)", name, result.Errors)
+		}
+
+		// Every activity must be tagged with the expected source so the right
+		// calculator claims it downstream.
+		for _, a := range result.Activities {
+			if a.Source != exp.source {
+				t.Errorf("%s: expected source %q, got %q", name, exp.source, a.Source)
+			}
+			if a.Unit == "" || a.Quantity <= 0 {
+				t.Errorf("%s: activity not fully structured: %+v", name, a)
+			}
+		}
+
+		// Run the REAL calculator for this scope and assert audit-complete,
+		// positive records.
+		acts := make([]Activity, 0, len(result.Activities))
+		for i := range result.Activities {
+			acts = append(acts, &result.Activities[i])
+		}
+
+		var records []EmissionRecord
+		switch exp.scope {
+		case Scope1:
+			records, err = scope1.CalculateBatch(context.Background(), acts)
+		case Scope3:
+			records, err = scope3.CalculateBatch(context.Background(), acts)
+		}
+		if err != nil {
+			t.Fatalf("%s: calculator error: %v", name, err)
+		}
+		if len(records) != len(result.Activities) {
+			t.Fatalf("%s: expected %d records, calculator produced %d (a row was silently dropped)",
+				name, len(result.Activities), len(records))
+		}
+
+		var totalTonnes float64
+		for _, rec := range records {
+			if rec.Scope != exp.scope {
+				t.Errorf("%s: record landed in %v, expected %v", name, rec.Scope, exp.scope)
+			}
+			if rec.FactorID == "" || rec.Method == "" || rec.EmissionsTonnesCO2e <= 0 || rec.CalculatedAt.IsZero() {
+				t.Errorf("%s: record missing audit fields: %+v", name, rec)
+			}
+			totalTonnes += rec.EmissionsTonnesCO2e
+		}
+		fmt.Printf("[%-16s] source=%-22s scope=%d rows=%d -> %.3f tCO2e\n",
+			name, exp.source, exp.scope, len(records), totalTonnes)
 	}
+	fmt.Printf("===============================\n")
 }

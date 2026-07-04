@@ -130,12 +130,14 @@ func (h *EmissionsHandler) calcScope3(ctx context.Context, acts []emissions.Acti
 	return total
 }
 
+// orgFromContext derives the caller's org from the authenticated tenant only.
+// It deliberately does NOT read org_id from query params — trusting a
+// client-supplied org would let one tenant read another tenant's emissions
+// (cross-tenant IDOR). Falls back to the configured default org when no tenant
+// is present (e.g. single-tenant / demo deployments).
 func orgFromContext(r *http.Request, fallback string) string {
 	if tenant, ok := auth.TenantFromContext(r.Context()); ok && tenant != nil && tenant.ID != "" {
 		return tenant.ID
-	}
-	if org := r.URL.Query().Get("org_id"); org != "" {
-		return org
 	}
 	return fallback
 }

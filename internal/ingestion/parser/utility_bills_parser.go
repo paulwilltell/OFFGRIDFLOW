@@ -205,7 +205,23 @@ func (p *UtilityBillParser) parseCSV(ctx context.Context, r io.Reader) (*ParseRe
 		colIndex[normalized] = i
 	}
 
-	// Detect CSV schema
+	// Classify the dump by its columns. Fuel (Scope 1) and travel/spend
+	// (Scope 3) route to dedicated parsers; electricity (Scope 2) continues
+	// through the utility-bill path below. The header has already been read,
+	// so the sub-parsers resume from the first data row (line 1).
+	switch classifyScope(colIndex) {
+	case kindFuel:
+		result, err := p.parseFuelRows(reader, colIndex, 1)
+		return p.applyStrict(result, err)
+	case kindTravel:
+		result, err := p.parseTravelRows(reader, colIndex, 1)
+		return p.applyStrict(result, err)
+	case kindSpend:
+		result, err := p.parseSpendRows(reader, colIndex, 1)
+		return p.applyStrict(result, err)
+	}
+
+	// Detect CSV schema (electricity / Scope 2)
 	schema := p.detectCSVSchema(colIndex)
 	// Validate required columns
 	var missing []string

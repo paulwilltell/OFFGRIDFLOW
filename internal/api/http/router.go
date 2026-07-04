@@ -387,6 +387,19 @@ func (r *router) registerProtectedRoutes(mux *http.ServeMux) {
 		protectedMux.HandleFunc("/api/emissions/heatmap", scope2Handler.Heatmap)
 	}
 
+	// Aggregate Scope 1/2/3 totals (free review — powers the Review dashboard).
+	// Exact-match pattern, so it does not shadow the /api/emissions/* subpaths.
+	if r.cfg.ActivityStore != nil {
+		emissionsHandler := handlers.NewEmissionsHandler(handlers.EmissionsHandlerConfig{
+			Store:        r.cfg.ActivityStore,
+			Scope1Calc:   r.cfg.Scope1Calculator,
+			Scope2Calc:   r.cfg.Scope2Calculator,
+			Scope3Calc:   r.cfg.Scope3Calculator,
+			DefaultOrgID: "",
+		})
+		protectedMux.Handle("/api/emissions", emissionsHandler)
+	}
+
 	// Activities endpoints (create/list)
 	if r.cfg.ActivityStore != nil {
 		var auditStore *audit.Store
