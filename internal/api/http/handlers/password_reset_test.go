@@ -37,7 +37,7 @@ func TestPasswordResetHappyPath(t *testing.T) {
 	handler := NewPasswordResetHandler(svc, nil)
 	body, _ := json.Marshal(map[string]string{
 		"token":        token,
-		"new_password": "NewPass1234",
+		"new_password": "NewPass1234!",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/password/reset", bytes.NewReader(body))
 	rr := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestPasswordResetInvalidToken(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"token":        "badtoken",
-		"new_password": "NewPass1234",
+		"new_password": "NewPass1234!",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/password/reset", bytes.NewReader(body))
 	rr := httptest.NewRecorder()

@@ -57,11 +57,20 @@ func NewSubscriptionMiddleware(cfg SubscriptionMiddlewareConfig) *SubscriptionMi
 	freePaths["/api/billing/status"] = true
 	freePaths["/api/billing/portal"] = true
 	freePaths["/api/billing/webhook"] = true
-	// Auth endpoints are already public (not behind subscription middleware)
-	// Compliance summary is a lightweight status check, not actual report data
-	freePaths["/api/compliance/summary"] = true
-	// NOTE: /api/emissions/ and /api/compliance/* are NOT free-tier.
-	// Paid subscription required for all emissions data and compliance reports.
+
+	// Pay-per-report model: uploading data and reviewing your footprint are
+	// FREE — the only thing a customer pays for is generating a report, and
+	// that is enforced separately, per report, by requireReportPayment on the
+	// /api/compliance/* routes. So the entire core flow is free at the
+	// subscription layer; this middleware only gates true subscription
+	// features (e.g. /api/ai/chat). Freeing /api/compliance/* here is safe:
+	// requireReportPayment still guards every report endpoint.
+	freePrefix = append(freePrefix,
+		"/api/emissions/",  // review dashboards, scope summaries, activities
+		"/api/ingestion/",  // CSV upload + ingestion status
+		"/api/compliance/", // reports (payment enforced per-report elsewhere)
+	)
+	freePaths["/api/emissions"] = true // aggregate Scope 1/2/3 totals (exact)
 
 	logger := cfg.Logger
 	if logger == nil {

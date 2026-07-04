@@ -185,6 +185,9 @@ func TestCSRDComplianceHandler(t *testing.T) {
 				bodyReader = strings.NewReader("")
 			}
 			req := httptest.NewRequest(tt.method, "/api/compliance/csrd"+tt.queryParams, bodyReader)
+			// Tenant comes from the authenticated context, not a query param
+			// (cross-tenant IDOR fix). Seeded data belongs to org-test.
+			req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-test"}))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
@@ -211,6 +214,7 @@ func TestSECComplianceHandler(t *testing.T) {
 	handler := handlers.NewSECComplianceHandler(deps)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/compliance/sec?org_id=org-test&year=2024&org_name=Test+Org&cik=0001234567", nil)
+	req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-test"}))
 	w := httptest.NewRecorder()
 
 	handler(w, req)
@@ -237,6 +241,7 @@ func TestCaliforniaComplianceHandler(t *testing.T) {
 	handler := handlers.NewCaliforniaComplianceHandler(deps)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/compliance/california?org_id=org-test&year=2024&org_name=Test+Org", nil)
+	req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-test"}))
 	w := httptest.NewRecorder()
 
 	handler(w, req)
@@ -272,6 +277,7 @@ func TestCBAMComplianceHandler(t *testing.T) {
 	handler := handlers.NewCBAMComplianceHandler(deps)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/compliance/cbam?org_id=org-test&year=2024&quarter=1", nil)
+	req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-test"}))
 	w := httptest.NewRecorder()
 
 	handler(w, req)
@@ -300,6 +306,7 @@ func TestIFRSComplianceHandler(t *testing.T) {
 	handler := handlers.NewIFRSComplianceHandler(deps)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/compliance/ifrs?org_id=org-test&year=2024&org_name=Test+Org", nil)
+	req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-test"}))
 	w := httptest.NewRecorder()
 
 	handler(w, req)
@@ -326,6 +333,7 @@ func TestComplianceSummaryHandler(t *testing.T) {
 	handler := handlers.NewComplianceSummaryHandler(deps)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/compliance/summary?org_id=org-test&year=2024", nil)
+	req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-test"}))
 	w := httptest.NewRecorder()
 
 	handler(w, req)
@@ -403,6 +411,7 @@ func TestComplianceSummaryRealStatuses(t *testing.T) {
 	handler := handlers.NewComplianceSummaryHandler(deps)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/compliance/summary?org_id=org-test&year=2024", nil)
+	req = req.WithContext(auth.WithTenant(req.Context(), &auth.Tenant{ID: "org-test"}))
 	w := httptest.NewRecorder()
 
 	handler(w, req)
