@@ -8,8 +8,16 @@ import type { Scope2Summary, Scope2Emission, PaginatedResponse } from '@/lib/typ
 
 type AnomalySummary = { open: number; critical: number; warning: number };
 
+// Aggregate Scope 1/2/3 totals from GET /api/emissions (free review endpoint).
+type EmissionsTotals = { scope1Tons: number; scope2Tons: number; scope3Tons: number; totalTons: number };
+
 function fmt(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function pctOf(part: number, whole: number): string {
+  if (whole <= 0) return '0%';
+  return `${Math.round((part / whole) * 100)}% of total`;
 }
 
 export default function ReviewDashboard() {
@@ -17,6 +25,7 @@ export default function ReviewDashboard() {
   const router = useRouter();
   const [summary, setSummary] = useState<Scope2Summary | null>(null);
   const [emissions, setEmissions] = useState<Scope2Emission[]>([]);
+  const [totals, setTotals] = useState<EmissionsTotals | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalySummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,13 +33,15 @@ export default function ReviewDashboard() {
     let active = true;
     (async () => {
       try {
-        const [sum, list] = await Promise.all([
+        const [sum, list, agg] = await Promise.all([
           api.get<Scope2Summary>('/api/emissions/scope2/summary').catch(() => null),
           api.get<PaginatedResponse<Scope2Emission>>('/api/emissions/scope2?limit=100').catch(() => null),
+          api.get<EmissionsTotals>('/api/emissions').catch(() => null),
         ]);
         if (!active) return;
         setSummary(sum);
         setEmissions(list?.data ?? []);
+        setTotals(agg);
       } finally {
         if (active) setLoading(false);
       }
@@ -43,7 +54,10 @@ export default function ReviewDashboard() {
     return () => { active = false; };
   }, []);
 
-  const total = summary?.totalEmissionsTonsCO2e ?? 0;
+  const scope1 = totals?.scope1Tons ?? 0;
+  const scope2 = totals?.scope2Tons ?? summary?.totalEmissionsTonsCO2e ?? 0;
+  const scope3 = totals?.scope3Tons ?? 0;
+  const total = totals?.totalTons ?? (summary?.totalEmissionsTonsCO2e ?? 0);
   const hasData = total > 0 || emissions.length > 0;
 
   // Aggregate emissions by meter for the "by source" bar chart.
@@ -100,9 +114,12 @@ export default function ReviewDashboard() {
 
       {/* Scope cards */}
       <div className="mb-[18px] grid grid-cols-1 gap-4 md:grid-cols-3">
-        <ScopeCard dot="#234e3b" label="Scope 1 · Direct" value="0.00" muted note="No fuel data yet" />
-        <ScopeCard dot="#4f8f6e" label="Scope 2 · Energy" value={loading ? '—' : fmt(total)} note={`100% of total · ${summary?.activityCount ?? emissions.length} sources`} highlight />
-        <ScopeCard dot="#cdab6e" label="Scope 3 · Value chain" value="0.00" muted note="No travel/supplier data yet" />
+        <ScopeCard dot="#234e3b" label="Scope 1 · Direct" value={loading ? '—' : fmt(scope1)} muted={scope1 <= 0}
+          note={scope1 > 0 ? pctOf(scope1, total) : 'No fuel data yet'} highlight={scope1 > 0} />
+        <ScopeCard dot="#4f8f6e" label="Scope 2 · Energy" value={loading ? '—' : fmt(scope2)} muted={scope2 <= 0}
+          note={scope2 > 0 ? `${pctOf(scope2, total)} · ${summary?.activityCount ?? emissions.length} sources` : 'No energy data yet'} highlight={scope2 > 0} />
+        <ScopeCard dot="#cdab6e" label="Scope 3 · Value chain" value={loading ? '—' : fmt(scope3)} muted={scope3 <= 0}
+          note={scope3 > 0 ? pctOf(scope3, total) : 'No travel/supplier data yet'} highlight={scope3 > 0} />
       </div>
 
       {/* Breakdown */}
@@ -129,9 +146,8 @@ export default function ReviewDashboard() {
             <button onClick={() => router.push('/emissions')} className="text-[12.5px] font-semibold" style={{ color: '#2f6b50' }}>Add more</button>
           </div>
           <SourceRow active label={`${summary?.activityCount ?? emissions.length} utility meters`} status="Active" />
-          <SourceRow label="Fuel & fleet (Scope 1)" status="Coming soon" />
-          <SourceRow label="Business travel (Scope 3)" status="Coming soon" />
-          <SourceRow label="Suppliers (Scope 3)" status="Coming soon" last />
+          <SourceRow active={scope1 > 0} label="Fuel & fleet (Scope 1)" status={scope1 > 0 ? 'Active' : 'No data yet'} />
+          <SourceRow active={scope3 > 0} label="Travel & suppliers (Scope 3)" status={scope3 > 0 ? 'Active' : 'No data yet'} last />
         </div>
       </div>
     </div>

@@ -31,6 +31,7 @@ export type ApiClient = {
   put: <T>(path: string, body: unknown) => Promise<T>;
   patch: <T>(path: string, body: unknown) => Promise<T>;
   delete: <T>(path: string) => Promise<T>;
+  upload: <T>(path: string, file: File) => Promise<T>;
 };
 
 // Storage keys for auth/session state
@@ -163,6 +164,28 @@ export function createClient(baseUrl: string = config.apiBaseUrl): ApiClient {
         method: 'DELETE',
         headers,
         credentials: 'include',
+      });
+      return handleResponse<T>(response, path);
+    },
+
+    upload: async <T>(path: string, file: File): Promise<T> => {
+      // Multipart upload: deliberately do NOT set Content-Type so the browser
+      // adds the multipart boundary. Keep tenant + CSRF + cookie auth.
+      const headers = new Headers();
+      const tenantId = getTenantId();
+      if (tenantId) {
+        headers.set('X-Tenant-ID', tenantId);
+      }
+      if (!isCSRFExempt(path)) {
+        await attachCSRFHeader(headers);
+      }
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: form,
       });
       return handleResponse<T>(response, path);
     },

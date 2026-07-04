@@ -4,11 +4,11 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'OffGridFlow | Carbon accounting without the busywork',
   description:
-    'Upload your utility data, see your carbon footprint calculated with GHG Protocol methodology for free, and export an audit-ready report for $149.',
+    'Upload your utility, fuel, travel, and spend data, see your Scope 1/2/3 carbon footprint calculated with GHG Protocol methodology for free, and export an audit-ready report for $149.',
   openGraph: {
     title: 'OffGridFlow | Carbon accounting without the busywork',
     description:
-      'Upload your data. We calculate Scope 2 and hand you an audit-ready report. Free to review, $149 to export.',
+      'Upload your data. We calculate Scope 1, 2 & 3 and hand you an audit-ready report. Free to review, $149 to export.',
     type: 'website',
     url: 'https://off-grid-flow.com',
   },
@@ -18,8 +18,8 @@ const FONT = "'Schibsted Grotesk', system-ui, sans-serif";
 const MONO = "'IBM Plex Mono', monospace";
 
 const STEPS = [
-  { n: 1, title: 'Upload your data', body: 'Drop a CSV of your utility bills. We auto-map your columns — no template wrangling.' },
-  { n: 2, title: 'Review your footprint', body: 'We apply verified emission factors and show your Scope 2 footprint, calculated and validated. Free.' },
+  { n: 1, title: 'Upload your data', body: 'Drop a CSV of utility, fuel, travel, or spend data. We auto-detect the scope and map your columns.' },
+  { n: 2, title: 'Review your footprint', body: 'We apply verified emission factors and show your Scope 1, 2 & 3 footprint, calculated and validated. Free.' },
   { n: 3, title: 'Download the report', body: 'Export an audit-ready PDF & CSV with full methodology and a source trail. $149, one-time.' },
 ];
 
@@ -64,8 +64,8 @@ export default function HomePage() {
           Carbon accounting<br />without the busywork.
         </h1>
         <p className="mx-auto mt-6 max-w-[560px] text-[17px] leading-[1.6]" style={{ color: '#6a7a71' }}>
-          Upload your utility data. We calculate your Scope&nbsp;2 footprint with GHG Protocol
-          methodology and hand you an audit-ready report. Free to review, $149 to export.
+          Upload your utility, fuel, travel &amp; spend data. We calculate your Scope&nbsp;1, 2 &amp; 3
+          footprint with GHG Protocol methodology and hand you an audit-ready report. Free to review, $149 to export.
         </p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/register" className="flex h-[48px] items-center gap-2 rounded-[10px] bg-[#1d3b2e] px-7 text-[15px] font-semibold text-white hover:bg-[#234e3b]">
@@ -141,7 +141,8 @@ export default function HomePage() {
             </div>
           </div>
           <p className="mt-8 text-center text-[12.5px]" style={{ color: '#8a978f' }}>
-            Currently calculates Scope&nbsp;2 (electricity &amp; utilities). Scope&nbsp;1 &amp; 3 coming soon.
+            Calculates Scope&nbsp;1 (fuel &amp; combustion), Scope&nbsp;2 (electricity &amp; utilities), and
+            Scope&nbsp;3 (business travel &amp; supplier spend).
           </p>
         </div>
       </section>
