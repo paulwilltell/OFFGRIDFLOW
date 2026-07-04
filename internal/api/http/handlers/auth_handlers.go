@@ -270,7 +270,17 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	requireVerification := h.requireEmailVerification
+	// Only require email verification if we can actually deliver it (a real
+	// email sender is configured) or expose the token (dev mode). If
+	// verification is requested but no email provider is wired up, auto-verify
+	// the new user instead of failing — otherwise registration is a dead end
+	// (the previous behavior 503'd and rolled back the whole account).
+	canSendEmail := h.emailSender != nil && h.frontendURL != ""
+	requireVerification := h.requireEmailVerification && (canSendEmail || h.allowDevVerificationToken)
+	if h.requireEmailVerification && !requireVerification {
+		h.logger.Warn("email verification is required but no email sender is configured; auto-verifying new user so signup can proceed",
+			"email", normalizedEmail)
+	}
 	verificationToken := ""
 	if requireVerification {
 		verificationToken = generateVerificationToken()
@@ -341,7 +351,7 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if requireVerification {
-		if h.emailSender != nil && h.frontendURL != "" {
+		if canSendEmail {
 			verifyURL := h.buildVerificationURL(verificationToken)
 			if err := h.emailSender.SendEmailVerification(ctx, user.Email, user.Name, verifyURL, h.verificationTTL); err != nil {
 				// Rollback tenant (cascades to user)
@@ -359,21 +369,9 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 				responders.ServiceUnavailable(w, "email service unavailable, please try again later", 0)
 				return
 			}
-		} else if !h.allowDevVerificationToken {
-			if delErr := h.authStore.DeleteTenant(ctx, tenantID); delErr != nil {
-				h.logger.Error("failed to rollback tenant after missing email config",
-					"tenantId", tenantID,
-					"error", delErr.Error(),
-				)
-			}
-			h.logger.Error("email service not configured for verification",
-				"userId", user.ID,
-				"tenantId", tenant.ID,
-				"email", user.Email,
-			)
-			responders.ServiceUnavailable(w, "email service unavailable, please try again later", 0)
-			return
 		}
+		// Otherwise we are in dev-token mode (allowDevVerificationToken): no
+		// email is sent and the token is returned in the response below.
 
 		h.logger.Info("user registered - verification required",
 			"userId", user.ID,

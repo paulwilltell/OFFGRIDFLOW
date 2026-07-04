@@ -28,6 +28,7 @@ function RegisterPageContent() {
   const searchParams = useSearchParams();
   const { login } = useSession();
 
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,10 +42,17 @@ function RegisterPageContent() {
     e.preventDefault();
     setError(null);
 
+    if (!name.trim()) {
+      setError('Please enter your name');
+      return;
+    }
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
+    // Mirror the backend password policy exactly so users get instant, accurate
+    // feedback instead of a server-side rejection: 8+ chars, upper, lower,
+    // digit, and one special character.
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
@@ -53,8 +61,16 @@ function RegisterPageContent() {
       setError('Password must contain at least one uppercase letter');
       return;
     }
+    if (!/[a-z]/.test(password)) {
+      setError('Password must contain at least one lowercase letter');
+      return;
+    }
     if (!/[0-9]/.test(password)) {
       setError('Password must contain at least one number');
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      setError('Password must contain at least one special character (e.g. ! @ # $)');
       return;
     }
 
@@ -62,6 +78,7 @@ function RegisterPageContent() {
 
     try {
       const response = await api.post<RegisterResponse>('/api/auth/register', {
+        name: name.trim(),
         email,
         password,
         company_name: companyName || undefined,
@@ -160,6 +177,18 @@ function RegisterPageContent() {
             </div>
           )}
 
+          <label className="mb-[7px] block text-[12.5px] font-semibold" style={{ color: '#5b6b62' }}>Your name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Jane Doe"
+            required
+            autoComplete="name"
+            className="mb-[18px] block h-[46px] w-full rounded-[9px] border px-[14px] text-[14.5px] outline-none focus:border-[#2f6b50]"
+            style={{ borderColor: '#e2e7e3', color: '#16201b' }}
+          />
+
           <label className="mb-[7px] block text-[12.5px] font-semibold" style={{ color: '#5b6b62' }}>Work email</label>
           <input
             type="email"
@@ -167,6 +196,7 @@ function RegisterPageContent() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@company.com"
             required
+            autoComplete="email"
             className="mb-[18px] block h-[46px] w-full rounded-[9px] border px-[14px] text-[14.5px] outline-none focus:border-[#2f6b50]"
             style={{ borderColor: '#e2e7e3', color: '#16201b' }}
           />
@@ -186,7 +216,7 @@ function RegisterPageContent() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Min 8 chars, 1 uppercase, 1 number"
+            placeholder="8+ chars · upper, lower, number, symbol"
             required
             className="mb-[18px] block h-[46px] w-full rounded-[9px] border px-[14px] text-[14.5px] outline-none focus:border-[#2f6b50]"
             style={{ borderColor: '#e2e7e3', color: '#16201b' }}
