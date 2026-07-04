@@ -242,21 +242,6 @@ export default function SettingsPage() {
           </p>
           <SettingsRow label="Grid Factor Source" value="EPA eGRID 2022" />
           <SettingsRow label="Custom Factors" value="0 configured" />
-          <div style={{ marginTop: '1rem' }}>
-            <Link
-              href="/settings/factors"
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#1d2940',
-                color: '#8aa9ff',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontSize: '0.85rem',
-              }}
-            >
-              Manage Factors
-            </Link>
-          </div>
         </SettingsSection>
 
         {/* API Access Section */}
@@ -279,20 +264,6 @@ export default function SettingsPage() {
             >
               Generate API Key
             </button>
-            <a
-              href="/docs/api-reference"
-              target="_blank"
-              style={{
-                padding: '0.5rem 1rem',
-                background: 'transparent',
-                color: '#8aa9ff',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontSize: '0.85rem',
-              }}
-            >
-              API Documentation →
-            </a>
           </div>
         </SettingsSection>
       </div>

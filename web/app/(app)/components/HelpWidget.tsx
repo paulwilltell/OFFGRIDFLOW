@@ -18,12 +18,6 @@ export function HelpWidget() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  function reopenSetupAssistant() {
-    if (typeof window === 'undefined') return;
-    window.dispatchEvent(new CustomEvent('offgridflow:open-setup-assistant'));
-    setOpen(false);
-  }
-
   // Close on Escape and on outside click.
   useEffect(() => {
     if (!open) return;
@@ -98,22 +92,10 @@ Please describe what you were trying to do and what went wrong.
 
           <div className="space-y-1 text-sm">
             <a
-              href="/methodology"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/emissions"
               className="flex items-center justify-between rounded-md px-2 py-1.5 text-gray-300 hover:bg-gray-800 hover:text-white"
             >
-              <span>Methodology &amp; factor sources</span>
-              <span className="text-[10px] text-gray-500">&#8599;</span>
-            </a>
-            <a
-              href="/status"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between rounded-md px-2 py-1.5 text-gray-300 hover:bg-gray-800 hover:text-white"
-            >
-              <span>System status</span>
-              <span className="text-[10px] text-gray-500">&#8599;</span>
+              <span>Upload your data (get started)</span>
             </a>
             <a
               href="/trust"
@@ -125,24 +107,11 @@ Please describe what you were trying to do and what went wrong.
               <span className="text-[10px] text-gray-500">&#8599;</span>
             </a>
             <a
-              href="/settings/data-governance"
+              href="/settings"
               className="flex items-center justify-between rounded-md px-2 py-1.5 text-gray-300 hover:bg-gray-800 hover:text-white"
             >
-              <span>Export or delete your data</span>
+              <span>Account &amp; data settings</span>
             </a>
-            <a
-              href="/onboarding"
-              className="flex items-center justify-between rounded-md px-2 py-1.5 text-gray-300 hover:bg-gray-800 hover:text-white"
-            >
-              <span>Getting started checklist</span>
-            </a>
-            <button
-              type="button"
-              onClick={reopenSetupAssistant}
-              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-gray-300 hover:bg-gray-800 hover:text-white"
-            >
-              <span>Open setup assistant</span>
-            </button>
           </div>
 
           <div className="mt-4 space-y-2 border-t border-gray-800 pt-3">

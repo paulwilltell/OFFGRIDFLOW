@@ -46,7 +46,7 @@ export default function TermsPage() {
                 regulatory frameworks including CSRD / ESRS E1, SEC Climate Disclosure, California
                 SB 253, EU CBAM, and IFRS S2. The Platform applies the methodology documented in
                 our public{' '}
-                <Link href="/methodology" className="text-primary-400 hover:underline">Methodology Library</Link>,
+                <span className="font-medium text-gray-200">Methodology Library</span>,
                 which is versioned and timestamped.
               </p>
             </section>
@@ -117,7 +117,7 @@ export default function TermsPage() {
               <h2 className="mb-3 text-xl font-semibold text-white">7. Accuracy Disclaimer &mdash; Not Legal or Audit Advice</h2>
               <p>
                 OffGridFlow applies the calculation methods documented in its public{' '}
-                <Link href="/methodology" className="text-primary-400 hover:underline">Methodology Library</Link>
+                <span className="font-medium text-gray-200">Methodology Library</span>
                 {' '}and verified emission factors from published sources (EPA, IEA, DEFRA, IPCC, GHG
                 Protocol). The accuracy of outputs depends on the accuracy and completeness of the
                 input data you provide.
@@ -150,7 +150,7 @@ export default function TermsPage() {
               </p>
               <p className="mt-3">
                 <strong className="text-white">No uptime guarantee.</strong> OffGridFlow publishes a{' '}
-                <Link href="/status" className="text-primary-400 hover:underline">live system status page</Link>{' '}
+                <span className="font-medium text-gray-200">live system status page</span>{' '}
                 and strives for high availability, but we do not guarantee specific uptime percentages
                 unless expressly agreed in a signed Service Level Agreement (SLA).
               </p>

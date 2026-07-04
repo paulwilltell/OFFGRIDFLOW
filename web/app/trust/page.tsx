@@ -294,14 +294,9 @@ export default function TrustCenterPage() {
           <h2 className="mb-4 text-xl font-semibold text-white">Resources for Procurement</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { name: 'Data Architecture', href: '/architecture', type: 'Web Page' },
-              { name: 'Evidence Pack', href: '/evidence', type: 'Web Page' },
-              { name: 'Operations Proof', href: '/operations', type: 'Web Page' },
               { name: 'Privacy Policy', href: '/privacy', type: 'Web Page' },
               { name: 'Terms of Service', href: '/terms', type: 'Web Page' },
               { name: 'Data Retention Policy', href: '/trust#retention', type: 'Web Page' },
-              { name: 'Methodology Library', href: '/methodology', type: 'Web Page' },
-              { name: 'System Status', href: '/status', type: 'Live Dashboard' },
             ].map(item => (
               <Link
                 key={item.name}
@@ -310,27 +305,6 @@ export default function TrustCenterPage() {
               >
                 <span className="text-sm text-gray-300">{item.name}</span>
                 <span className="rounded bg-gray-700/50 px-2 py-0.5 text-[10px] text-gray-400">{item.type}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-10 rounded-2xl border border-gray-800 bg-gray-800/20 p-6">
-          <h2 className="text-xl font-semibold text-white">Framework and Role Pages</h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Procurement and finance reviewers often start here, then branch into the framework-specific buying pages below.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { href: '/sb-253-reporting-software', label: 'SB 253 reporting software' },
-              { href: '/csrd-reporting-software', label: 'CSRD reporting software' },
-              { href: '/ifrs-s2-reporting-software', label: 'IFRS S2 reporting software' },
-              { href: '/for-cfos', label: 'For CFOs' },
-              { href: '/for-sustainability-managers', label: 'For sustainability managers' },
-              { href: '/for-procurement', label: 'For procurement' },
-            ].map((item) => (
-              <Link key={item.href} href={item.href} className="rounded-xl border border-gray-800/70 bg-gray-900/40 p-4 text-sm text-white transition hover:border-primary-600/40">
-                {item.label}
               </Link>
             ))}
           </div>

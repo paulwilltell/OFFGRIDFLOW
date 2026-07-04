@@ -85,13 +85,10 @@ function shouldBootstrapSession(pathname: string | null): boolean {
 
   return [
     '/audit',
-    '/blockchain',
-    '/compliance',
     '/dashboard',
     '/emissions',
-    '/onboarding',
+    '/reports',
     '/settings',
-    '/workflow',
   ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
