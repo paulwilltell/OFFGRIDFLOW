@@ -352,23 +352,23 @@ func (h *AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 
 	if requireVerification {
 		if canSendEmail {
+			// Send the verification email asynchronously. A slow or failing mail
+			// provider must never block (or fail) the signup itself — the user is
+			// created unverified and can request a resend. This keeps registration
+			// fast and resilient even when outbound email is degraded.
 			verifyURL := h.buildVerificationURL(verificationToken)
-			if err := h.emailSender.SendEmailVerification(ctx, user.Email, user.Name, verifyURL, h.verificationTTL); err != nil {
-				// Rollback tenant (cascades to user)
-				if delErr := h.authStore.DeleteTenant(ctx, tenantID); delErr != nil {
-					h.logger.Error("failed to rollback tenant after email failure",
-						"tenantId", tenantID,
-						"error", delErr.Error(),
+			recipient, recipientName, uid := user.Email, user.Name, user.ID
+			go func() {
+				sendCtx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+				defer cancel()
+				if err := h.emailSender.SendEmailVerification(sendCtx, recipient, recipientName, verifyURL, h.verificationTTL); err != nil {
+					h.logger.Error("failed to send verification email",
+						"userId", uid,
+						"email", recipient,
+						"error", err.Error(),
 					)
 				}
-				h.logger.Error("failed to send verification email",
-					"userId", user.ID,
-					"email", user.Email,
-					"error", err.Error(),
-				)
-				responders.ServiceUnavailable(w, "email service unavailable, please try again later", 0)
-				return
-			}
+			}()
 		}
 		// Otherwise we are in dev-token mode (allowDevVerificationToken): no
 		// email is sent and the token is returned in the response below.

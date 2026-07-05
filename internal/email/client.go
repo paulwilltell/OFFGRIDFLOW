@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log/slog"
+	"net"
+	"net/http"
 	"net/smtp"
 	"strings"
 	"time"
@@ -25,9 +29,10 @@ type Config struct {
 
 // Client handles email sending
 type Client struct {
-	config    Config
-	templates *template.Template
-	logger    *slog.Logger
+	config     Config
+	templates  *template.Template
+	logger     *slog.Logger
+	httpClient *http.Client
 }
 
 // NewClient creates a new email client
@@ -43,9 +48,10 @@ func NewClient(config Config, logger *slog.Logger) (*Client, error) {
 	}
 
 	return &Client{
-		config:    config,
-		templates: templates,
-		logger:    logger,
+		config:     config,
+		templates:  templates,
+		logger:     logger,
+		httpClient: &http.Client{Timeout: 20 * time.Second},
 	}, nil
 }
 
@@ -67,8 +73,21 @@ type Attachment struct {
 	Data        []byte
 }
 
+// useSendGridAPI reports whether to send via SendGrid's HTTPS API instead of
+// SMTP. Many hosts (Railway included) throttle or block outbound SMTP ports
+// (465/587), which makes SMTP sends hang. SendGrid's v3 API runs over HTTPS
+// (443), which is never blocked, so we prefer it whenever the configured host
+// is SendGrid and we have an API key (the SMTP password doubles as the key).
+func (c *Client) useSendGridAPI() bool {
+	return strings.Contains(strings.ToLower(c.config.SMTPHost), "sendgrid") && c.config.SMTPPassword != ""
+}
+
 // Send sends an email message
 func (c *Client) Send(ctx context.Context, msg *Message) error {
+	if c.useSendGridAPI() {
+		return c.sendViaSendGridAPI(ctx, msg)
+	}
+
 	// Build email message
 	from := fmt.Sprintf("%s <%s>", c.config.FromName, c.config.FromAddress)
 	
@@ -137,12 +156,14 @@ func (c *Client) Send(ctx context.Context, msg *Message) error {
 }
 
 func (c *Client) sendTLS(addr string, recipients []string, msg []byte) error {
-	// Connect with TLS
+	// Connect with TLS. Use a bounded dial timeout so a blocked/throttled SMTP
+	// port fails fast instead of hanging the calling request indefinitely.
 	tlsConfig := &tls.Config{
 		ServerName: c.config.SMTPHost,
 	}
 
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	dialer := &net.Dialer{Timeout: 15 * time.Second}
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, tlsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMTP server: %w", err)
 	}
@@ -187,6 +208,79 @@ func (c *Client) sendTLS(addr string, recipients []string, msg []byte) error {
 	}
 
 	return nil
+}
+
+// sendGridAPIURL is the SendGrid v3 mail-send endpoint. It is a package
+// variable so tests can point it at a mock server.
+var sendGridAPIURL = "https://api.sendgrid.com/v3/mail/send"
+
+// sendViaSendGridAPI delivers a message through SendGrid's v3 /mail/send HTTPS
+// endpoint. The API key is the configured SMTP password (SendGrid uses the same
+// key for SMTP auth and API auth). This avoids outbound SMTP port blocking.
+func (c *Client) sendViaSendGridAPI(ctx context.Context, msg *Message) error {
+	type sgAddr struct {
+		Email string `json:"email"`
+		Name  string `json:"name,omitempty"`
+	}
+	type sgContent struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	}
+	type sgPersonalization struct {
+		To []sgAddr `json:"to"`
+	}
+
+	to := make([]sgAddr, 0, len(msg.To))
+	for _, t := range msg.To {
+		to = append(to, sgAddr{Email: t})
+	}
+
+	// SendGrid requires content ordered text/plain before text/html.
+	contents := make([]sgContent, 0, 2)
+	if msg.TextBody != "" {
+		contents = append(contents, sgContent{Type: "text/plain", Value: msg.TextBody})
+	}
+	if msg.HTMLBody != "" {
+		contents = append(contents, sgContent{Type: "text/html", Value: msg.HTMLBody})
+	}
+	if len(contents) == 0 {
+		contents = append(contents, sgContent{Type: "text/plain", Value: " "})
+	}
+
+	payload := map[string]interface{}{
+		"personalizations": []sgPersonalization{{To: to}},
+		"from":             sgAddr{Email: c.config.FromAddress, Name: c.config.FromName},
+		"subject":          msg.Subject,
+		"content":          contents,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal sendgrid payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, sendGridAPIURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build sendgrid request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.config.SMTPPassword)
+	req.Header.Set("Content-Type", "application/json")
+
+	c.logger.Info("Sending email via SendGrid API", "to", msg.To, "subject", msg.Subject)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("sendgrid api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		c.logger.Info("Email sent via SendGrid API", "to", msg.To, "status", resp.StatusCode)
+		return nil
+	}
+
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+	return fmt.Errorf("sendgrid api error: status %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
 }
 
 // SendPasswordReset sends a password reset email
