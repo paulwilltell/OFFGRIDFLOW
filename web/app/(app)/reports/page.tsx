@@ -64,7 +64,7 @@ export default function ReportsPage() {
     }
   };
 
-  const handleDownload = (format: 'pdf' | 'xbrl') => {
+  const handleDownload = (format: 'pdf' | 'csv') => {
     // Export endpoint is gated server-side; only reachable once paid.
     window.open(`/api/compliance/export?format=${format}&year=${year}`, '_blank');
   };
@@ -186,15 +186,15 @@ export default function ReportsPage() {
             <button
               onClick={() => paid && handleDownload('pdf')}
               disabled={!paid}
-              className="flex h-[44px] flex-1 items-center justify-center gap-[7px] rounded-[9px] border text-[13.5px] font-semibold disabled:opacity-50"
-              style={{ borderColor: '#cfdcd4', color: '#3f4f47' }}
-            >📄 PDF</button>
+              className="flex h-[44px] flex-[1.4] items-center justify-center gap-[7px] rounded-[9px] text-[13.5px] font-semibold text-white disabled:opacity-50"
+              style={{ background: '#1d3b2e' }}
+            >📄 Download report (PDF)</button>
             <button
-              onClick={() => paid && handleDownload('xbrl')}
+              onClick={() => paid && handleDownload('csv')}
               disabled={!paid}
               className="flex h-[44px] flex-1 items-center justify-center gap-[7px] rounded-[9px] border text-[13.5px] font-semibold disabled:opacity-50"
               style={{ borderColor: '#cfdcd4', color: '#3f4f47' }}
-            >⊞ XBRL</button>
+            >⊞ Data (CSV)</button>
           </div>
 
           <div className="mt-4 flex items-center gap-[9px] border-t pt-4 text-[12.5px]" style={{ borderColor: '#f2f4f1', color: '#8a978f' }}>
