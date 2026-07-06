@@ -219,6 +219,15 @@ func (p *UtilityBillParser) parseCSV(ctx context.Context, r io.Reader) (*ParseRe
 	case kindSpend:
 		result, err := p.parseSpendRows(reader, colIndex, 1)
 		return p.applyStrict(result, err)
+	case kindWaste:
+		result, err := p.parseWasteRows(reader, colIndex, 1)
+		return p.applyStrict(result, err)
+	case kindCommuting:
+		result, err := p.parseCommutingRows(reader, colIndex, 1)
+		return p.applyStrict(result, err)
+	case kindFreight:
+		result, err := p.parseFreightRows(reader, colIndex, 1)
+		return p.applyStrict(result, err)
 	}
 
 	// Detect CSV schema (electricity / Scope 2)

@@ -110,6 +110,7 @@ var scope3CategoryNames = [15]string{
 // category number (0 if not classifiable).
 func scope3CategoryOf(source, category string) int {
 	s := strings.ToLower(source)
+	c := strings.ToLower(category)
 	switch {
 	case strings.Contains(s, "travel"):
 		return 6
@@ -117,10 +118,13 @@ func scope3CategoryOf(source, category string) int {
 		return 7
 	case strings.Contains(s, "waste"):
 		return 5
-	case strings.Contains(s, "purchas"), strings.Contains(s, "spend"):
-		return 1
-	case strings.Contains(s, "freight"), strings.Contains(s, "upstream_transport"):
+	case strings.Contains(s, "freight"), strings.Contains(s, "upstream_transport"), strings.Contains(s, "shipping"):
 		return 4
+	case strings.Contains(s, "purchas"), strings.Contains(s, "spend"):
+		if strings.Contains(c, "capital") || strings.Contains(c, "equipment") || strings.Contains(c, "machinery") {
+			return 2 // Capital goods
+		}
+		return 1 // Purchased goods and services
 	default:
 		return 1
 	}

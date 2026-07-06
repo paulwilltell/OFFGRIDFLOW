@@ -201,3 +201,82 @@ func TestRawDumpMultiScope(t *testing.T) {
 	}
 	fmt.Printf("===============================\n")
 }
+
+// TestScope3ExpansionCategories proves waste (cat 5), commuting (cat 7) and
+// freight (cat 4) dumps now parse into correctly-scoped activities and produce
+// positive Scope 3 emissions through the real calculator.
+func TestScope3ExpansionCategories(t *testing.T) {
+	cases := map[string]struct {
+		csv      string
+		source   string
+		category string // expected activity category substring
+	}{
+		"waste": {
+			csv: strings.Join([]string{
+				"date,treatment,weight_kg",
+				"2025-01-15,landfill,1200",
+				"2025-02-15,recycling paper,400",
+			}, "\n"),
+			source: "waste",
+		},
+		"commuting": {
+			csv: strings.Join([]string{
+				"employee,commute_mode,miles,days",
+				"J. Smith,car,20,220",
+				"A. Lee,public transit,12,200",
+			}, "\n"),
+			source: "commuting",
+		},
+		"freight": {
+			csv: strings.Join([]string{
+				"mode,tonnes,distance_km",
+				"truck,5,800",
+				"rail,20,1500",
+			}, "\n"),
+			source: "freight",
+		},
+	}
+
+	p := parser.NewUtilityBillParser("test-org", "US-CA")
+	calc := NewScope3Calculator(DefaultScope3Config())
+
+	fmt.Printf("\n=== SCOPE 3 EXPANSION ===\n")
+	for name, tc := range cases {
+		result, err := p.Parse(context.Background(), name+".csv", strings.NewReader(tc.csv))
+		if err != nil {
+			t.Fatalf("%s: parse rejected valid dump: %v", name, err)
+		}
+		if len(result.Activities) != 2 {
+			t.Fatalf("%s: expected 2 activities, got %d (errors: %v)", name, len(result.Activities), result.Errors)
+		}
+		for _, a := range result.Activities {
+			if a.Source != tc.source {
+				t.Errorf("%s: expected source %q, got %q", name, tc.source, a.Source)
+			}
+			if a.Quantity <= 0 || a.Unit == "" {
+				t.Errorf("%s: activity not structured: %+v", name, a)
+			}
+		}
+
+		acts := make([]Activity, 0, len(result.Activities))
+		for i := range result.Activities {
+			acts = append(acts, &result.Activities[i])
+		}
+		records, err := calc.CalculateBatch(context.Background(), acts)
+		if err != nil {
+			t.Fatalf("%s: calculator error: %v", name, err)
+		}
+		if len(records) != 2 {
+			t.Fatalf("%s: expected 2 emission records, got %d (a row was dropped)", name, len(records))
+		}
+		var total float64
+		for _, r := range records {
+			if r.Scope != Scope3 || r.EmissionsTonnesCO2e <= 0 || r.FactorID == "" {
+				t.Errorf("%s: bad record: %+v", name, r)
+			}
+			total += r.EmissionsTonnesCO2e
+		}
+		fmt.Printf("[%-10s] source=%-10s rows=%d -> %.3f tCO2e\n", name, tc.source, len(records), total)
+	}
+	fmt.Printf("=========================\n")
+}

@@ -40,6 +40,9 @@ const (
 	kindFuel        scopeKind = "fuel"         // Scope 1 direct combustion
 	kindTravel      scopeKind = "travel"       // Scope 3 cat 6 business travel
 	kindSpend       scopeKind = "spend"        // Scope 3 cat 1 purchased goods/services
+	kindWaste       scopeKind = "waste"        // Scope 3 cat 5 waste generated in operations
+	kindCommuting   scopeKind = "commuting"    // Scope 3 cat 7 employee commuting
+	kindFreight     scopeKind = "freight"      // Scope 3 cat 4/9 transportation & distribution
 )
 
 // Column signatures used to classify a dump. Names are already normalized by
@@ -52,6 +55,14 @@ var (
 	spendAmtCols  = []string{"amount_usd", "amount", "spend", "spend_usd", "cost", "total", "value"}
 	spendHintCols = []string{"vendor", "supplier", "merchant", "category", "spend_category"}
 	dateCols      = []string{"date", "period_start", "transaction_date", "invoice_date", "trip_date", "service_start"}
+
+	// Scope 3 category signatures.
+	wasteHintCols   = []string{"waste_type", "waste_stream", "treatment", "disposal", "disposal_method"}
+	wasteQtyCols    = []string{"weight_kg", "kg", "kilograms", "tonnes", "tonne", "tons", "ton", "weight", "mass"}
+	commuteHintCols = []string{"commute", "commuting", "commute_distance", "commute_mode"}
+	freightTonneKm  = []string{"tonne_km", "tonnekm", "tonne_kilometers", "tonne_kilometres", "ton_miles", "ton_mile"}
+	freightMassCols = []string{"cargo_weight", "freight_weight", "weight_tonnes", "shipment_weight", "cargo", "tonnes", "tonne", "tons", "ton"}
+	freightHintCols = []string{"freight", "shipment", "shipping", "carrier"}
 )
 
 func hasAny(colIndex map[string]int, names []string) bool {
@@ -82,13 +93,31 @@ func classifyScope(colIndex map[string]int) scopeKind {
 		return kindFuel
 	}
 
-	// Scope 3 travel: a distance column together with a travel hint (mode or
-	// an origin/destination pair).
+	// Scope 3 cat 5 — waste: a disposal/treatment signal.
+	if hasAny(colIndex, wasteHintCols) {
+		return kindWaste
+	}
+
+	// Scope 3 cat 4/9 — freight: cargo mass moved over distance (or tonne-km).
+	// Checked before travel because freight also has distance + mode.
+	if hasAny(colIndex, freightTonneKm) ||
+		(hasAny(colIndex, freightMassCols) && hasAny(colIndex, distanceCols)) ||
+		(hasAny(colIndex, freightHintCols) && hasAny(colIndex, distanceCols)) {
+		return kindFreight
+	}
+
+	// Scope 3 cat 7 — employee commuting: an explicit commute signal.
+	if hasAny(colIndex, commuteHintCols) {
+		return kindCommuting
+	}
+
+	// Scope 3 cat 6 — business travel: a distance column together with a travel
+	// hint (mode or an origin/destination pair).
 	if hasAny(colIndex, distanceCols) && hasAny(colIndex, travelHintCol) {
 		return kindTravel
 	}
 
-	// Scope 3 spend: a money amount together with a vendor/category hint.
+	// Scope 3 cat 1 — spend: a money amount together with a vendor/category hint.
 	if hasAny(colIndex, spendAmtCols) && hasAny(colIndex, spendHintCols) {
 		return kindSpend
 	}
@@ -501,6 +530,284 @@ func (p *UtilityBillParser) parseSpendRows(reader *csv.Reader, colIndex map[stri
 	}
 
 	return p.finishResult(activities, errors, lineNum, "spend"), nil
+}
+
+// =============================================================================
+// Scope 3 cat 5 — Waste generated in operations
+// =============================================================================
+
+// wasteWeightToKg converts a waste quantity column to kilograms (the Scope 3
+// waste calculator's native unit).
+func wasteWeightToKg(col string, value float64) float64 {
+	switch col {
+	case "tonnes", "tonne", "tons", "ton":
+		return value * 1000
+	default: // kg, kilograms, weight_kg, weight, mass
+		return value
+	}
+}
+
+func (p *UtilityBillParser) parseWasteRows(reader *csv.Reader, colIndex map[string]int, startLine int) (*ParseResult, error) {
+	treatCol := firstCol(colIndex, []string{"treatment", "disposal", "disposal_method", "waste_type", "waste_stream"})
+	qtyCol := firstCol(colIndex, wasteQtyCols)
+	if qtyCol == "" {
+		return nil, fmt.Errorf("waste data detected but no weight column (kg/tonnes) found")
+	}
+
+	var (
+		activities []ingestion.Activity
+		errors     []ingestion.ImportError
+		lineNum    = startLine
+	)
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		lineNum++
+		if err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Message: fmt.Sprintf("CSV parse error: %v", err)})
+			continue
+		}
+		if isEmptyRecord(record) {
+			continue
+		}
+		get := rowGetter(colIndex, record)
+
+		raw, err := parseFlexibleNumber(get(qtyCol))
+		if err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Field: qtyCol, Message: fmt.Sprintf("invalid weight %q: %v", get(qtyCol), err)})
+			continue
+		}
+		category := strings.ToLower(strings.TrimSpace(get(treatCol)))
+		if category == "" {
+			category = "landfill"
+		}
+		start, end := parsePeriod(get)
+
+		activity := ingestion.Activity{
+			ID:          fmt.Sprintf("waste-%d", lineNum),
+			Source:      "waste",
+			Category:    category,
+			Location:    p.DefaultLocation,
+			PeriodStart: start,
+			PeriodEnd:   end,
+			Quantity:    wasteWeightToKg(qtyCol, raw),
+			Unit:        "kg",
+			OrgID:       p.DefaultOrgID,
+			DataQuality: "measured",
+			CreatedAt:   time.Now().UTC(),
+		}
+		if err := activity.Validate(); err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Message: fmt.Sprintf("validation failed: %v", err)})
+			continue
+		}
+		activities = append(activities, activity)
+	}
+	return p.finishResult(activities, errors, lineNum, "waste"), nil
+}
+
+// =============================================================================
+// Scope 3 cat 7 — Employee commuting
+// =============================================================================
+
+// normalizeCommuteMode maps a raw commute mode to a category the Scope 3
+// commuting factor table recognizes.
+func normalizeCommuteMode(raw string) string {
+	m := strings.ToLower(strings.TrimSpace(raw))
+	switch {
+	case strings.Contains(m, "electric"):
+		return "car-electric"
+	case strings.Contains(m, "hybrid"):
+		return "car-hybrid"
+	case strings.Contains(m, "diesel"):
+		return "car-diesel"
+	case strings.Contains(m, "train"), strings.Contains(m, "rail"):
+		return "train"
+	case strings.Contains(m, "bus"), strings.Contains(m, "transit"), strings.Contains(m, "subway"), strings.Contains(m, "metro"):
+		return "public-transit"
+	case strings.Contains(m, "bike"), strings.Contains(m, "bicycle"), strings.Contains(m, "cycle"):
+		return "bicycle"
+	case strings.Contains(m, "walk"):
+		return "walking"
+	case strings.Contains(m, "wfh"), strings.Contains(m, "remote"), strings.Contains(m, "home"):
+		return "work-from-home"
+	case m == "":
+		return "car-petrol"
+	default:
+		return m
+	}
+}
+
+func (p *UtilityBillParser) parseCommutingRows(reader *csv.Reader, colIndex map[string]int, startLine int) (*ParseResult, error) {
+	distCol := firstCol(colIndex, distanceCols)
+	if distCol == "" {
+		return nil, fmt.Errorf("commuting data detected but no distance column found")
+	}
+	modeCol := firstCol(colIndex, []string{"commute_mode", "mode", "travel_mode", "transport_mode", "type"})
+	unit := travelUnit(distCol)
+
+	var (
+		activities []ingestion.Activity
+		errors     []ingestion.ImportError
+		lineNum    = startLine
+	)
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		lineNum++
+		if err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Message: fmt.Sprintf("CSV parse error: %v", err)})
+			continue
+		}
+		if isEmptyRecord(record) {
+			continue
+		}
+		get := rowGetter(colIndex, record)
+
+		distance, err := parseFlexibleNumber(get(distCol))
+		if err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Field: distCol, Message: fmt.Sprintf("invalid distance %q: %v", get(distCol), err)})
+			continue
+		}
+		// Scale by commuting days and headcount when provided (per passenger-km).
+		for _, mult := range []string{"days", "commute_days", "trips", "employees", "headcount"} {
+			if v := get(mult); v != "" {
+				if n, err := parseFlexibleNumber(v); err == nil && n > 0 {
+					distance *= n
+				}
+			}
+		}
+		mode := normalizeCommuteMode(get(modeCol))
+		start, end := parsePeriod(get)
+
+		activity := ingestion.Activity{
+			ID:          fmt.Sprintf("commute-%s-%d", mode, lineNum),
+			Source:      "commuting",
+			Category:    mode,
+			Location:    p.DefaultLocation,
+			PeriodStart: start,
+			PeriodEnd:   end,
+			Quantity:    distance,
+			Unit:        unit,
+			OrgID:       p.DefaultOrgID,
+			DataQuality: "estimated",
+			CreatedAt:   time.Now().UTC(),
+		}
+		if err := activity.Validate(); err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Message: fmt.Sprintf("validation failed: %v", err)})
+			continue
+		}
+		activities = append(activities, activity)
+	}
+	return p.finishResult(activities, errors, lineNum, "commuting"), nil
+}
+
+// =============================================================================
+// Scope 3 cat 4/9 — Transportation & distribution (freight)
+// =============================================================================
+
+// normalizeFreightMode maps a raw freight mode to a transport factor key.
+func normalizeFreightMode(raw string) string {
+	m := strings.ToLower(strings.TrimSpace(raw))
+	switch {
+	case strings.Contains(m, "air"), strings.Contains(m, "plane"):
+		return "air_freight"
+	case strings.Contains(m, "ship"), strings.Contains(m, "ocean"), strings.Contains(m, "sea"), strings.Contains(m, "marine"):
+		return "ship_freight"
+	case strings.Contains(m, "rail"), strings.Contains(m, "train"):
+		return "rail_freight"
+	default:
+		return "truck_freight"
+	}
+}
+
+func freightMassToTonnes(col string, value float64) float64 {
+	switch col {
+	case "kg", "kilograms", "weight_kg":
+		return value / 1000
+	default: // tonnes, tonne, tons, ton, cargo_weight, freight_weight, weight_tonnes, cargo
+		return value
+	}
+}
+
+func (p *UtilityBillParser) parseFreightRows(reader *csv.Reader, colIndex map[string]int, startLine int) (*ParseResult, error) {
+	tkmCol := firstCol(colIndex, freightTonneKm)
+	massCol := firstCol(colIndex, freightMassCols)
+	distCol := firstCol(colIndex, distanceCols)
+	if tkmCol == "" && (massCol == "" || distCol == "") {
+		return nil, fmt.Errorf("freight data detected but need tonne-km, or weight + distance")
+	}
+	modeCol := firstCol(colIndex, []string{"mode", "transport_mode", "freight_mode", "type"})
+
+	var (
+		activities []ingestion.Activity
+		errors     []ingestion.ImportError
+		lineNum    = startLine
+	)
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		lineNum++
+		if err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Message: fmt.Sprintf("CSV parse error: %v", err)})
+			continue
+		}
+		if isEmptyRecord(record) {
+			continue
+		}
+		get := rowGetter(colIndex, record)
+
+		var tonneKm float64
+		if tkmCol != "" {
+			v, err := parseFlexibleNumber(get(tkmCol))
+			if err != nil {
+				errors = append(errors, ingestion.ImportError{Row: lineNum, Field: tkmCol, Message: fmt.Sprintf("invalid tonne-km %q: %v", get(tkmCol), err)})
+				continue
+			}
+			tonneKm = v
+		} else {
+			mass, err1 := parseFlexibleNumber(get(massCol))
+			dist, err2 := parseFlexibleNumber(get(distCol))
+			if err1 != nil || err2 != nil {
+				errors = append(errors, ingestion.ImportError{Row: lineNum, Message: "invalid weight or distance for freight"})
+				continue
+			}
+			tonnes := freightMassToTonnes(massCol, mass)
+			// Normalize distance to km (transport factors are per tonne-km).
+			if travelUnit(distCol) == "mile" {
+				dist *= 1.60934
+			}
+			tonneKm = tonnes * dist
+		}
+
+		mode := normalizeFreightMode(get(modeCol))
+		start, end := parsePeriod(get)
+
+		activity := ingestion.Activity{
+			ID:          fmt.Sprintf("freight-%s-%d", mode, lineNum),
+			Source:      "freight",
+			Category:    mode,
+			Location:    p.DefaultLocation,
+			PeriodStart: start,
+			PeriodEnd:   end,
+			Quantity:    tonneKm,
+			Unit:        "tonne-km",
+			OrgID:       p.DefaultOrgID,
+			DataQuality: "measured",
+			CreatedAt:   time.Now().UTC(),
+		}
+		if err := activity.Validate(); err != nil {
+			errors = append(errors, ingestion.ImportError{Row: lineNum, Message: fmt.Sprintf("validation failed: %v", err)})
+			continue
+		}
+		activities = append(activities, activity)
+	}
+	return p.finishResult(activities, errors, lineNum, "freight"), nil
 }
 
 // applyStrict propagates a sub-parser error and enforces StrictMode, mirroring
