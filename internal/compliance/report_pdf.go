@@ -56,17 +56,21 @@ func ExportInventoryReportPDF(inv *InventoryReport) ([]byte, error) {
 
 	renderCover(pdf, inv, orgName)
 
-	// Content pages start here.
+	// Content pages start here. Sections auto-number via the shared counter so
+	// conditional sections never leave a gap.
 	pdf.AddPage()
-	renderEntity(pdf, inv, orgName)
-	renderExecutiveSummary(pdf, inv)
-	renderMethodology(pdf, inv)
-	renderByCategory(pdf, inv)
-	renderByLocation(pdf, inv)
-	renderFactors(pdf, inv)
-	renderActivityData(pdf, inv)
-	renderDataQuality(pdf, inv)
-	renderAssurance(pdf, inv, orgName)
+	sec := 0
+	renderEntity(pdf, &sec, inv, orgName)
+	renderExecutiveSummary(pdf, &sec, inv)
+	renderMethodology(pdf, &sec, inv)
+	renderByCategory(pdf, &sec, inv)
+	renderByLocation(pdf, &sec, inv)
+	renderScope3Coverage(pdf, &sec, inv)
+	renderBaseYear(pdf, &sec, inv)
+	renderFactors(pdf, &sec, inv)
+	renderActivityData(pdf, &sec, inv)
+	renderDataQuality(pdf, &sec, inv)
+	renderAssurance(pdf, &sec, inv, orgName)
 
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
@@ -145,18 +149,18 @@ func coverRow(pdf *gofpdf.Fpdf, label, value string) {
 	pdf.CellFormat(usableW-45, 7, value, "", 1, "L", false, 0, "")
 }
 
-func renderEntity(pdf *gofpdf.Fpdf, inv *InventoryReport, orgName string) {
-	sectionTitle(pdf, "1", "Reporting Entity & Organizational Boundaries")
+func renderEntity(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport, orgName string) {
+	sectionTitle(pdf, sec, "Reporting Entity & Organizational Boundaries")
 	keyVal(pdf, "Reporting entity", orgName)
 	keyVal(pdf, "Reporting period", fmt.Sprintf("1 January - 31 December %d", inv.Year))
 	keyVal(pdf, "Consolidation approach", "Operational control")
 	keyVal(pdf, "Reporting standard", "GHG Protocol Corporate Accounting & Reporting Standard (revised)")
-	keyVal(pdf, "Gases covered", "CO2, CH4, N2O and other Kyoto gases, expressed as CO2e (100-yr GWP)")
+	keyVal(pdf, "Gases covered", "CO2, CH4, N2O, HFCs, PFCs, SF6, NF3 (7 Kyoto gases), expressed as CO2e")
 	bodyText(pdf, "The organizational boundary is defined using the operational control approach: emissions from operations over which the entity has the authority to introduce and implement its operating policies are consolidated at 100%. Emissions are classified into Scope 1 (direct), Scope 2 (purchased energy) and Scope 3 (value chain) in accordance with the GHG Protocol.")
 }
 
-func renderExecutiveSummary(pdf *gofpdf.Fpdf, inv *InventoryReport) {
-	sectionTitle(pdf, "2", "Executive Summary")
+func renderExecutiveSummary(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
+	sectionTitle(pdf, sec, "Executive Summary")
 	bodyText(pdf, fmt.Sprintf("For the %d reporting year, %s and its consolidated operations reported total greenhouse gas emissions of %s tonnes of CO2 equivalent (tCO2e), disaggregated by scope below.", inv.Year, orNoun(inv.OrgName), fmtT(inv.TotalTonnes)))
 
 	th := []string{"Scope", "Emissions (tCO2e)", "Share"}
@@ -173,14 +177,22 @@ func renderExecutiveSummary(pdf *gofpdf.Fpdf, inv *InventoryReport) {
 	tableRow3(pdf, [3]string{"Total", fmtT(inv.TotalTonnes), "100%"}, widths, false, true)
 }
 
-func renderMethodology(pdf *gofpdf.Fpdf, inv *InventoryReport) {
-	sectionTitle(pdf, "3", "Methodology")
+func renderMethodology(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
+	sectionTitle(pdf, sec, "Methodology")
 	bodyText(pdf, "Emissions were quantified using the activity-based method defined by the GHG Protocol Corporate Standard: each activity's emissions equal its activity data multiplied by a published emission factor for the relevant scope, region and category.")
-	bulletText(pdf, "Calculation: Emissions (kgCO2e) = Activity data x Emission factor.")
-	bulletText(pdf, "Scope 2 electricity uses the location-based method with US EPA eGRID grid-average factors.")
-	bulletText(pdf, "Scope 1 fuel combustion uses US EPA GHG Emission Factors Hub factors.")
-	bulletText(pdf, "Scope 3 uses activity-based factors (transport) and spend-based EEIO factors where activity data is unavailable.")
-	bulletText(pdf, "Global Warming Potentials follow the IPCC 100-year time horizon; results are expressed as CO2e.")
+
+	pdf.SetFont("Helvetica", "B", 10)
+	setColor(pdf, inkColor)
+	pdf.CellFormat(0, 6, "Calculation formulae applied:", "", 1, "L", false, 0, "")
+	bulletText(pdf, "General: Emissions (tCO2e) = Sum( Activity data x Emission factor x GWP ).")
+	bulletText(pdf, "Scope 1 (combustion): Sum( Fuel consumed x Fuel emission factor ). Fuel-specific factors bundle CO2, CH4 and N2O expressed as CO2e.")
+	bulletText(pdf, "Scope 2 (location-based): Sum( Electricity (kWh) x Grid-average emission factor ), using US EPA eGRID grid factors.")
+	bulletText(pdf, "Scope 3 travel: Sum( Distance x Mode-specific factor ). Scope 3 spend: Sum( Spend x EEIO factor ).")
+
+	pdf.Ln(1)
+	keyVal(pdf, "Global Warming Potentials", "IPCC Sixth Assessment Report (AR6), 100-year time horizon (GWP-100)")
+	keyVal(pdf, "Scope 2 method", "Location-based (market-based method not applied - no contractual instrument data)")
+	bodyText(pdf, "Biofuels (e.g. biodiesel, ethanol, sustainably-sourced wood) are treated as carbon-neutral at the point of combustion per the GHG Protocol; biogenic CO2 is excluded from Scope 1 totals and reported separately where present. Emission factors are representative published values from the sources cited; for third-party assurance, confirm the specific factor vintage applicable to the reporting period.")
 
 	if len(inv.Factors) > 0 {
 		srcSet := map[string]bool{}
@@ -191,15 +203,15 @@ func renderMethodology(pdf *gofpdf.Fpdf, inv *InventoryReport) {
 				srcs = append(srcs, f.Source)
 			}
 		}
-		bodyText(pdf, "Emission factor sources used in this inventory: "+strings.Join(srcs, "; ")+". A complete factor-by-factor audit trail is provided in Section 6.")
+		bodyText(pdf, "Emission factor sources used in this inventory: "+strings.Join(srcs, "; ")+". A complete factor-by-factor audit trail is provided in a later section.")
 	}
 }
 
-func renderByCategory(pdf *gofpdf.Fpdf, inv *InventoryReport) {
+func renderByCategory(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	if len(inv.ByCategory) == 0 {
 		return
 	}
-	sectionTitle(pdf, "4", "Emissions by Source Category")
+	sectionTitle(pdf, sec, "Emissions by Source Category")
 	th := []string{"Category", "Scope", "Emissions (tCO2e)", "Share"}
 	widths := []float64{80, 25, 45, usableW - 150}
 	tableHead(pdf, th, widths)
@@ -209,11 +221,11 @@ func renderByCategory(pdf *gofpdf.Fpdf, inv *InventoryReport) {
 	}
 }
 
-func renderByLocation(pdf *gofpdf.Fpdf, inv *InventoryReport) {
+func renderByLocation(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	if len(inv.ByLocation) <= 1 {
 		return
 	}
-	sectionTitle(pdf, "5", "Emissions by Location")
+	sectionTitle(pdf, sec, "Emissions by Location")
 	th := []string{"Location", "Emissions (tCO2e)", "Share"}
 	widths := []float64{95, 50, usableW - 145}
 	tableHead(pdf, th, widths)
@@ -223,11 +235,41 @@ func renderByLocation(pdf *gofpdf.Fpdf, inv *InventoryReport) {
 	}
 }
 
-func renderFactors(pdf *gofpdf.Fpdf, inv *InventoryReport) {
+func renderScope3Coverage(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
+	if len(inv.Scope3Coverage) == 0 {
+		return
+	}
+	sectionTitle(pdf, sec, "Scope 3 Category Coverage")
+	bodyText(pdf, "The GHG Protocol defines 15 Scope 3 categories. Each is assessed below; categories not reported are those for which activity data was not provided for this reporting period and are candidates for future inclusion.")
+	th := []string{"#", "Category", "Status", "tCO2e"}
+	widths := []float64{10, 108, 32, usableW - 150}
+	tableHead(pdf, th, widths)
+	for i, c := range inv.Scope3Coverage {
+		status := "Not reported"
+		val := "-"
+		if c.Reported {
+			status = "Reported"
+			val = fmtT(c.Tonnes)
+		}
+		tableRowN(pdf, []string{fmt.Sprintf("%d", c.Number), c.Name, status, val}, widths, i%2 == 1, false)
+	}
+	bodyText(pdf, "Exclusion basis: categories marked 'Not reported' are excluded due to unavailable primary activity data, not immateriality. Their relevance should be reassessed as data collection matures, consistent with GHG Protocol completeness.")
+}
+
+func renderBaseYear(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
+	sectionTitle(pdf, sec, "Base Year & Emissions Intensity")
+	keyVal(pdf, "Base year", fmt.Sprintf("%d", inv.BaseYear))
+	keyVal(pdf, "Base year rationale", "First greenhouse gas inventory; established as the base year for future tracking")
+	keyVal(pdf, "Base year total", fmt.Sprintf("%s tCO2e", fmtT(inv.TotalTonnes)))
+	bodyText(pdf, "Under the GHG Protocol, a base year is fixed as the reference against which future emissions are compared. It will be recalculated for significant structural changes (acquisitions, divestitures, or methodology changes) exceeding the entity's significance threshold.")
+	bodyText(pdf, "Emissions intensity (tCO2e per unit of revenue, production, or FTE) is a required comparability metric. It is computed once a normalization denominator - typically annual revenue - is provided for the reporting period; provide revenue to enable intensity disclosure in future reports.")
+}
+
+func renderFactors(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	if len(inv.Factors) == 0 {
 		return
 	}
-	sectionTitle(pdf, "6", "Emission Factors & Audit Trail")
+	sectionTitle(pdf, sec, "Emission Factors & Audit Trail")
 	bodyText(pdf, "Every emission factor applied in this inventory is listed below with its published source, supporting third-party verification.")
 	th := []string{"Sc.", "Category", "Factor", "Unit", "Source"}
 	widths := []float64{10, 42, 22, 20, usableW - 94}
@@ -244,11 +286,11 @@ func renderFactors(pdf *gofpdf.Fpdf, inv *InventoryReport) {
 	}
 }
 
-func renderActivityData(pdf *gofpdf.Fpdf, inv *InventoryReport) {
+func renderActivityData(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	if len(inv.LineItems) == 0 {
 		return
 	}
-	sectionTitle(pdf, "7", "Activity Data")
+	sectionTitle(pdf, sec, "Activity Data")
 	bodyText(pdf, "The underlying activity records used to calculate this inventory. Each row is one measured activity and its resulting emissions.")
 	th := []string{"Sc.", "Category", "Location", "Quantity", "Unit", "tCO2e"}
 	widths := []float64{10, 46, 42, 30, 20, usableW - 148}
@@ -266,8 +308,8 @@ func renderActivityData(pdf *gofpdf.Fpdf, inv *InventoryReport) {
 	}
 }
 
-func renderDataQuality(pdf *gofpdf.Fpdf, inv *InventoryReport) {
-	sectionTitle(pdf, "8", "Data Quality & Completeness")
+func renderDataQuality(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
+	sectionTitle(pdf, sec, "Data Quality & Completeness")
 	keyVal(pdf, "Activity records", fmt.Sprintf("%d", inv.TotalActivities))
 	keyVal(pdf, "Complete records", fmt.Sprintf("%d of %d", inv.CompleteActivities, inv.TotalActivities))
 	keyVal(pdf, "Completeness", fmt.Sprintf("%.0f%%", inv.CompletenessPct))
@@ -283,11 +325,33 @@ func renderDataQuality(pdf *gofpdf.Fpdf, inv *InventoryReport) {
 	}
 }
 
-func renderAssurance(pdf *gofpdf.Fpdf, inv *InventoryReport, orgName string) {
-	sectionTitle(pdf, "9", "Assurance & Limitations")
-	bodyText(pdf, fmt.Sprintf("This greenhouse gas inventory was prepared by %s using OffGridFlow, applying the GHG Protocol Corporate Accounting and Reporting Standard. The figures are self-reported and based on activity data supplied by the organization.", orNoun(orgName)))
-	bodyText(pdf, "California SB 253 (the Climate Corporate Data Accountability Act) requires covered entities to obtain third-party assurance of their reported emissions - limited assurance for Scope 1 and Scope 2, phasing to reasonable assurance, with Scope 3 assurance following. This report is structured to support that assurance: it provides the organizational boundary, methodology, a complete emission-factor audit trail, and the underlying activity data required by an assurance provider.")
+func renderAssurance(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport, orgName string) {
+	sectionTitle(pdf, sec, "Management Declaration, Assurance & Limitations")
+
+	pdf.SetFont("Helvetica", "B", 10)
+	setColor(pdf, inkColor)
+	pdf.CellFormat(0, 6, "Management responsibility statement", "", 1, "L", false, 0, "")
+	bodyText(pdf, fmt.Sprintf("Management of %s is responsible for the preparation of this greenhouse gas inventory, for the completeness and accuracy of the underlying activity data, and for maintaining adequate internal controls over its GHG accounting. This inventory has been prepared in accordance with the GHG Protocol Corporate Accounting and Reporting Standard, applied consistently.", orNoun(orgName)))
+
+	bodyText(pdf, "California SB 253 (the Climate Corporate Data Accountability Act) requires covered entities to obtain third-party assurance of their reported emissions - limited assurance for Scope 1 and Scope 2, phasing to reasonable assurance, with Scope 3 assurance following. This report is structured to support that assurance: it provides the organizational boundary, methodology and formulae, a complete emission-factor audit trail, Scope 3 category coverage, and the underlying activity data an assurance provider requires.")
 	bodyText(pdf, "This document does not itself constitute an assurance opinion, legal advice, or a regulatory filing. The organization is responsible for the completeness and accuracy of the input data and for engaging a qualified third-party assurance provider prior to submission.")
+
+	// Signature block.
+	pdf.Ln(6)
+	setDraw(pdf, [3]int{120, 130, 124})
+	sigY := pdf.GetY() + 10
+	pdf.Line(marginX, sigY, marginX+70, sigY)
+	pdf.Line(marginX+95, sigY, marginX+95+55, sigY)
+	pdf.SetY(sigY + 1)
+	pdf.SetFont("Helvetica", "", 8.5)
+	setColor(pdf, mutedColor)
+	pdf.SetX(marginX)
+	pdf.CellFormat(70, 5, "Authorized officer (signature)", "", 0, "L", false, 0, "")
+	pdf.SetX(marginX + 95)
+	pdf.CellFormat(55, 5, "Date", "", 1, "L", false, 0, "")
+	pdf.Ln(2)
+	pdf.SetX(marginX)
+	pdf.CellFormat(70, 5, "Name / title: ______________________", "", 1, "L", false, 0, "")
 
 	pdf.Ln(4)
 	setDraw(pdf, lineColor)
@@ -303,7 +367,8 @@ func renderAssurance(pdf *gofpdf.Fpdf, inv *InventoryReport, orgName string) {
 // Layout helpers
 // ---------------------------------------------------------------------------
 
-func sectionTitle(pdf *gofpdf.Fpdf, num, title string) {
+func sectionTitle(pdf *gofpdf.Fpdf, sec *int, title string) {
+	*sec++
 	if pdf.GetY() > 245 {
 		pdf.AddPage()
 	}
@@ -314,7 +379,7 @@ func sectionTitle(pdf *gofpdf.Fpdf, num, title string) {
 	pdf.SetX(marginX + 6)
 	pdf.SetFont("Helvetica", "B", 13.5)
 	setColor(pdf, brandDark)
-	pdf.CellFormat(0, 7, fmt.Sprintf("%s.  %s", num, title), "", 1, "L", false, 0, "")
+	pdf.CellFormat(0, 7, fmt.Sprintf("%d.  %s", *sec, title), "", 1, "L", false, 0, "")
 	pdf.Ln(2)
 }
 

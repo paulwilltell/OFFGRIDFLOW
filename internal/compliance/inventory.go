@@ -55,6 +55,7 @@ type InventoryReport struct {
 	OrgID       string
 	OrgName     string
 	Year        int
+	BaseYear    int
 	PeriodStart time.Time
 	PeriodEnd   time.Time
 	GeneratedAt time.Time
@@ -64,16 +65,65 @@ type InventoryReport struct {
 	Scope3Tonnes float64
 	TotalTonnes  float64
 
-	LineItems  []InventoryLineItem
-	ByScope    map[int]float64
-	ByCategory []CategoryTotal
-	ByLocation []CategoryTotal
-	Factors    []FactorRef
+	LineItems     []InventoryLineItem
+	ByScope       map[int]float64
+	ByCategory    []CategoryTotal
+	ByLocation    []CategoryTotal
+	Factors       []FactorRef
+	Scope3Coverage []Scope3CategoryStatus
 
 	TotalActivities    int
 	CompleteActivities int
 	CompletenessPct    float64
 	Warnings           []string
+}
+
+// Scope3CategoryStatus reports whether each of the 15 GHG Protocol Scope 3
+// categories is included, as required (excluded categories must be justified).
+type Scope3CategoryStatus struct {
+	Number   int
+	Name     string
+	Reported bool
+	Tonnes   float64
+}
+
+// scope3CategoryNames are the 15 GHG Protocol Scope 3 categories in order.
+var scope3CategoryNames = [15]string{
+	"Purchased goods and services",
+	"Capital goods",
+	"Fuel- and energy-related activities",
+	"Upstream transportation and distribution",
+	"Waste generated in operations",
+	"Business travel",
+	"Employee commuting",
+	"Upstream leased assets",
+	"Downstream transportation and distribution",
+	"Processing of sold products",
+	"Use of sold products",
+	"End-of-life treatment of sold products",
+	"Downstream leased assets",
+	"Franchises",
+	"Investments",
+}
+
+// scope3CategoryOf maps a Scope 3 activity's source/category to its GHG Protocol
+// category number (0 if not classifiable).
+func scope3CategoryOf(source, category string) int {
+	s := strings.ToLower(source)
+	switch {
+	case strings.Contains(s, "travel"):
+		return 6
+	case strings.Contains(s, "commut"):
+		return 7
+	case strings.Contains(s, "waste"):
+		return 5
+	case strings.Contains(s, "purchas"), strings.Contains(s, "spend"):
+		return 1
+	case strings.Contains(s, "freight"), strings.Contains(s, "upstream_transport"):
+		return 4
+	default:
+		return 1
+	}
 }
 
 // CategoryTotal is a labeled emissions subtotal (by category or location).
@@ -272,6 +322,27 @@ func (s *Service) GenerateInventory(ctx context.Context, orgID string, year int)
 	}
 	if report.TotalActivities > 0 {
 		report.CompletenessPct = float64(report.CompleteActivities) / float64(report.TotalActivities) * 100
+	}
+
+	// Base year: absent a prior inventory, the reporting year is established as
+	// the base year for future GHG Protocol tracking.
+	report.BaseYear = year
+
+	// Scope 3 category coverage — which of the 15 categories are included.
+	s3Tonnes := map[int]float64{}
+	for _, li := range report.LineItems {
+		if li.Scope == 3 {
+			s3Tonnes[scope3CategoryOf(li.Source, li.Category)] += li.EmissionsTonnes
+		}
+	}
+	for i, name := range scope3CategoryNames {
+		num := i + 1
+		report.Scope3Coverage = append(report.Scope3Coverage, Scope3CategoryStatus{
+			Number:   num,
+			Name:     name,
+			Reported: s3Tonnes[num] > 0,
+			Tonnes:   s3Tonnes[num],
+		})
 	}
 
 	if report.TotalActivities == 0 {
