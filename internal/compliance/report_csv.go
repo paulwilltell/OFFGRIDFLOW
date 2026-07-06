@@ -25,6 +25,8 @@ func ExportInventoryCSV(inv *InventoryReport) ([]byte, error) {
 		{"# Standard: GHG Protocol Corporate Standard (California SB 253)"},
 		{fmt.Sprintf("# Totals (tCO2e): scope1=%.4f scope2_location=%.4f scope2_market=%.4f scope3=%.4f total=%.4f",
 			inv.Scope1Tonnes, inv.Scope2Tonnes, inv.Scope2MarketTonnes, inv.Scope3Tonnes, inv.TotalTonnes)},
+		{fmt.Sprintf("# Scope 1 gases (tCO2e): co2=%.4f ch4=%.4f n2o=%.4f biogenic=%.4f",
+			inv.Scope1Gases.CO2, inv.Scope1Gases.CH4, inv.Scope1Gases.N2O, inv.Scope1Gases.Biogenic)},
 	}
 	for _, m := range meta {
 		if err := w.Write(m); err != nil {

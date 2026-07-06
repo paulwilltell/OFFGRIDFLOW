@@ -95,6 +95,9 @@ type InventoryReport struct {
 	Scope2MarketTonnes float64
 	HasMarketData      bool
 
+	// Scope1Gases disaggregates Scope 1 into the seven Kyoto gases.
+	Scope1Gases GasBreakdown
+
 	LineItems     []InventoryLineItem
 	ByScope       map[int]float64
 	ByCategory    []CategoryTotal
@@ -106,6 +109,50 @@ type InventoryReport struct {
 	CompleteActivities int
 	CompletenessPct    float64
 	Warnings           []string
+}
+
+// GasBreakdown disaggregates emissions into the seven Kyoto greenhouse gases
+// (all values tCO2e). Biogenic CO2 is reported separately from the totals.
+type GasBreakdown struct {
+	CO2      float64
+	CH4      float64
+	N2O      float64
+	HFCs     float64
+	PFCs     float64
+	SF6      float64
+	NF3      float64
+	Biogenic float64
+}
+
+// Total returns the sum of the seven Kyoto gases (excludes biogenic).
+func (g GasBreakdown) Total() float64 {
+	return g.CO2 + g.CH4 + g.N2O + g.HFCs + g.PFCs + g.SF6 + g.NF3
+}
+
+// combustionGasShares returns the representative share of a combustion fuel's
+// CO2e attributable to CO2, CH4 and N2O. Combustion is CO2-dominant; CH4/N2O
+// are minor but non-zero. Shares sum to 1 so the gas split reconciles exactly
+// to the fuel's total. For assurance, fuel/technology-specific gas factors
+// (EPA GHG Emission Factors Hub / IPCC) should replace these.
+func combustionGasShares(fuelCategory string) (co2, ch4, n2o float64) {
+	f := strings.ToLower(fuelCategory)
+	switch {
+	case strings.Contains(f, "natural_gas"), strings.Contains(f, "propane"), strings.Contains(f, "lpg"), strings.Contains(f, "methane"), strings.Contains(f, "cng"), strings.Contains(f, "lng"):
+		return 0.995, 0.003, 0.002 // gaseous fuels
+	case strings.Contains(f, "coal"), strings.Contains(f, "wood"), strings.Contains(f, "biomass"):
+		return 0.985, 0.006, 0.009 // solid fuels
+	default:
+		return 0.985, 0.003, 0.012 // liquid fuels (diesel, gasoline, fuel oil, jet)
+	}
+}
+
+// isBiogenicFuel reports whether a fuel's combustion CO2 is biogenic (reported
+// separately from the fossil Scope 1 total per the GHG Protocol).
+func isBiogenicFuel(fuelCategory string) bool {
+	f := strings.ToLower(fuelCategory)
+	return strings.Contains(f, "biodiesel") || strings.Contains(f, "ethanol") ||
+		strings.Contains(f, "biomass") || strings.Contains(f, "biogas") ||
+		strings.Contains(f, "wood") || strings.Contains(f, "biofuel")
 }
 
 // Scope3CategoryStatus reports whether each of the 15 GHG Protocol Scope 3
@@ -317,6 +364,16 @@ func (s *Service) GenerateInventory(ctx context.Context, orgID string, year int)
 		switch scope {
 		case 1:
 			report.Scope1Tonnes += rec.EmissionsTonnesCO2e
+			// Disaggregate this fuel's CO2e into CO2/CH4/N2O. Biofuels (0-factor
+			// per the calculator) contribute biogenic CO2, reported separately.
+			if isBiogenicFuel(li.Category) {
+				report.Scope1Gases.Biogenic += rec.EmissionsTonnesCO2e
+			} else {
+				co2s, ch4s, n2os := combustionGasShares(li.Category)
+				report.Scope1Gases.CO2 += rec.EmissionsTonnesCO2e * co2s
+				report.Scope1Gases.CH4 += rec.EmissionsTonnesCO2e * ch4s
+				report.Scope1Gases.N2O += rec.EmissionsTonnesCO2e * n2os
+			}
 		case 2:
 			report.Scope2Tonnes += rec.EmissionsTonnesCO2e
 			report.Scope2MarketTonnes += li.MarketEmissionsTonnes

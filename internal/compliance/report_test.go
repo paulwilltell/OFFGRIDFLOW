@@ -180,3 +180,32 @@ func TestScope2MarketBased(t *testing.T) {
 		t.Errorf("expected market-based ~5 tCO2e, got %.3f", inv.Scope2MarketTonnes)
 	}
 }
+
+// Scope 1 must be disaggregated into the seven Kyoto gases, with CO2/CH4/N2O
+// reconciling exactly to the fossil Scope 1 total.
+func TestScope1GasBreakdown(t *testing.T) {
+	inv, err := testService(t).GenerateInventory(context.Background(), "test-org", 2025)
+	if err != nil {
+		t.Fatalf("inventory: %v", err)
+	}
+	g := inv.Scope1Gases
+	if g.CO2 <= 0 {
+		t.Fatalf("expected positive CO2, got %.3f", g.CO2)
+	}
+	if g.CH4 < 0 || g.N2O < 0 {
+		t.Fatal("gas shares must be non-negative")
+	}
+	// CO2 must dominate combustion.
+	if g.CO2 < inv.Scope1Tonnes*0.9 {
+		t.Errorf("expected CO2 to dominate Scope 1; CO2=%.3f scope1=%.3f", g.CO2, inv.Scope1Tonnes)
+	}
+	// The gas split must reconcile to the Scope 1 total.
+	diff := g.Total() - inv.Scope1Tonnes
+	if diff < -0.001 || diff > 0.001 {
+		t.Errorf("gas breakdown %.4f does not reconcile to Scope 1 total %.4f", g.Total(), inv.Scope1Tonnes)
+	}
+	// Industrial gases zero (no fugitive sources in this inventory).
+	if g.HFCs != 0 || g.SF6 != 0 {
+		t.Error("expected zero industrial gases with no fugitive sources")
+	}
+}

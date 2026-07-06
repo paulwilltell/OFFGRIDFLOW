@@ -62,6 +62,7 @@ func ExportInventoryReportPDF(inv *InventoryReport) ([]byte, error) {
 	sec := 0
 	renderEntity(pdf, &sec, inv, orgName)
 	renderExecutiveSummary(pdf, &sec, inv)
+	renderScope1Gases(pdf, &sec, inv)
 	renderScope2Dual(pdf, &sec, inv)
 	renderMethodology(pdf, &sec, inv)
 	renderByCategory(pdf, &sec, inv)
@@ -176,6 +177,40 @@ func renderExecutiveSummary(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 		tableRow3(pdf, r, widths, i%2 == 1, false)
 	}
 	tableRow3(pdf, [3]string{"Total", fmtT(inv.TotalTonnes), "100%"}, widths, false, true)
+}
+
+func renderScope1Gases(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
+	if inv.Scope1Tonnes <= 0 {
+		return
+	}
+	g := inv.Scope1Gases
+	sectionTitle(pdf, sec, "Scope 1 Emissions by Greenhouse Gas")
+	bodyText(pdf, "The GHG Protocol requires the seven Kyoto gases to be reported. Scope 1 combustion emissions are disaggregated into CO2, CH4 and N2O below, expressed as CO2e using IPCC AR6 100-year GWPs (CH4 fossil = 29.8, N2O = 273). The industrial gases (HFCs, PFCs, SF6, NF3) arise from fugitive/process sources; none were reported in this inventory.")
+
+	th := []string{"Greenhouse gas", "Emissions (tCO2e)", "Share of Scope 1"}
+	widths := []float64{90, 45, usableW - 135}
+	tableHead(pdf, th, widths)
+	rows := [][3]string{
+		{"Carbon dioxide (CO2)", fmtT(g.CO2), pct(g.CO2, inv.Scope1Tonnes)},
+		{"Methane (CH4)", fmtT(g.CH4), pct(g.CH4, inv.Scope1Tonnes)},
+		{"Nitrous oxide (N2O)", fmtT(g.N2O), pct(g.N2O, inv.Scope1Tonnes)},
+		{"Hydrofluorocarbons (HFCs)", fmtT(g.HFCs), pct(g.HFCs, inv.Scope1Tonnes)},
+		{"Perfluorocarbons (PFCs)", fmtT(g.PFCs), pct(g.PFCs, inv.Scope1Tonnes)},
+		{"Sulfur hexafluoride (SF6)", fmtT(g.SF6), pct(g.SF6, inv.Scope1Tonnes)},
+		{"Nitrogen trifluoride (NF3)", fmtT(g.NF3), pct(g.NF3, inv.Scope1Tonnes)},
+	}
+	for i, r := range rows {
+		tableRow3(pdf, r, widths, i%2 == 1, false)
+	}
+	tableRow3(pdf, [3]string{"Total Scope 1 (fossil)", fmtT(g.Total()), "100%"}, widths, false, true)
+
+	note := "The combustion split uses representative fossil-fuel gas shares (CO2-dominant); for third-party assurance, apply fuel- and technology-specific gas factors (EPA GHG Emission Factors Hub / IPCC)."
+	if g.Biogenic > 0 {
+		note += fmt.Sprintf(" Biogenic CO2 of %s tCO2e (from biofuels) is reported separately and excluded from the Scope 1 fossil total, per the GHG Protocol.", fmtT(g.Biogenic))
+	} else {
+		note += " No biogenic CO2 (from biofuels) was reported; it would be disclosed separately where present."
+	}
+	bodyText(pdf, note)
 }
 
 func renderScope2Dual(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
