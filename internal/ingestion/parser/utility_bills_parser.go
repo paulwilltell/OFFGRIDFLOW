@@ -470,6 +470,18 @@ func (p *UtilityBillParser) parseCSVRecord(schema *CSVSchema, colIndex map[strin
 	if invoice := get(schema.InvoiceCol); invoice != "" {
 		metadata["invoice"] = invoice
 	}
+	// Scope 2 market-based (dual reporting) inputs, optional: a supplier/market
+	// emission factor (kgCO2e/kWh) or a renewable/REC share for this account.
+	if col := firstCol(colIndex, []string{"market_factor", "supplier_factor", "supplier_emission_factor", "contractual_factor", "residual_mix_factor"}); col != "" {
+		if v := get(col); v != "" {
+			metadata["market_factor"] = v
+		}
+	}
+	if col := firstCol(colIndex, []string{"renewable_pct", "renewable_percent", "renewable_share", "rec_pct", "green_pct", "renewable"}); col != "" {
+		if v := get(col); v != "" {
+			metadata["renewable_pct"] = v
+		}
+	}
 
 	// Create activity
 	activity := &ingestion.Activity{

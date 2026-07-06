@@ -134,3 +134,49 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// Scope 2 must be dual-reported: location-based (grid) and market-based
+// (supplier factor / renewable share). Market emissions fall below location
+// when contractual instruments are supplied.
+func TestScope2MarketBased(t *testing.T) {
+	store := ingestion.NewInMemoryActivityStore()
+	y := 2025
+	acts := []ingestion.Activity{
+		// 100% renewable -> market-based emissions ~0.
+		{ID: "e-green", OrgID: "test-org", Source: "utility_bill", Category: "electricity",
+			Location: "US-CA", Unit: "kWh", Quantity: 100000,
+			Metadata:    map[string]string{"renewable_pct": "100"},
+			PeriodStart: time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC), PeriodEnd: time.Date(y, 1, 31, 0, 0, 0, 0, time.UTC), CreatedAt: time.Now()},
+		// Supplier-specific factor 0.05 kgCO2e/kWh -> market = 100000*0.05/1000 = 5t.
+		{ID: "e-supplier", OrgID: "test-org", Source: "utility_bill", Category: "electricity",
+			Location: "US-CA", Unit: "kWh", Quantity: 100000,
+			Metadata:    map[string]string{"market_factor": "0.05"},
+			PeriodStart: time.Date(y, 2, 1, 0, 0, 0, 0, time.UTC), PeriodEnd: time.Date(y, 2, 28, 0, 0, 0, 0, time.UTC), CreatedAt: time.Now()},
+	}
+	if err := store.SaveBatch(context.Background(), acts); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	svc := NewService(store,
+		emissions.NewScope1Calculator(emissions.Scope1Config{}),
+		emissions.NewScope2Calculator(emissions.Scope2Config{}),
+		emissions.NewScope3Calculator(emissions.DefaultScope3Config()))
+
+	inv, err := svc.GenerateInventory(context.Background(), "test-org", y)
+	if err != nil {
+		t.Fatalf("inventory: %v", err)
+	}
+	if !inv.HasMarketData {
+		t.Fatal("expected HasMarketData true")
+	}
+	if inv.Scope2Tonnes <= 0 {
+		t.Fatalf("expected positive location-based scope 2, got %.3f", inv.Scope2Tonnes)
+	}
+	// Market-based must be lower than location-based (green + low supplier factor).
+	if inv.Scope2MarketTonnes >= inv.Scope2Tonnes {
+		t.Fatalf("expected market-based (%.3f) < location-based (%.3f)", inv.Scope2MarketTonnes, inv.Scope2Tonnes)
+	}
+	// Supplier factor row: 100000 kWh * 0.05 / 1000 = 5t; green row ~0 -> market ~5t.
+	if inv.Scope2MarketTonnes < 4.5 || inv.Scope2MarketTonnes > 5.5 {
+		t.Errorf("expected market-based ~5 tCO2e, got %.3f", inv.Scope2MarketTonnes)
+	}
+}

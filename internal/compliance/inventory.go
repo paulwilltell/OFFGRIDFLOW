@@ -10,12 +10,30 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/example/offgridflow/internal/emissions"
 	"github.com/example/offgridflow/internal/ingestion"
 )
+
+// metaFloat parses a numeric value from activity metadata, returning -1 when the
+// key is absent or unparseable.
+func metaFloat(meta map[string]string, key string) float64 {
+	if meta == nil {
+		return -1
+	}
+	v, ok := meta[key]
+	if !ok {
+		return -1
+	}
+	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+	if err != nil {
+		return -1
+	}
+	return f
+}
 
 // InventoryLineItem is one activity's contribution to the inventory, carrying
 // the full calculation trail (activity data -> factor -> emissions).
@@ -36,6 +54,12 @@ type InventoryLineItem struct {
 	Method          string
 	DataQuality     string
 	EmissionsTonnes float64
+
+	// Scope 2 market-based (dual reporting). MarketEmissionsTonnes equals the
+	// location-based figure unless a supplier/market factor or renewable share
+	// was supplied for this account.
+	MarketFactor          float64
+	MarketEmissionsTonnes float64
 }
 
 // FactorRef is a distinct emission factor used in the inventory, for the
@@ -61,9 +85,15 @@ type InventoryReport struct {
 	GeneratedAt time.Time
 
 	Scope1Tonnes float64
-	Scope2Tonnes float64
+	Scope2Tonnes float64 // Scope 2 location-based (the primary reported figure)
 	Scope3Tonnes float64
 	TotalTonnes  float64
+
+	// Scope2MarketTonnes is the Scope 2 market-based total (dual reporting).
+	// HasMarketData is true when at least one account supplied a market factor
+	// or renewable share.
+	Scope2MarketTonnes float64
+	HasMarketData      bool
 
 	LineItems     []InventoryLineItem
 	ByScope       map[int]float64
@@ -256,6 +286,31 @@ func (s *Service) GenerateInventory(ctx context.Context, orgID string, year int)
 		if li.Location == "" {
 			li.Location = "unspecified"
 		}
+
+		// Market-based (dual reporting) figure. Defaults to the location-based
+		// value unless the account supplied a supplier/market emission factor or
+		// a renewable share (contractual instruments per GHG Protocol Scope 2).
+		li.MarketEmissionsTonnes = rec.EmissionsTonnesCO2e
+		if scope == 2 && act != nil {
+			if mf := metaFloat(act.Metadata, "market_factor"); mf >= 0 {
+				li.MarketFactor = mf
+				li.MarketEmissionsTonnes = rec.InputQuantity * mf / 1000.0
+				report.HasMarketData = true
+			} else if rp := metaFloat(act.Metadata, "renewable_pct"); rp >= 0 {
+				share := rp
+				if share > 1 {
+					share /= 100 // accept 0-100 or 0-1
+				}
+				if share < 0 {
+					share = 0
+				} else if share > 1 {
+					share = 1
+				}
+				li.MarketEmissionsTonnes = rec.EmissionsTonnesCO2e * (1 - share)
+				report.HasMarketData = true
+			}
+		}
+
 		report.LineItems = append(report.LineItems, li)
 
 		report.ByScope[scope] += rec.EmissionsTonnesCO2e
@@ -264,6 +319,7 @@ func (s *Service) GenerateInventory(ctx context.Context, orgID string, year int)
 			report.Scope1Tonnes += rec.EmissionsTonnesCO2e
 		case 2:
 			report.Scope2Tonnes += rec.EmissionsTonnesCO2e
+			report.Scope2MarketTonnes += li.MarketEmissionsTonnes
 		case 3:
 			report.Scope3Tonnes += rec.EmissionsTonnesCO2e
 		}

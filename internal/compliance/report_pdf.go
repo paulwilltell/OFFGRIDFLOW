@@ -62,6 +62,7 @@ func ExportInventoryReportPDF(inv *InventoryReport) ([]byte, error) {
 	sec := 0
 	renderEntity(pdf, &sec, inv, orgName)
 	renderExecutiveSummary(pdf, &sec, inv)
+	renderScope2Dual(pdf, &sec, inv)
 	renderMethodology(pdf, &sec, inv)
 	renderByCategory(pdf, &sec, inv)
 	renderByLocation(pdf, &sec, inv)
@@ -177,6 +178,28 @@ func renderExecutiveSummary(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	tableRow3(pdf, [3]string{"Total", fmtT(inv.TotalTonnes), "100%"}, widths, false, true)
 }
 
+func renderScope2Dual(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
+	// Only meaningful when there is Scope 2 electricity in the inventory.
+	if inv.Scope2Tonnes <= 0 {
+		return
+	}
+	sectionTitle(pdf, sec, "Scope 2 Dual Reporting (Location & Market-Based)")
+	bodyText(pdf, "The GHG Protocol Scope 2 Guidance requires purchased-electricity emissions to be reported under both methods: the location-based method (grid-average emission factors) and the market-based method (contractual instruments such as supplier-specific factors, renewable energy certificates, guarantees of origin, or power purchase agreements). Both are presented below.")
+
+	th := []string{"Scope 2 method", "Emissions (tCO2e)"}
+	widths := []float64{usableW - 55, 55}
+	tableHead(pdf, th, widths)
+	tableRowN(pdf, []string{"Location-based (grid average)", fmtT(inv.Scope2Tonnes)}, widths, false, false)
+	tableRowN(pdf, []string{"Market-based (contractual)", fmtT(inv.Scope2MarketTonnes)}, widths, true, false)
+
+	if inv.HasMarketData {
+		reduction := inv.Scope2Tonnes - inv.Scope2MarketTonnes
+		bodyText(pdf, fmt.Sprintf("Market-based emissions reflect the supplier/contractual emission factors and renewable coverage supplied per account, a reduction of %s tCO2e versus location-based. Offsets, if any, are excluded from both figures and disclosed separately.", fmtT(reduction)))
+	} else {
+		bodyText(pdf, "No contractual instruments (supplier-specific emission factors or renewable/REC coverage) were supplied for the reporting period; the market-based figure therefore equals the location-based figure. To reflect green procurement, provide a per-account supplier emission factor (kgCO2e/kWh) or a renewable share with your electricity data.")
+	}
+}
+
 func renderMethodology(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	sectionTitle(pdf, sec, "Methodology")
 	bodyText(pdf, "Emissions were quantified using the activity-based method defined by the GHG Protocol Corporate Standard: each activity's emissions equal its activity data multiplied by a published emission factor for the relevant scope, region and category.")
@@ -191,7 +214,7 @@ func renderMethodology(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 
 	pdf.Ln(1)
 	keyVal(pdf, "Global Warming Potentials", "IPCC Sixth Assessment Report (AR6), 100-year time horizon (GWP-100)")
-	keyVal(pdf, "Scope 2 method", "Location-based (market-based method not applied - no contractual instrument data)")
+	keyVal(pdf, "Scope 2 methods", "Dual reporting: location-based and market-based (see Scope 2 Dual Reporting section)")
 	bodyText(pdf, "Biofuels (e.g. biodiesel, ethanol, sustainably-sourced wood) are treated as carbon-neutral at the point of combustion per the GHG Protocol; biogenic CO2 is excluded from Scope 1 totals and reported separately where present. Emission factors are representative published values from the sources cited; for third-party assurance, confirm the specific factor vintage applicable to the reporting period.")
 
 	if len(inv.Factors) > 0 {
