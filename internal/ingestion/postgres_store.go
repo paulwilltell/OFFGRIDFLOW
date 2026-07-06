@@ -19,11 +19,36 @@ func NewPostgresActivityStore(db *sql.DB) *PostgresActivityStore {
 	return &PostgresActivityStore{db: db}
 }
 
+// activityIDNamespace is a stable namespace used to derive deterministic UUIDs
+// from human-readable activity IDs.
+var activityIDNamespace = uuid.MustParse("6ba7b812-9dad-11d1-80b4-00c04fd430c8")
+
+// coerceActivityID ensures the activity ID is a valid UUID for the activities
+// table (its id column is UUID). Parsers emit human-readable IDs like
+// "csv-METER-...", "waste-2" or "fuel-diesel-3"; a raw insert of those fails
+// with a UUID syntax error. If the ID is not already a UUID, a deterministic
+// UUIDv5 is derived from it — so re-ingesting the same data stays idempotent
+// via ON CONFLICT (id) — and the original ID is preserved in metadata.
+func coerceActivityID(a *Activity) {
+	if a.ID == "" {
+		a.ID = uuid.NewString()
+		return
+	}
+	if _, err := uuid.Parse(a.ID); err == nil {
+		return // already a valid UUID
+	}
+	if a.Metadata == nil {
+		a.Metadata = map[string]string{}
+	}
+	if _, ok := a.Metadata["source_id"]; !ok {
+		a.Metadata["source_id"] = a.ID
+	}
+	a.ID = uuid.NewSHA1(activityIDNamespace, []byte(a.ID)).String()
+}
+
 // Save stores a single activity in the database.
 func (s *PostgresActivityStore) Save(ctx context.Context, activity Activity) error {
-	if activity.ID == "" {
-		activity.ID = uuid.NewString()
-	}
+	coerceActivityID(&activity)
 	if activity.CreatedAt.IsZero() {
 		activity.CreatedAt = time.Now()
 	}
@@ -81,9 +106,7 @@ func (s *PostgresActivityStore) SaveBatch(ctx context.Context, activities []Acti
 	}()
 
 	for i := range activities {
-		if activities[i].ID == "" {
-			activities[i].ID = uuid.NewString()
-		}
+		coerceActivityID(&activities[i])
 		if activities[i].CreatedAt.IsZero() {
 			activities[i].CreatedAt = time.Now()
 		}
