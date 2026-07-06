@@ -99,8 +99,9 @@ export default function UploadPage() {
     <div className="mx-auto w-full max-w-[720px]">
       <h1 className="mb-[9px] text-center text-[26px] font-bold tracking-[-0.02em]">Add your emissions data</h1>
       <p className="mx-auto mb-9 max-w-[540px] text-center text-[15px] leading-[1.55]" style={{ color: '#6a7a71' }}>
-        Upload utility, fuel, travel, or supplier-spend data. We auto-detect the scope, map your columns,
-        apply emission factors, and calculate your Scope&nbsp;1, 2 &amp; 3 footprint.
+        Upload any activity data — utility bills, fuel, business travel, commuting, freight, waste, or supplier
+        spend. We auto-detect the scope, map your columns, apply emission factors, and calculate your
+        Scope&nbsp;1, 2 &amp; 3 footprint.
       </p>
 
       {error && (
