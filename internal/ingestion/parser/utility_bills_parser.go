@@ -205,10 +205,17 @@ func (p *UtilityBillParser) parseCSV(ctx context.Context, r io.Reader) (*ParseRe
 		colIndex[normalized] = i
 	}
 
-	// Classify the dump by its columns. Fuel (Scope 1) and travel/spend
-	// (Scope 3) route to dedicated parsers; electricity (Scope 2) continues
-	// through the utility-bill path below. The header has already been read,
-	// so the sub-parsers resume from the first data row (line 1).
+	// A mixed/generic dump (explicit activity-type column + generic quantity +
+	// unit) is classified and routed per row, so one file can carry every scope.
+	if discCol, qtyCol, ok := detectMixedSchema(colIndex); ok {
+		result, err := p.parseMixedRows(reader, colIndex, discCol, qtyCol, 1)
+		return p.applyStrict(result, err)
+	}
+
+	// Otherwise classify the whole file by its columns. Fuel (Scope 1) and
+	// travel/spend (Scope 3) route to dedicated parsers; electricity (Scope 2)
+	// continues through the utility-bill path below. The header has already been
+	// read, so the sub-parsers resume from the first data row (line 1).
 	switch classifyScope(colIndex) {
 	case kindFuel:
 		result, err := p.parseFuelRows(reader, colIndex, 1)

@@ -43,6 +43,7 @@ const (
 	kindWaste       scopeKind = "waste"        // Scope 3 cat 5 waste generated in operations
 	kindCommuting   scopeKind = "commuting"    // Scope 3 cat 7 employee commuting
 	kindFreight     scopeKind = "freight"      // Scope 3 cat 4/9 transportation & distribution
+	kindUnknown     scopeKind = "unknown"      // a mixed-dump row whose type could not be classified
 )
 
 // Column signatures used to classify a dump. Names are already normalized by
