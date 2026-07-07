@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -15,6 +16,21 @@ import (
 // ComplianceHandlerDeps holds dependencies for compliance handlers.
 type ComplianceHandlerDeps struct {
 	ComplianceService *compliance.Service
+}
+
+// resolveReportYear returns the reporting year for a report request: the
+// explicitly requested year when > 0, otherwise the most recent year that has
+// activity data, falling back to the current calendar year when the org has
+// none. Customers upload prior-year reporting data, so defaulting straight to
+// the current calendar year would generate empty reports for the common case.
+func resolveReportYear(ctx context.Context, svc *compliance.Service, orgID string, explicit int) int {
+	if explicit > 0 {
+		return explicit
+	}
+	if latest := svc.LatestDataYear(ctx, orgID); latest > 0 {
+		return latest
+	}
+	return time.Now().Year()
 }
 
 // NewCSRDComplianceHandler creates an HTTP handler for /api/compliance/csrd (GET or POST).
@@ -39,12 +55,12 @@ func NewCSRDComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		}
 		orgID := tenantID
 
-		year := time.Now().Year()
+		explicitYear := 0
 		// Allow year via query param (GET) or JSON body (POST)
 		if r.Method == http.MethodGet {
 			if yearStr := r.URL.Query().Get("year"); yearStr != "" {
 				if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-					year = y
+					explicitYear = y
 				}
 			}
 		} else if r.Method == http.MethodPost {
@@ -54,9 +70,10 @@ func NewCSRDComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			if body.Year > 2000 && body.Year <= time.Now().Year()+1 {
-				year = body.Year
+				explicitYear = body.Year
 			}
 		}
+		year := resolveReportYear(ctx, deps.ComplianceService, orgID, explicitYear)
 
 		// Generate CSRD report
 		report, err := deps.ComplianceService.GenerateCSRDReport(ctx, orgID, year)
@@ -107,12 +124,13 @@ func NewSECComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 			cik = "0000000000" // Demo CIK
 		}
 
-		year := time.Now().Year()
+		explicitYear := 0
 		if yearStr := r.URL.Query().Get("year"); yearStr != "" {
 			if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-				year = y
+				explicitYear = y
 			}
 		}
+		year := resolveReportYear(ctx, deps.ComplianceService, orgID, explicitYear)
 
 		// Generate SEC report
 		report, err := deps.ComplianceService.GenerateSECReport(ctx, orgID, orgName, cik, year)
@@ -151,12 +169,13 @@ func NewCaliforniaComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFun
 			orgName = "Demo Organization"
 		}
 
-		year := time.Now().Year()
+		explicitYear := 0
 		if yearStr := r.URL.Query().Get("year"); yearStr != "" {
 			if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-				year = y
+				explicitYear = y
 			}
 		}
+		year := resolveReportYear(ctx, deps.ComplianceService, orgID, explicitYear)
 
 		// Generate California report
 		report, err := deps.ComplianceService.GenerateCaliforniaReport(ctx, orgID, orgName, year)
@@ -190,12 +209,13 @@ func NewCBAMComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		}
 		orgID := tenantID
 
-		year := time.Now().Year()
+		explicitYear := 0
 		if yearStr := r.URL.Query().Get("year"); yearStr != "" {
 			if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-				year = y
+				explicitYear = y
 			}
 		}
+		year := resolveReportYear(ctx, deps.ComplianceService, orgID, explicitYear)
 
 		quarter := 1
 		if quarterStr := r.URL.Query().Get("quarter"); quarterStr != "" {
@@ -241,12 +261,13 @@ func NewIFRSComplianceHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 			orgName = "Demo Organization"
 		}
 
-		year := time.Now().Year()
+		explicitYear := 0
 		if yearStr := r.URL.Query().Get("year"); yearStr != "" {
 			if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-				year = y
+				explicitYear = y
 			}
 		}
+		year := resolveReportYear(ctx, deps.ComplianceService, orgID, explicitYear)
 
 		// Generate IFRS report
 		report, err := deps.ComplianceService.GenerateIFRSReport(ctx, orgID, orgName, year)
@@ -280,12 +301,13 @@ func NewComplianceSummaryHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		}
 		orgID := tenantID
 
-		year := time.Now().Year()
+		explicitYear := 0
 		if yearStr := r.URL.Query().Get("year"); yearStr != "" {
 			if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-				year = y
+				explicitYear = y
 			}
 		}
+		year := resolveReportYear(ctx, deps.ComplianceService, orgID, explicitYear)
 
 		// Generate compliance summary
 		summary, err := deps.ComplianceService.GenerateSummary(ctx, orgID, year)

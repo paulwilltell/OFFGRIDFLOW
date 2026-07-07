@@ -448,11 +448,14 @@ func (h *Scope2Handler) Summary(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Parse optional year filter
-	year := time.Now().Year()
+	// Parse optional year filter. A zero value means "no filter" so the summary
+	// reflects all reporting data (like the aggregate endpoint). Defaulting to
+	// the current calendar year would silently hide prior-year data, which is
+	// exactly the data most customers upload (last year's reporting period).
+	filterYear := 0
 	if yearStr := r.URL.Query().Get("year"); yearStr != "" {
 		if y, err := strconv.Atoi(yearStr); err == nil && y > 2000 && y <= time.Now().Year()+1 {
-			year = y
+			filterYear = y
 		}
 	}
 
@@ -496,8 +499,9 @@ func (h *Scope2Handler) Summary(w http.ResponseWriter, r *http.Request) {
 	count := 0
 
 	for _, rec := range records {
-		// Filter by year if specified (use UTC to avoid timezone shift excluding UTC-midnight records)
-		if rec.PeriodStart.UTC().Year() != year {
+		// Filter by year only when explicitly requested (use UTC to avoid
+		// timezone shift excluding UTC-midnight records).
+		if filterYear != 0 && rec.PeriodStart.UTC().Year() != filterYear {
 			continue
 		}
 		count++

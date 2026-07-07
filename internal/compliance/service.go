@@ -123,6 +123,31 @@ func (s *Service) calculateEmissions(ctx context.Context, orgID string, year int
 	return totals, activities, nil
 }
 
+// LatestDataYear returns the most recent calendar year for which the org has
+// activity data, or 0 if it has none. Report endpoints use this to default the
+// reporting year to the year that actually has data instead of the current
+// calendar year -- customers upload prior-year data, so defaulting to "now"
+// would generate an empty report for the common case.
+func (s *Service) LatestDataYear(ctx context.Context, orgID string) int {
+	allActivities, err := s.activityStore.List(ctx)
+	if err != nil {
+		return 0
+	}
+	latest := 0
+	for _, act := range allActivities {
+		if orgID != "" && orgID != "org-demo" && act.OrgID != orgID {
+			continue
+		}
+		if act.PeriodStart.IsZero() {
+			continue
+		}
+		if y := act.PeriodStart.UTC().Year(); y > latest {
+			latest = y
+		}
+	}
+	return latest
+}
+
 // ComplianceStatus represents the overall compliance status
 type ComplianceStatus string
 

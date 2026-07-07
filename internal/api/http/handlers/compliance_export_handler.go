@@ -34,10 +34,20 @@ func NewComplianceExportHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 		}
 		orgID := tenantID
 
-		year := time.Now().Year()
+		// Default to the most recent year with data; customers upload prior-year
+		// reporting data, so defaulting to the current calendar year would export
+		// an empty paid report. An explicit ?year= always overrides.
+		year := 0
 		if yearParam := r.URL.Query().Get("year"); yearParam != "" {
 			if parsed, err := strconv.Atoi(yearParam); err == nil && parsed > 2000 && parsed <= time.Now().Year()+1 {
 				year = parsed
+			}
+		}
+		if year == 0 {
+			if latest := deps.ComplianceService.LatestDataYear(ctx, orgID); latest > 0 {
+				year = latest
+			} else {
+				year = time.Now().Year()
 			}
 		}
 
