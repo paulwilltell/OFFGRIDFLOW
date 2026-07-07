@@ -350,7 +350,9 @@ func TestScope1Calculator_ErrorHandling(t *testing.T) {
 	registry := NewInMemoryRegistry()
 	calc := NewScope1Calculator(Scope1Config{Registry: registry})
 
-	t.Run("missing emission factor", func(t *testing.T) {
+	t.Run("registry miss falls back to default factor", func(t *testing.T) {
+		// The registry has no factor for diesel; the calculator must fall back
+		// to its built-in published defaults rather than dropping the activity.
 		activity := ActivityAdapter{
 			ID:       "test-1",
 			Source:   "fleet",
@@ -361,13 +363,12 @@ func TestScope1Calculator_ErrorHandling(t *testing.T) {
 			OrgID:    "org-123",
 		}
 
-		_, err := calc.Calculate(ctx, activity)
-		if err == nil {
-			t.Error("Expected error for missing emission factor")
+		rec, err := calc.Calculate(ctx, activity)
+		if err != nil {
+			t.Fatalf("expected fallback to default factor, got error: %v", err)
 		}
-
-		if !IsNotFoundError(err) {
-			t.Errorf("Expected ErrFactorNotFound, got: %v", err)
+		if rec.EmissionsTonnesCO2e <= 0 {
+			t.Errorf("expected positive emissions from default factor, got %+v", rec)
 		}
 	})
 
