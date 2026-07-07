@@ -244,8 +244,10 @@ func (c *Scope1Calculator) findFactor(ctx context.Context, activity Activity) (E
 			return factor, nil
 		}
 
-		// With an explicit registry, treat missing factors as errors to avoid silent fallbacks.
-		return EmissionFactor{}, err
+		// Registry has no matching factor for this fuel. Fall back to the
+		// built-in published defaults rather than dropping the activity, which
+		// would silently under-report Scope 1. (The registry typically holds
+		// curated grid factors but not the full fuel-combustion set.)
 	}
 
 	// Fall back to default factors based on category/fuel type

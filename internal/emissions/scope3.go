@@ -444,7 +444,13 @@ func (c *Scope3Calculator) findFactor(ctx context.Context, activity Activity) (E
 			Unit:     activity.GetUnit(),
 			ValidAt:  time.Now(),
 		}
-		return c.registry.FindFactor(ctx, query)
+		if factor, err := c.registry.FindFactor(ctx, query); err == nil {
+			return factor, nil
+		}
+		// Registry lacks a matching Scope 3 factor; fall back to the built-in
+		// category factor tables rather than dropping the activity (which would
+		// silently zero Scope 3 in production, where the registry holds only
+		// curated grid factors).
 	}
 
 	return c.defaultFactor(activity)
