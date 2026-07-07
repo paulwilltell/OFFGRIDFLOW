@@ -160,7 +160,7 @@ export default function UploadPage() {
         <span className="text-[12.5px] font-medium" style={{ color: '#9aa79f' }}>NOT SURE OF THE FORMAT?</span>
         <span className="h-px flex-1" style={{ background: '#e4e9e5' }} />
       </div>
-      <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-3">
         <button onClick={() => downloadCSV(TEMPLATE_CSV, 'offgridflow-template.csv')} className="rounded-[11px] border bg-white p-[18px] text-left transition hover:shadow-sm" style={{ borderColor: '#e8ece8' }}>
           <div className="mb-[9px] text-[20px]">📄</div>
           <div className="mb-[3px] text-[14.5px] font-semibold">One-type template</div>
@@ -171,6 +171,11 @@ export default function UploadPage() {
           <div className="mb-[3px] text-[14.5px] font-semibold">All-in-one template</div>
           <div className="text-[12.5px] leading-[1.45]" style={{ color: '#8a978f' }}>Every scope in one file — a <code>type</code> column per row</div>
         </button>
+        <div className="rounded-[11px] border bg-white p-[18px]" style={{ borderColor: '#e8ece8', opacity: 0.65 }}>
+          <div className="mb-[9px] text-[20px]">⚡</div>
+          <div className="mb-[3px] text-[14.5px] font-semibold">Connect utility account</div>
+          <div className="text-[12.5px] leading-[1.45]" style={{ color: '#8a978f' }}>PG&amp;E, Duke, National Grid — coming soon</div>
+        </div>
       </div>
     </div>
   );
