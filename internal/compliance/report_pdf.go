@@ -320,7 +320,28 @@ func renderBaseYear(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	keyVal(pdf, "Base year rationale", "First greenhouse gas inventory; established as the base year for future tracking")
 	keyVal(pdf, "Base year total", fmt.Sprintf("%s tCO2e", fmtT(inv.TotalTonnes)))
 	bodyText(pdf, "Under the GHG Protocol, a base year is fixed as the reference against which future emissions are compared. It will be recalculated for significant structural changes (acquisitions, divestitures, or methodology changes) exceeding the entity's significance threshold.")
-	bodyText(pdf, "Emissions intensity (tCO2e per unit of revenue, production, or FTE) is a required comparability metric. It is computed once a normalization denominator - typically annual revenue - is provided for the reporting period; provide revenue to enable intensity disclosure in future reports.")
+
+	perRev := inv.IntensityPerRevenueMM()
+	perFTE := inv.IntensityPerEmployee()
+	if perRev > 0 || perFTE > 0 {
+		bodyText(pdf, "Emissions intensity normalizes total emissions against a measure of business activity, enabling comparison across years and peers independent of absolute growth.")
+		th := []string{"Emissions intensity metric", "Value (tCO2e)"}
+		widths := []float64{usableW - 55, 55}
+		tableHead(pdf, th, widths)
+		zebra := false
+		if perRev > 0 {
+			keyVal(pdf, "Annual revenue", "$"+withCommas(fmt.Sprintf("%.0f", inv.Revenue)))
+			tableRowN(pdf, []string{"Per $1M revenue", fmtT(perRev)}, widths, zebra, false)
+			zebra = !zebra
+		}
+		if perFTE > 0 {
+			keyVal(pdf, "Full-time-equivalent headcount", withCommas(fmt.Sprintf("%d", inv.Employees)))
+			tableRowN(pdf, []string{"Per full-time-equivalent employee", fmtT(perFTE)}, widths, zebra, false)
+		}
+		bodyText(pdf, "Intensity is computed on the location-based total for the reporting period. Under California SB 253, revenue is also the threshold on which reporting applicability is assessed.")
+	} else {
+		bodyText(pdf, "Emissions intensity (tCO2e per unit of revenue, production, or FTE) is a required comparability metric. It is computed once a normalization denominator - typically annual revenue - is provided for the reporting period; provide revenue to enable intensity disclosure in future reports.")
+	}
 }
 
 func renderFactors(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
@@ -353,16 +374,25 @@ func renderActivityData(pdf *gofpdf.Fpdf, sec *int, inv *InventoryReport) {
 	th := []string{"Sc.", "Category", "Location", "Quantity", "Unit", "tCO2e"}
 	widths := []float64{10, 46, 42, 30, 20, usableW - 148}
 	tableHead(pdf, th, widths)
+	hasBiogenic := false
 	for i, li := range inv.LineItems {
+		cat := titleCase(li.Category)
+		if li.Biogenic {
+			cat += " (biogenic)"
+			hasBiogenic = true
+		}
 		row := []string{
 			fmt.Sprintf("%d", li.Scope),
-			titleCase(li.Category),
+			cat,
 			truncStr(li.Location, 26),
 			fmtNum(li.Quantity),
 			li.Unit,
 			fmtT(li.EmissionsTonnes),
 		}
 		tableRowN(pdf, row, widths, i%2 == 1, false)
+	}
+	if hasBiogenic {
+		bodyText(pdf, "Rows marked (biogenic) are combustion of biofuels: their CO2 is reported as a separate biogenic memo item and is excluded from the fossil Scope 1 total shown elsewhere in this report, per the GHG Protocol.")
 	}
 }
 

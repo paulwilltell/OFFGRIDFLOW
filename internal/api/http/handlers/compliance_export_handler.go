@@ -67,6 +67,15 @@ func NewComplianceExportHandler(deps *ComplianceHandlerDeps) http.HandlerFunc {
 			inv.OrgName = tenant.Name
 		}
 
+		// Optional normalization denominators for emissions-intensity metrics.
+		// Supplied per request until captured on the org profile.
+		if rev, err := strconv.ParseFloat(strings.TrimSpace(r.URL.Query().Get("revenue")), 64); err == nil && rev > 0 {
+			inv.Revenue = rev
+		}
+		if emp, err := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("employees"))); err == nil && emp > 0 {
+			inv.Employees = emp
+		}
+
 		var data []byte
 		var contentType string
 

@@ -54,6 +54,9 @@ type InventoryLineItem struct {
 	Method          string
 	DataQuality     string
 	EmissionsTonnes float64
+	// Biogenic marks combustion of biofuels (biodiesel, ethanol, wood, etc.).
+	// Its CO2 is a separate memo item, excluded from the fossil scope totals.
+	Biogenic bool
 
 	// Scope 2 market-based (dual reporting). MarketEmissionsTonnes equals the
 	// location-based figure unless a supplier/market factor or renewable share
@@ -109,6 +112,30 @@ type InventoryReport struct {
 	CompleteActivities int
 	CompletenessPct    float64
 	Warnings           []string
+
+	// Normalization denominators for emissions-intensity metrics. Zero means
+	// "not supplied" (intensity is then omitted rather than divided by zero).
+	Revenue   float64 // annual revenue for the reporting period, in USD
+	Employees int     // average full-time-equivalent headcount
+}
+
+// IntensityPerRevenueMM returns emissions intensity in tCO2e per $1M of revenue,
+// or 0 when revenue was not supplied. This is the primary comparability metric
+// under the GHG Protocol and the basis on which SB 253 applicability is assessed.
+func (r *InventoryReport) IntensityPerRevenueMM() float64 {
+	if r.Revenue <= 0 {
+		return 0
+	}
+	return r.TotalTonnes / (r.Revenue / 1_000_000)
+}
+
+// IntensityPerEmployee returns emissions intensity in tCO2e per full-time
+// equivalent employee, or 0 when headcount was not supplied.
+func (r *InventoryReport) IntensityPerEmployee() float64 {
+	if r.Employees <= 0 {
+		return 0
+	}
+	return r.TotalTonnes / float64(r.Employees)
 }
 
 // GasBreakdown disaggregates emissions into the seven Kyoto greenhouse gases
@@ -358,22 +385,39 @@ func (s *Service) GenerateInventory(ctx context.Context, orgID string, year int)
 			}
 		}
 
+		li.Biogenic = scope == 1 && isBiogenicFuel(li.Category)
 		report.LineItems = append(report.LineItems, li)
+
+		// Record the emission factor in the audit trail regardless of origin.
+		if factorByID[rec.FactorID] == nil {
+			factorByID[rec.FactorID] = &FactorRef{
+				FactorID: rec.FactorID,
+				Category: li.Category,
+				Scope:    scope,
+				Value:    rec.EmissionFactor,
+				Unit:     rec.InputUnit,
+				Source:   li.FactorSource,
+			}
+		}
+		factorByID[rec.FactorID].Uses++
+
+		// Biogenic CO2 (from biofuels) is a separate memo item per the GHG
+		// Protocol: reported on its own and excluded from every fossil scope
+		// aggregate, so the reported totals reconcile exactly.
+		if li.Biogenic {
+			report.Scope1Gases.Biogenic += rec.EmissionsTonnesCO2e
+			continue
+		}
 
 		report.ByScope[scope] += rec.EmissionsTonnesCO2e
 		switch scope {
 		case 1:
 			report.Scope1Tonnes += rec.EmissionsTonnesCO2e
-			// Disaggregate this fuel's CO2e into CO2/CH4/N2O. Biofuels (0-factor
-			// per the calculator) contribute biogenic CO2, reported separately.
-			if isBiogenicFuel(li.Category) {
-				report.Scope1Gases.Biogenic += rec.EmissionsTonnesCO2e
-			} else {
-				co2s, ch4s, n2os := combustionGasShares(li.Category)
-				report.Scope1Gases.CO2 += rec.EmissionsTonnesCO2e * co2s
-				report.Scope1Gases.CH4 += rec.EmissionsTonnesCO2e * ch4s
-				report.Scope1Gases.N2O += rec.EmissionsTonnesCO2e * n2os
-			}
+			// Disaggregate this fuel's CO2e into CO2/CH4/N2O.
+			co2s, ch4s, n2os := combustionGasShares(li.Category)
+			report.Scope1Gases.CO2 += rec.EmissionsTonnesCO2e * co2s
+			report.Scope1Gases.CH4 += rec.EmissionsTonnesCO2e * ch4s
+			report.Scope1Gases.N2O += rec.EmissionsTonnesCO2e * n2os
 		case 2:
 			report.Scope2Tonnes += rec.EmissionsTonnesCO2e
 			report.Scope2MarketTonnes += li.MarketEmissionsTonnes
@@ -391,18 +435,6 @@ func (s *Service) GenerateInventory(ctx context.Context, orgID string, year int)
 			locTotals[li.Location] = &CategoryTotal{Label: li.Location}
 		}
 		locTotals[li.Location].Tonnes += rec.EmissionsTonnesCO2e
-
-		if factorByID[rec.FactorID] == nil {
-			factorByID[rec.FactorID] = &FactorRef{
-				FactorID: rec.FactorID,
-				Category: li.Category,
-				Scope:    scope,
-				Value:    rec.EmissionFactor,
-				Unit:     rec.InputUnit,
-				Source:   li.FactorSource,
-			}
-		}
-		factorByID[rec.FactorID].Uses++
 	}
 
 	report.TotalTonnes = report.Scope1Tonnes + report.Scope2Tonnes + report.Scope3Tonnes

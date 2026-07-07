@@ -28,6 +28,10 @@ func ExportInventoryCSV(inv *InventoryReport) ([]byte, error) {
 		{fmt.Sprintf("# Scope 1 gases (tCO2e): co2=%.4f ch4=%.4f n2o=%.4f biogenic=%.4f",
 			inv.Scope1Gases.CO2, inv.Scope1Gases.CH4, inv.Scope1Gases.N2O, inv.Scope1Gases.Biogenic)},
 	}
+	if inv.IntensityPerRevenueMM() > 0 || inv.IntensityPerEmployee() > 0 {
+		meta = append(meta, []string{fmt.Sprintf("# Intensity: per_$M_revenue=%.4f per_employee=%.4f (revenue=%.0f employees=%d)",
+			inv.IntensityPerRevenueMM(), inv.IntensityPerEmployee(), inv.Revenue, inv.Employees)})
+	}
 	for _, m := range meta {
 		if err := w.Write(m); err != nil {
 			return nil, fmt.Errorf("csv meta: %w", err)

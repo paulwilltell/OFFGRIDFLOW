@@ -135,6 +135,97 @@ func min(a, b int) int {
 	return b
 }
 
+// Biogenic combustion (biofuels) must be booked as a separate memo item and
+// excluded from the fossil Scope 1 total, per the GHG Protocol.
+func TestBiogenicExcludedFromFossilTotal(t *testing.T) {
+	store := ingestion.NewInMemoryActivityStore()
+	y := 2025
+	acts := []ingestion.Activity{
+		{ID: "diesel", OrgID: "bio-org", Source: "fleet", Category: "diesel",
+			Location: "US-CA", Unit: "L", Quantity: 5000,
+			PeriodStart: time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC), PeriodEnd: time.Date(y, 1, 31, 0, 0, 0, 0, time.UTC)},
+		{ID: "bio", OrgID: "bio-org", Source: "fleet", Category: "biodiesel",
+			Location: "US-CA", Unit: "L", Quantity: 5000,
+			PeriodStart: time.Date(y, 2, 1, 0, 0, 0, 0, time.UTC), PeriodEnd: time.Date(y, 2, 28, 0, 0, 0, 0, time.UTC)},
+	}
+	if err := store.SaveBatch(context.Background(), acts); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	svc := NewService(store,
+		emissions.NewScope1Calculator(emissions.Scope1Config{}),
+		emissions.NewScope2Calculator(emissions.Scope2Config{}),
+		emissions.NewScope3Calculator(emissions.DefaultScope3Config()))
+	inv, err := svc.GenerateInventory(context.Background(), "bio-org", y)
+	if err != nil {
+		t.Fatalf("inventory: %v", err)
+	}
+	if inv.Scope1Gases.Biogenic <= 0 {
+		t.Errorf("expected biogenic memo > 0, got %.4f", inv.Scope1Gases.Biogenic)
+	}
+	// Fossil Scope 1 must equal the fossil gas split (CO2+CH4+N2O), with no
+	// biogenic leakage, and must reconcile to the by-category scope-1 fossil sum.
+	if inv.Scope1Gases.CO2 <= 0 {
+		t.Error("expected fossil CO2 from the diesel row")
+	}
+	fossilFromCat := 0.0
+	for _, c := range inv.ByCategory {
+		if c.Scope == 1 {
+			fossilFromCat += c.Tonnes
+		}
+	}
+	if diff := inv.Scope1Tonnes - fossilFromCat; diff > 1e-6 || diff < -1e-6 {
+		t.Errorf("Scope1 fossil total %.4f does not reconcile with by-category fossil %.4f (biogenic leaked?)",
+			inv.Scope1Tonnes, fossilFromCat)
+	}
+	if inv.Scope1Tonnes >= inv.Scope1Gases.Biogenic*2 {
+		// With equal diesel+biodiesel volume, fossil total must be ~half of the
+		// combined combustion, confirming biodiesel is not in the fossil total.
+		if inv.Scope1Tonnes > 20 { // diesel-only ~13.4t; both-fossil would be ~26.8t
+			t.Errorf("fossil Scope 1 %.2f looks like it still includes biodiesel", inv.Scope1Tonnes)
+		}
+	}
+}
+
+// Emissions intensity must normalize the total against revenue and headcount,
+// and be omitted (not divide by zero) when no denominator is supplied.
+func TestEmissionsIntensity(t *testing.T) {
+	inv, err := testService(t).GenerateInventory(context.Background(), "test-org", 2025)
+	if err != nil {
+		t.Fatalf("inventory: %v", err)
+	}
+
+	// No denominator supplied -> intensity omitted.
+	if inv.IntensityPerRevenueMM() != 0 || inv.IntensityPerEmployee() != 0 {
+		t.Fatalf("expected zero intensity without denominators, got rev=%.4f fte=%.4f",
+			inv.IntensityPerRevenueMM(), inv.IntensityPerEmployee())
+	}
+
+	inv.Revenue = 50_000_000 // $50M
+	inv.Employees = 200
+
+	wantRev := inv.TotalTonnes / 50.0 // per $1M
+	if got := inv.IntensityPerRevenueMM(); got < wantRev-1e-6 || got > wantRev+1e-6 {
+		t.Errorf("per-$M intensity = %.6f, want %.6f", got, wantRev)
+	}
+	wantFTE := inv.TotalTonnes / 200.0
+	if got := inv.IntensityPerEmployee(); got < wantFTE-1e-6 || got > wantFTE+1e-6 {
+		t.Errorf("per-FTE intensity = %.6f, want %.6f", got, wantFTE)
+	}
+
+	// The rendered PDF and CSV must both surface the intensity now.
+	pdf, err := ExportInventoryReportPDF(inv)
+	if err != nil || !bytes.HasPrefix(pdf, []byte("%PDF")) {
+		t.Fatalf("pdf export failed: %v", err)
+	}
+	csv, err := ExportInventoryCSV(inv)
+	if err != nil {
+		t.Fatalf("csv export: %v", err)
+	}
+	if !strings.Contains(string(csv), "# Intensity:") {
+		t.Error("CSV missing intensity provenance line")
+	}
+}
+
 // Scope 2 must be dual-reported: location-based (grid) and market-based
 // (supplier factor / renewable share). Market emissions fall below location
 // when contractual instruments are supplied.

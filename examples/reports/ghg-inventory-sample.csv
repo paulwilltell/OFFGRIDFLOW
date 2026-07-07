@@ -1,0 +1,19 @@
+# OffGridFlow GHG Emissions Inventory — activity data export
+"# Organization: Northwind Manufacturing, Inc."
+# Reporting year: 2025
+# Generated: 2026-07-07T03:18:45Z
+# Standard: GHG Protocol Corporate Standard (California SB 253)
+# Totals (tCO2e): scope1=32.9550 scope2_location=73.7550 scope2_market=73.7550 scope3=29.8791 total=136.5891
+# Scope 1 gases (tCO2e): co2=32.5437 ch4=0.0989 n2o=0.3125 biogenic=2.1440
+# Intensity: per_$M_revenue=0.1138 per_employee=0.1607 (revenue=1200000000 employees=850)
+scope,source,category,location,period_start,period_end,quantity,unit,emission_factor,factor_id,factor_source,method,data_quality,emissions_tco2e,market_emissions_tco2e
+1,fleet,diesel,US-CA,2025-01-01,2025-03-01,9200,L,2.68,default-scope1-diesel,US EPA GHG Emission Factors Hub,activity-based,measured,24.656000,24.656000
+1,stationary_combustion,natural_gas,US-CA,2025-01-01,2025-03-01,4300,therm,1.93,default-scope1-natural_gas,US EPA GHG Emission Factors Hub,activity-based,measured,8.299000,8.299000
+1,fleet,biodiesel,US-CA,2025-02-01,2025-02-01,800,L,2.68,default-scope1-diesel,US EPA GHG Emission Factors Hub,activity-based,measured,2.144000,2.144000
+2,utility_bill,electricity,US-CA,2025-01-01,2025-01-01,128000,kWh,0.298,grid-us-west,US EPA eGRID (location-based),location-based,estimated,38.144000,38.144000
+2,utility_bill,electricity,US-CA,2025-02-01,2025-02-01,119500,kWh,0.298,grid-us-west,US EPA eGRID (location-based),location-based,estimated,35.611000,35.611000
+3,commuting,car,US-CA,2025-01-01,2025-03-01,46000,mile,0.171,scope3-commuting-car-petrol,UK DEFRA / GHG Protocol (passenger transport),activity-based,estimated,12.659068,12.659068
+3,purchases,cloud-services,US-CA,2025-01-01,2025-03-01,88000,USD,0.08,scope3-spend-cloud-services,US EPA EEIO (spend-based),spend-based,default,7.040000,7.040000
+3,travel,flight_long_haul,GLOBAL,2025-03-01,2025-03-01,21000,mile,0.195,scope3-travel-flight-long,UK DEFRA / GHG Protocol (passenger transport),activity-based,estimated,6.590247,6.590247
+3,waste,landfill,US-CA,2025-01-01,2025-03-01,5400,kg,0.467,scope3-waste-landfill-mixed,UK DEFRA (waste treatment),activity-based,estimated,2.521800,2.521800
+3,freight,truck,US-CA,2025-01-01,2025-03-01,12000,tonne-km,0.089,scope3-transport-truck_freight,UK DEFRA / GHG Protocol (freight),activity-based,estimated,1.068000,1.068000
