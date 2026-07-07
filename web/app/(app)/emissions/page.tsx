@@ -8,10 +8,22 @@ import { recordAuditEvent } from '@/lib/auditLog';
 
 type UploadResponse = { status: string; activitiesSaved: number; orgId: string };
 
+// Single-type template: one kind of data per file (the classic style).
 const TEMPLATE_CSV = [
   'meter_id,location,period_start,period_end,kwh',
   'METER-001,US-CA,2025-01-01,2025-01-31,12500',
   'METER-001,US-CA,2025-02-01,2025-02-28,11800',
+].join('\n');
+
+// All-in-one template: every scope in a single file, one row per activity. The
+// engine reads the "type" column and routes each row to the right scope.
+const MIXED_TEMPLATE_CSV = [
+  'type,quantity,unit,location,date,fuel_type,mode,treatment,vendor',
+  'electricity,12500,kwh,US-CA,2025-01-31,,,,',
+  'diesel,500,gallons,US-CA,2025-01-15,diesel,,,',
+  'flight,2586,miles,,2025-03-01,,air,,',
+  'waste,1200,kg,US-CA,2025-01-15,,,landfill,',
+  'cloud spend,40000,usd,,2025-01-15,,,,AWS',
 ].join('\n');
 
 export default function UploadPage() {
@@ -83,12 +95,12 @@ export default function UploadPage() {
     if (file) processFile(file);
   };
 
-  const downloadTemplate = () => {
-    const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' });
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'offgridflow-template.csv';
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -98,10 +110,11 @@ export default function UploadPage() {
   return (
     <div className="mx-auto w-full max-w-[720px]">
       <h1 className="mb-[9px] text-center text-[26px] font-bold tracking-[-0.02em]">Add your emissions data</h1>
-      <p className="mx-auto mb-9 max-w-[540px] text-center text-[15px] leading-[1.55]" style={{ color: '#6a7a71' }}>
-        Upload any activity data — utility bills, fuel, business travel, commuting, freight, waste, or supplier
-        spend. We auto-detect the scope, map your columns, apply emission factors, and calculate your
-        Scope&nbsp;1, 2 &amp; 3 footprint.
+      <p className="mx-auto mb-9 max-w-[560px] text-center text-[15px] leading-[1.55]" style={{ color: '#6a7a71' }}>
+        Upload one file per data type <strong>or</strong> a single all-in-one file mixing everything —
+        utility bills, fuel, business travel, commuting, freight, waste, and supplier spend. We auto-detect
+        the scope of each row, map your columns, apply emission factors, and calculate your Scope&nbsp;1, 2
+        &amp; 3 footprint.
       </p>
 
       {error && (
@@ -148,16 +161,16 @@ export default function UploadPage() {
         <span className="h-px flex-1" style={{ background: '#e4e9e5' }} />
       </div>
       <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-2">
-        <button onClick={downloadTemplate} className="rounded-[11px] border bg-white p-[18px] text-left" style={{ borderColor: '#e8ece8' }}>
+        <button onClick={() => downloadCSV(TEMPLATE_CSV, 'offgridflow-template.csv')} className="rounded-[11px] border bg-white p-[18px] text-left transition hover:shadow-sm" style={{ borderColor: '#e8ece8' }}>
           <div className="mb-[9px] text-[20px]">📄</div>
-          <div className="mb-[3px] text-[14.5px] font-semibold">Download CSV template</div>
-          <div className="text-[12.5px] leading-[1.45]" style={{ color: '#8a978f' }}>Pre-built sheet with the right columns</div>
+          <div className="mb-[3px] text-[14.5px] font-semibold">One-type template</div>
+          <div className="text-[12.5px] leading-[1.45]" style={{ color: '#8a978f' }}>A single kind of data per file (e.g. electricity)</div>
         </button>
-        <div className="rounded-[11px] border bg-white p-[18px]" style={{ borderColor: '#e8ece8', opacity: 0.65 }}>
-          <div className="mb-[9px] text-[20px]">⚡</div>
-          <div className="mb-[3px] text-[14.5px] font-semibold">Connect utility account</div>
-          <div className="text-[12.5px] leading-[1.45]" style={{ color: '#8a978f' }}>PG&amp;E, Duke, National Grid — coming soon</div>
-        </div>
+        <button onClick={() => downloadCSV(MIXED_TEMPLATE_CSV, 'offgridflow-all-in-one-template.csv')} className="rounded-[11px] border bg-white p-[18px] text-left transition hover:shadow-sm" style={{ borderColor: '#e8ece8' }}>
+          <div className="mb-[9px] text-[20px]">🗂️</div>
+          <div className="mb-[3px] text-[14.5px] font-semibold">All-in-one template</div>
+          <div className="text-[12.5px] leading-[1.45]" style={{ color: '#8a978f' }}>Every scope in one file — a <code>type</code> column per row</div>
+        </button>
       </div>
     </div>
   );
