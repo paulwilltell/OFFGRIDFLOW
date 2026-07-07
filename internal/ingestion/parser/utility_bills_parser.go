@@ -247,7 +247,13 @@ func (p *UtilityBillParser) parseCSV(ctx context.Context, r io.Reader) (*ParseRe
 		missing = append(missing, "quantity/kwh")
 	}
 	if len(missing) > 0 {
-		return nil, fmt.Errorf("missing required columns: %s", strings.Join(missing, ", "))
+		// No quantity or meter signal at all means the file matched none of the
+		// supported dump types. Guide the user rather than emitting an
+		// electricity-specific "missing meter_id" error that misleads.
+		if schema.QuantityCol == "" && schema.MeterIDCol == "" {
+			return nil, fmt.Errorf("could not recognize this file's data type. Each upload should be one kind of data with matching columns: electricity (kwh), fuel (gallons/liters/therms + fuel_type), business travel (miles/km + mode or origin/destination), employee commuting, freight (tonne-km or weight + distance), waste (weight + treatment), or spend (amount + vendor/category)")
+		}
+		return nil, fmt.Errorf("missing required columns for an electricity/utility dump: %s", strings.Join(missing, ", "))
 	}
 
 	var (
