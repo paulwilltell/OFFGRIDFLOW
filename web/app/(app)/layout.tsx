@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSession, useRequireAuth } from '@/lib/session';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -57,6 +58,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const session = useRequireAuth();
   const pathname = usePathname();
   const { user, logout } = useSession();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   if (!session?.isAuthenticated) {
     return null;
@@ -89,13 +110,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* User */}
         <div className="flex items-center gap-3">
           <span className="text-[13.5px] text-[#5b6b62]">{user?.name || user?.email}</span>
-          <button
-            onClick={() => logout()}
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#dceadf] text-[13px] font-semibold text-[#2f6b50]"
-            title="Sign out"
-          >
-            {companyInitial}
-          </button>
+          <div ref={menuRef} className="relative">
+            <button
+              onClick={() => setMenuOpen((open) => !open)}
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#dceadf] text-[13px] font-semibold text-[#2f6b50]"
+              title="Account"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              {companyInitial}
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-[38px] z-50 min-w-[160px] rounded-[8px] border border-[#eef1ee] bg-white py-1 shadow-[0_4px_16px_rgba(22,32,27,0.08)]"
+              >
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    logout();
+                  }}
+                  className="block w-full px-4 py-2 text-left text-[13.5px] text-[#16201b] hover:bg-[#f7f8f6]"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
           <Link href="/settings" className="text-[12px] text-[#9aa79f] hover:text-[#5b6b62]">
             Settings
           </Link>
